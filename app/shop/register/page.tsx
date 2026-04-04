@@ -294,7 +294,7 @@ export default function ShopRegisterPage() {
         )
       }
 
-      window.localStorage.setItem(SHOP_REGISTER_DRAFT_KEY, JSON.stringify(form))
+      window.localStorage.removeItem(SHOP_REGISTER_DRAFT_KEY)
       setStatusText(
         data.message ||
           t(
@@ -302,10 +302,7 @@ export default function ShopRegisterPage() {
             "Shop request submitted. Please wait for support approval.",
           ),
       )
-      setForm((current) => ({
-        ...current,
-        ownerPassword: "",
-      }))
+      setForm(createDefaultForm())
     } catch (error) {
       setErrorText(
         error instanceof Error
