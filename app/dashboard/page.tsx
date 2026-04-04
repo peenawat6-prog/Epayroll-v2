@@ -3,11 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import LogoutButton from '@/app/components/logout-button'
+import type { UserRole } from '@prisma/client'
 
 type CurrentUser = {
   id: string
   email: string
-  role: string
+  role: UserRole
   tenantId: string
 }
 
@@ -26,6 +27,43 @@ type Summary = {
     expiresAt: string | null
     daysRemaining: number | null
   }
+}
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  DEV: 'ผู้ดูแลระบบ Dev',
+  OWNER: 'เจ้าของร้าน',
+  ADMIN: 'ผู้จัดการร้าน',
+  HR: 'ฝ่ายบุคคล',
+  FINANCE: 'ฝ่ายการเงิน',
+  EMPLOYEE: 'พนักงาน',
+}
+
+function canOpenEmployees(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN', 'HR', 'FINANCE'].includes(role)
+}
+
+function canOpenAttendance(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN', 'HR'].includes(role)
+}
+
+function canOpenAttendanceReport(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN', 'HR', 'FINANCE'].includes(role)
+}
+
+function canOpenAttendanceCorrections(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN'].includes(role)
+}
+
+function canOpenStaffRequests(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN', 'HR'].includes(role)
+}
+
+function canOpenPayroll(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN', 'FINANCE'].includes(role)
+}
+
+function canOpenOps(role: UserRole) {
+  return ['DEV', 'OWNER', 'ADMIN'].includes(role)
 }
 
 export default function DashboardPage() {
@@ -78,7 +116,7 @@ export default function DashboardPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">สิทธิ์: {user.role}</div>
+            <div className="badge">สิทธิ์: {ROLE_LABELS[user.role]}</div>
             <div className="badge">รหัสร้าน: {user.tenantId}</div>
           </div>
           <h1 className="hero-title">หน้าแรกของร้าน</h1>
@@ -88,38 +126,57 @@ export default function DashboardPage() {
         </div>
 
         <div className="action-row">
-          <button className="btn btn-secondary" onClick={() => router.push('/employees')}>
-            สรุปข้อมูลพนักงาน
-          </button>
-          <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
-            ลงเวลาเข้าออก
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => router.push('/attendance/history')}
-          >
-            รายงานการลงเวลา
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => router.push('/attendance/corrections')}
-          >
-            แก้ไขการลงเวลา
-          </button>
-          <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
-            คำขอพนักงาน
-            {summary?.pendingTotalRequests ? (
-              <span className="notification-badge">
-                {summary.pendingTotalRequests}
-              </span>
-            ) : null}
-          </button>
-          <button className="btn btn-primary" onClick={() => router.push('/payroll')}>
-            สรุปเงินเดือน
-          </button>
-          <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
-            ตั้งค่าร้าน
-          </button>
+          {canOpenEmployees(user.role) ? (
+            <button className="btn btn-secondary" onClick={() => router.push('/employees')}>
+              สรุปข้อมูลพนักงาน
+            </button>
+          ) : null}
+          {canOpenAttendance(user.role) ? (
+            <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
+              ลงเวลาเข้าออก
+            </button>
+          ) : null}
+          {canOpenAttendanceReport(user.role) ? (
+            <button
+              className="btn btn-secondary"
+              onClick={() => router.push('/attendance/history')}
+            >
+              รายงานการลงเวลา
+            </button>
+          ) : null}
+          {canOpenAttendanceCorrections(user.role) ? (
+            <button
+              className="btn btn-secondary"
+              onClick={() => router.push('/attendance/corrections')}
+            >
+              แก้ไขการลงเวลา
+              {summary?.pendingAttendanceCorrections ? (
+                <span className="notification-badge">
+                  {summary.pendingAttendanceCorrections}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+          {canOpenStaffRequests(user.role) ? (
+            <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
+              คำขอพนักงาน
+              {summary?.pendingTotalRequests ? (
+                <span className="notification-badge">
+                  {summary.pendingTotalRequests}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+          {canOpenPayroll(user.role) ? (
+            <button className="btn btn-primary" onClick={() => router.push('/payroll')}>
+              สรุปเงินเดือน
+            </button>
+          ) : null}
+          {canOpenOps(user.role) ? (
+            <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
+              ตั้งค่าร้าน
+            </button>
+          ) : null}
           <LogoutButton />
         </div>
       </section>
@@ -168,28 +225,34 @@ export default function DashboardPage() {
           <section className="panel">
             <h2 className="panel-title">เมนูที่ใช้บ่อย</h2>
             <div className="action-row" style={{ marginTop: 14 }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => router.push('/attendance/corrections')}
-              >
-                แก้ไขการลงเวลา
-                {summary.pendingAttendanceCorrections ? (
-                  <span className="notification-badge">
-                    {summary.pendingAttendanceCorrections}
-                  </span>
-                ) : null}
-              </button>
-              <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
-                ดูคำขอลา/OT/ลาออก
-                {summary.pendingStaffRequests ? (
-                  <span className="notification-badge">
-                    {summary.pendingStaffRequests}
-                  </span>
-                ) : null}
-              </button>
-              <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
-                ตั้งค่าร้าน
-              </button>
+              {canOpenAttendanceCorrections(user.role) ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => router.push('/attendance/corrections')}
+                >
+                  แก้ไขการลงเวลา
+                  {summary.pendingAttendanceCorrections ? (
+                    <span className="notification-badge">
+                      {summary.pendingAttendanceCorrections}
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              {canOpenStaffRequests(user.role) ? (
+                <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
+                  ดูคำขอลา/OT/ลาออก
+                  {summary.pendingStaffRequests ? (
+                    <span className="notification-badge">
+                      {summary.pendingStaffRequests}
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              {canOpenOps(user.role) ? (
+                <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
+                  ตั้งค่าร้าน
+                </button>
+              ) : null}
             </div>
           </section>
         </>

@@ -79,6 +79,57 @@ async function main() {
 
   await prisma.user.upsert({
     where: {
+      email: "owner2@demo.local",
+    },
+    update: {
+      tenantId: tenant.id,
+      passwordHash,
+      role: "OWNER",
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "owner2@demo.local",
+      passwordHash,
+      role: "OWNER",
+    },
+  })
+
+  await prisma.user.upsert({
+    where: {
+      email: "hr@demo.local",
+    },
+    update: {
+      tenantId: tenant.id,
+      passwordHash,
+      role: "HR",
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "hr@demo.local",
+      passwordHash,
+      role: "HR",
+    },
+  })
+
+  await prisma.user.upsert({
+    where: {
+      email: "finance@demo.local",
+    },
+    update: {
+      tenantId: tenant.id,
+      passwordHash,
+      role: "FINANCE",
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "finance@demo.local",
+      passwordHash,
+      role: "FINANCE",
+    },
+  })
+
+  await prisma.user.upsert({
+    where: {
       email: "dev@demo.local",
     },
     update: {
@@ -183,6 +234,9 @@ async function main() {
 
   console.log("Seed done")
   console.log("Login email: owner@demo.local")
+  console.log("Second owner login email: owner2@demo.local")
+  console.log("HR login email: hr@demo.local")
+  console.log("Finance login email: finance@demo.local")
   console.log("Dev login email: dev@demo.local")
   console.log("Employee login email: employee@demo.local")
   console.log("Login password: demo1234")
