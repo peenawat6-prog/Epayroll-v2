@@ -535,6 +535,23 @@ textarea {
   color: #fff;
 }
 
+.support-footer {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 24px;
+}
+
+.support-link {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.support-link:hover {
+  color: var(--brand-strong);
+}
+
 @media (max-width: 640px) {
   .page {
     width: min(100% - 20px, 1180px);
