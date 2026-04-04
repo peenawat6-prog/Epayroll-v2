@@ -88,6 +88,7 @@ export const GET = withAuthorizedRoute(
         checkIn: true,
         checkOut: true,
         checkInPhotoUrl: true,
+        checkOutPhotoUrl: true,
         workedMinutes: true,
         lateMinutes: true,
         status: true,

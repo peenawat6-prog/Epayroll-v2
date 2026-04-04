@@ -10,8 +10,11 @@ export const GET = withAuthorizedRoute(
   {
     roles: ROLE_GROUPS.attendanceView,
   },
-  async (_req, context: { params: Promise<{ id: string }> }, access) => {
+  async (req, context: { params: Promise<{ id: string }> }, access) => {
     const { id } = await context.params
+    const { searchParams } = new URL(req.url)
+    const photoKind =
+      searchParams.get("kind") === "check-out" ? "check-out" : "check-in"
 
     const attendance = await prisma.attendance.findFirst({
       where: {
@@ -27,13 +30,14 @@ export const GET = withAuthorizedRoute(
     })
 
     if (!attendance) {
-      throw new AppError("ไม่พบรูปเช็กอิน", 404, "ATTENDANCE_PHOTO_NOT_FOUND")
+      throw new AppError("ไม่พบรูปลงเวลา", 404, "ATTENDANCE_PHOTO_NOT_FOUND")
     }
 
     const { mimeType, photoBuffer } = await readStoredCheckInPhoto({
       tenantId: access.user.tenantId,
       employeeId: attendance.employeeId,
       attendanceId: attendance.id,
+      photoKind,
     })
 
     return new Response(new Uint8Array(photoBuffer), {

@@ -5,11 +5,18 @@ import {
   getShiftEndByWorkShift,
   getShiftWorkDate,
 } from "@/lib/attendance"
-import { AppError, handleApiError, jsonResponse } from "@/lib/http"
+import {
+  buildCheckOutPhotoUrl,
+  deleteStoredCheckInPhoto,
+  saveCheckInPhoto,
+} from "@/lib/check-in-photo-storage"
+import { assertWithinAllowedRadius, getEffectiveLocationConfig } from "@/lib/gps"
+import { AppError, handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
 import { assertPayrollPeriodOpenForDate } from "@/lib/payroll"
 import { ROLE_GROUPS } from "@/lib/role"
+import { asLatitude, asLongitude, asPhotoReference } from "@/lib/validators"
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const access = await authorizeRequest({
       roles: ROLE_GROUPS.employeeSelfService,
@@ -23,6 +30,14 @@ export async function POST() {
       )
     }
 
+    const body = await readJsonBody<{
+      photo?: unknown
+      latitude?: unknown
+      longitude?: unknown
+    }>(req)
+    const photo = asPhotoReference(body.photo)
+    const latitude = asLatitude(body.latitude)
+    const longitude = asLongitude(body.longitude)
     const employeeId = access.user.employeeId
     const now = new Date()
 
@@ -39,6 +54,9 @@ export async function POST() {
           afternoonShiftEndMinutes: true,
           nightShiftStartMinutes: true,
           nightShiftEndMinutes: true,
+          latitude: true,
+          longitude: true,
+          allowedRadiusMeters: true,
         },
       }),
       prisma.employee.findFirst({
@@ -46,6 +64,16 @@ export async function POST() {
           id: employeeId,
           tenantId: access.user.tenantId,
           active: true,
+        },
+        include: {
+          branch: {
+            select: {
+              name: true,
+              latitude: true,
+              longitude: true,
+              allowedRadiusMeters: true,
+            },
+          },
         },
       }),
     ])
@@ -87,6 +115,18 @@ export async function POST() {
 
     const workedMinutes = ensureCheckoutAfterCheckin(attendance.checkIn, now)
     const shiftEnd = getShiftEndByWorkShift(now, tenant, employee.workShift)
+    const locationConfig = getEffectiveLocationConfig({
+      tenant,
+      branch: employee.branch,
+    })
+    const distanceMeters = assertWithinAllowedRadius({
+      latitude,
+      longitude,
+      targetLatitude: locationConfig.latitude,
+      targetLongitude: locationConfig.longitude,
+      allowedRadiusMeters: locationConfig.allowedRadiusMeters,
+    })
+    const checkOutPhotoUrl = buildCheckOutPhotoUrl(attendance.id)
 
     if (now.getTime() < shiftEnd.getTime()) {
       const earlyCheckoutRequest = await prisma.earlyCheckoutRequest.findFirst({
@@ -107,36 +147,63 @@ export async function POST() {
       }
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const updatedAttendance = await tx.attendance.update({
-        where: { id: attendance.id },
-        data: {
-          checkOut: now,
-          workedMinutes,
-        },
-      })
-
-      await tx.auditLog.create({
-        data: {
-          tenantId: access.user.tenantId,
-          userId: access.user.id,
-          action: "employee_portal.checked_out",
-          entityType: "Attendance",
-          entityId: updatedAttendance.id,
-          metadata: {
-            employeeId,
-            workDate,
-            workedMinutes,
-            workShift: employee.workShift,
-            isEarlyCheckout: now.getTime() < shiftEnd.getTime(),
-          },
-        },
-      })
-
-      return updatedAttendance
+    await saveCheckInPhoto({
+      tenantId: access.user.tenantId,
+      employeeId,
+      attendanceId: attendance.id,
+      photoDataUrl: photo,
+      photoKind: "check-out",
     })
 
-    return jsonResponse(updated)
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        const updatedAttendance = await tx.attendance.update({
+          where: { id: attendance.id },
+          data: {
+            checkOut: now,
+            workedMinutes,
+            checkOutPhotoUrl,
+            checkOutLatitude: latitude,
+            checkOutLongitude: longitude,
+            checkOutDistanceMeters: distanceMeters,
+          },
+        })
+
+        await tx.auditLog.create({
+          data: {
+            tenantId: access.user.tenantId,
+            userId: access.user.id,
+            action: "employee_portal.checked_out",
+            entityType: "Attendance",
+            entityId: updatedAttendance.id,
+            metadata: {
+              employeeId,
+              workDate,
+              workedMinutes,
+              workShift: employee.workShift,
+              isEarlyCheckout: now.getTime() < shiftEnd.getTime(),
+              latitude,
+              longitude,
+              distanceMeters,
+              locationLabel: locationConfig.label,
+            },
+          },
+        })
+
+        return updatedAttendance
+      })
+
+      return jsonResponse(updated)
+    } catch (error) {
+      await deleteStoredCheckInPhoto({
+        tenantId: access.user.tenantId,
+        employeeId,
+        attendanceId: attendance.id,
+        photoKind: "check-out",
+      })
+
+      throw error
+    }
   } catch (error) {
     return handleApiError(error)
   }

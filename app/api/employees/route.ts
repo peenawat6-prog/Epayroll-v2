@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
 import { createAuditLog } from "@/lib/audit"
+import { assertCanAddActiveEmployee } from "@/lib/business-limits"
 import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import {
   asBusinessDate,
+  asDayOffWeekdays,
   asEmployeeType,
   asOptionalNumber,
   asOptionalTrimmedString,
@@ -24,6 +26,7 @@ type EmployeeCreateBody = {
   employeeType?: unknown
   payType?: unknown
   workShift?: unknown
+  dayOffWeekdays?: unknown
   baseSalary?: unknown
   dailyRate?: unknown
   hourlyRate?: unknown
@@ -59,6 +62,13 @@ export async function GET(req: Request) {
             name: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            role: true,
+            email: true,
+          },
+        },
         bank: true,
       },
       orderBy: [{ active: "desc" }, { code: "asc" }],
@@ -75,6 +85,8 @@ export async function POST(req: Request) {
     const access = await authorizeRequest({
       roles: ROLE_GROUPS.employeeManage,
     })
+    await assertCanAddActiveEmployee(access.user.tenantId)
+
     const body = await readJsonBody<EmployeeCreateBody>(req)
     const code =
       body.code === undefined || body.code === null || String(body.code).trim() === ""
@@ -88,6 +100,7 @@ export async function POST(req: Request) {
     const employeeType = asEmployeeType(body.employeeType)
     const payType = asPayType(body.payType)
     const workShift = asWorkShift(body.workShift)
+    const dayOffWeekdays = asDayOffWeekdays(body.dayOffWeekdays)
     const baseSalary = asOptionalNumber(body.baseSalary)
     const dailyRate = asOptionalNumber(body.dailyRate)
     const hourlyRate = asOptionalNumber(body.hourlyRate)
@@ -148,6 +161,7 @@ export async function POST(req: Request) {
         employeeType,
         payType,
         workShift,
+        dayOffWeekdays,
         baseSalary,
         dailyRate,
         hourlyRate,
@@ -187,6 +201,7 @@ export async function POST(req: Request) {
         code: employee.code,
         payType: employee.payType,
         workShift: employee.workShift,
+        dayOffWeekdays: employee.dayOffWeekdays,
         branchId: employee.branchId,
         hasBank: shouldCreateBankAccount,
       },

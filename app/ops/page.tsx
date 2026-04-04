@@ -83,6 +83,7 @@ declare global {
 
 const DEFAULT_SHOP_LATITUDE = 13.7563
 const DEFAULT_SHOP_LONGITUDE = 100.5018
+const OPS_SETTINGS_DRAFT_KEY = "epayroll-ops-settings-draft"
 const LEAFLET_SCRIPT_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 const LEAFLET_STYLE_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
 
@@ -97,6 +98,34 @@ function formatClock(minutes: number) {
 function toCoordinateValue(value: string, fallback: number) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function restoreOpsDraft(defaultForm: {
+  payrollPayday: string
+  morningShiftStartTime: string
+  morningShiftEndTime: string
+  afternoonShiftStartTime: string
+  afternoonShiftEndTime: string
+  nightShiftStartTime: string
+  nightShiftEndTime: string
+  latitude: string
+  longitude: string
+  allowedRadiusMeters: string
+}) {
+  const draftText = window.localStorage.getItem(OPS_SETTINGS_DRAFT_KEY)
+
+  if (!draftText) {
+    return defaultForm
+  }
+
+  try {
+    return {
+      ...defaultForm,
+      ...JSON.parse(draftText),
+    }
+  } catch {
+    return defaultForm
+  }
 }
 
 function loadLeaflet() {
@@ -187,6 +216,8 @@ export default function OpsPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<LeafletInstance | null>(null)
   const markerRef = useRef<LeafletMarkerInstance | null>(null)
+  const autoSaveTimerRef = useRef<number | null>(null)
+  const hydratedSettingsRef = useRef(false)
   const currentMapStatus =
     mapStatus || t('กำลังโหลดแผนที่...', 'Loading map...')
 
@@ -199,7 +230,7 @@ export default function OpsPage() {
 
     const summaryData = data as OpsSummary
     setSummary(summaryData)
-    setForm({
+    const nextForm = {
       payrollPayday: String(summaryData.settings.payrollPayday),
       morningShiftStartTime: formatClock(
         summaryData.settings.morningShiftStartMinutes,
@@ -222,7 +253,9 @@ export default function OpsPage() {
       latitude: summaryData.settings.latitude?.toString() ?? '',
       longitude: summaryData.settings.longitude?.toString() ?? '',
       allowedRadiusMeters: String(summaryData.settings.allowedRadiusMeters),
-    })
+    }
+    setForm(restoreOpsDraft(nextForm))
+    hydratedSettingsRef.current = true
     setLoading(false)
   }
 
@@ -293,6 +326,63 @@ export default function OpsPage() {
       mounted = false
     }
   }, [router])
+
+  useEffect(() => {
+    if (!hydratedSettingsRef.current) return
+
+    window.localStorage.setItem(OPS_SETTINGS_DRAFT_KEY, JSON.stringify(form))
+
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current)
+    }
+
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      if (!hydratedSettingsRef.current) return
+
+      fetch('/api/ops/summary', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payrollPayday: Number(form.payrollPayday),
+          morningShiftStartTime: form.morningShiftStartTime,
+          morningShiftEndTime: form.morningShiftEndTime,
+          afternoonShiftStartTime: form.afternoonShiftStartTime,
+          afternoonShiftEndTime: form.afternoonShiftEndTime,
+          nightShiftStartTime: form.nightShiftStartTime,
+          nightShiftEndTime: form.nightShiftEndTime,
+          latitude: form.latitude || null,
+          longitude: form.longitude || null,
+          allowedRadiusMeters: Number(form.allowedRadiusMeters),
+        }),
+      })
+        .then(async (res) => {
+          const responseData = await res.json()
+          if (!res.ok) {
+            throw new Error(
+              responseData.error ||
+                t('บันทึกการตั้งค่าไม่สำเร็จ', 'Failed to save settings'),
+            )
+          }
+          setMessage(t('บันทึกการตั้งค่าร้านอัตโนมัติแล้ว', 'Shop settings autosaved'))
+          setError('')
+        })
+        .catch((caughtError) => {
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : t('บันทึกการตั้งค่าไม่สำเร็จ', 'Failed to save settings'),
+          )
+        })
+    }, 1200)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [form, t])
 
   useEffect(() => {
     if (loading || !mapContainerRef.current || mapInstanceRef.current) {
@@ -464,6 +554,47 @@ export default function OpsPage() {
     }
   }
 
+  const handleDeleteBranch = async (branch: BranchItem) => {
+    const confirmed = window.confirm(
+      t(
+        `ยืนยันลบสาขา "${branch.name}" ? ถ้ามีพนักงานหรือคำขอสมัครผูกอยู่จะลบไม่ได้`,
+        `Delete "${branch.name}"? Deletion is blocked when employees or registration requests are still linked.`,
+      ),
+    )
+
+    if (!confirmed) return
+
+    setSaving(true)
+    setError("")
+    setMessage("")
+
+    try {
+      const res = await fetch(`/api/branches/${branch.id}`, {
+        method: "DELETE",
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || t("ลบสาขาไม่สำเร็จ", "Failed to delete branch"))
+      }
+
+      if (editingBranchId === branch.id) {
+        resetBranchForm()
+      }
+
+      await loadBranches()
+      setMessage(t("ลบสาขาเรียบร้อยแล้ว", "Branch deleted"))
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : t("ลบสาขาไม่สำเร็จ", "Failed to delete branch"),
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return <div className="page">Loading...</div>
   }
@@ -530,11 +661,11 @@ export default function OpsPage() {
               <p className="stat-value">{summary.checkedInToday}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">{t('คำขอแก้เวลา pending', 'Pending corrections')}</p>
+              <p className="stat-label">{t('คำขอแก้เวลาที่รอตรวจ', 'Pending corrections')}</p>
               <p className="stat-value">{summary.pendingCorrections}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">{t('Open shift ที่ยังไม่ปิด', 'Open shifts')}</p>
+              <p className="stat-label">{t('รายการที่ยังไม่ได้ออกงาน', 'Open shifts')}</p>
               <p className="stat-value">{summary.openAttendanceShifts}</p>
             </article>
             <article className="stat-card">
@@ -542,7 +673,7 @@ export default function OpsPage() {
               <p className="stat-value">{summary.lockedPayrollPeriods}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">{t('Audit 24 ชม. ล่าสุด', 'Audit events in last 24h')}</p>
+              <p className="stat-label">{t('รายการตรวจระบบ 24 ชม.', 'Audit events in last 24h')}</p>
               <p className="stat-value">{summary.auditEventsLast24h}</p>
             </article>
             <article className="stat-card">
@@ -576,10 +707,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะเช้า - เวลาเข้างาน', 'Morning shift - start time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="09:00"
+                    type="time"
                     value={form.morningShiftStartTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -592,10 +720,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะเช้า - เวลาเลิกงาน', 'Morning shift - end time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="18:00"
+                    type="time"
                     value={form.morningShiftEndTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -608,10 +733,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะบ่าย - เวลาเข้างาน', 'Afternoon shift - start time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="13:00"
+                    type="time"
                     value={form.afternoonShiftStartTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -624,10 +746,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะบ่าย - เวลาเลิกงาน', 'Afternoon shift - end time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="22:00"
+                    type="time"
                     value={form.afternoonShiftEndTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -640,10 +759,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะดึก - เวลาเข้างาน', 'Night shift - start time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="22:00"
+                    type="time"
                     value={form.nightShiftStartTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -656,10 +772,7 @@ export default function OpsPage() {
                 <div className="field">
                   <label>{t('กะดึก - เวลาเลิกงาน', 'Night shift - end time')}</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{2}:[0-9]{2}"
-                    placeholder="06:00"
+                    type="time"
                     value={form.nightShiftEndTime}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -819,13 +932,23 @@ export default function OpsPage() {
                   <article key={branch.id} className="record-card">
                     <div className="record-card-head">
                       <strong>{branch.name}</strong>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => handleEditBranch(branch)}
-                      >
-                        {t('แก้ไขสาขา', 'Edit branch')}
-                      </button>
+                      <div className="action-row">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleEditBranch(branch)}
+                        >
+                          {t('แก้ไขสาขา', 'Edit branch')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={() => handleDeleteBranch(branch)}
+                          disabled={saving}
+                        >
+                          {t('ลบสาขา', 'Delete branch')}
+                        </button>
+                      </div>
                     </div>
                     <div className="record-card-body">
                       <div className="record-line">
@@ -856,30 +979,22 @@ export default function OpsPage() {
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">{t('สถานะระบบ', 'System status')}</h2>
+            <h2 className="panel-title">{t('ข้อมูลใช้งานร้าน', 'Shop info')}</h2>
             <div className="badge-row" style={{ marginTop: 14 }}>
-              <div className="badge">{t('สภาพแวดล้อม', 'Environment')}: {summary.nodeEnv}</div>
-              <div className="badge">{t('เวอร์ชัน', 'Version')}: {summary.version}</div>
               <div className="badge">
-                {t('ตรวจล่าสุด', 'Last checked')}: {formatThaiDateTime24h(summary.timestamp)}
+                {t('อัปเดตล่าสุด', 'Last updated')}: {formatThaiDateTime24h(summary.timestamp)}
               </div>
               <div className="badge">
                 {t('รหัสร้านสำหรับสมัครพนักงาน', 'Shop code for employee signup')}: {summary.settings.registrationCode}
               </div>
               <div className="badge">
-                {t('ตรวจรูปเข้างาน', 'Photo records checked')}: {summary.photoStorage.checkedPhotoRecords} {t('รายการ', 'records')}
-              </div>
-              <div className="badge">
-                {t('ที่เก็บรูป', 'Photo storage')}: {summary.photoStorage.storageRoot}
+                {t('รูปเข้างานที่ตรวจแล้ว', 'Photo records checked')}: {summary.photoStorage.checkedPhotoRecords} {t('รายการ', 'records')}
               </div>
             </div>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">{t('ข้อมูลแพ็กเกจ', 'Subscription plan')}</h2>
-            <p className="panel-subtitle">
-              {t('แพ็กเกจ', 'Plan')} {summary.subscription.plan} / {t('สถานะ', 'Status')} {summary.subscription.status}
-            </p>
+            <h2 className="panel-title">{t('สถานะการใช้งานระบบ', 'Service status')}</h2>
             <div className="badge-row" style={{ marginTop: 14 }}>
               <div className="badge">
                 {t('วันคงเหลือ', 'Days left')}: {summary.subscription.daysRemaining ?? t('ไม่ได้กำหนด', 'Not set')}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
+import { getPaymentStatusLabel, getPayTypeLabel, maskAccountValue } from '@/lib/ui-format'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -46,7 +47,7 @@ type PayrollResponse = {
 
 export default function PayrollPage() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [summary, setSummary] = useState<PayrollSummaryItem[]>([])
   const [userRole, setUserRole] = useState('')
   const [loading, setLoading] = useState(true)
@@ -264,11 +265,10 @@ export default function PayrollPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">{t('ดูยอดรวมพนักงานทุกคนในหน้าเดียว', 'Review all employees in one page')}</div>
             <div className="badge">
-              {t('สถานะงวด', 'Period status')}:{' '}
+              {t('งวดเงินเดือน', 'Payroll period')}:{' '}
               {periodInfo?.locked
-                ? t('ยืนยันสรุปเงินเดือนแล้ว', 'Payroll confirmed')
+                ? t('ยืนยันแล้ว', 'Confirmed')
                 : t('ยังแก้ไขได้', 'Editable')}
             </div>
           </div>
@@ -405,7 +405,7 @@ export default function PayrollPage() {
                   <tr key={item.employeeId}>
                     <td>{item.employeeCode}</td>
                     <td>{item.employeeName}</td>
-                    <td>{item.payType}</td>
+                    <td>{getPayTypeLabel(item.payType as any, language)}</td>
                     <td>
                       <div>{item.presentDays} {t('วัน', 'days')}</div>
                       <div className="table-meta">{item.workedHours.toFixed(2)} {t('ชั่วโมง', 'hrs')}</div>
@@ -423,8 +423,8 @@ export default function PayrollPage() {
                     </td>
                     <td>
                       <div>{item.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</div>
-                      <div className="table-meta">{item.accountNumber ?? '-'}</div>
-                      <div className="table-meta">{t('พร้อมเพย์', 'PromptPay')}: {item.promptPayId ?? '-'}</div>
+                      <div className="table-meta">{maskAccountValue(item.accountNumber)}</div>
+                      <div className="table-meta">{t('พร้อมเพย์', 'PromptPay')}: {maskAccountValue(item.promptPayId)}</div>
                     </td>
                     <td>
                       <span
@@ -436,11 +436,7 @@ export default function PayrollPage() {
                               : 'warning'
                         }`}
                       >
-                          {item.paymentStatus === 'PAID'
-                          ? t('จ่ายแล้ว', 'Paid')
-                          : item.paymentStatus === 'FAILED'
-                            ? t('จ่ายไม่สำเร็จ', 'Failed')
-                          : t('รอโอน', 'Pending')}
+                        {getPaymentStatusLabel(item.paymentStatus, language)}
                       </span>
                       <div className="action-row" style={{ marginTop: 10 }}>
                         <button
@@ -513,15 +509,15 @@ export default function PayrollPage() {
                   </div>
                   <div className="record-card-body">
                     <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{item.employeeCode}</strong></div>
-                    <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{item.payType}</strong></div>
+                    <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(item.payType as any, language)}</strong></div>
                     <div className="record-line"><span>{t('มาทำงาน', 'Worked')}</span><strong>{item.presentDays} {t('วัน', 'days')}</strong></div>
                     <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
                     <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
                     <div className="record-line"><span>{t('หักเงิน', 'Deduction')}</span><strong>{item.deduction.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('ยอดสุทธิ', 'Net pay')}</span><strong>{item.netPay.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{item.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
-                    <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{item.accountNumber ?? '-'}</strong></div>
-                    <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{item.promptPayId ?? '-'}</strong></div>
+                    <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{maskAccountValue(item.accountNumber)}</strong></div>
+                    <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{maskAccountValue(item.promptPayId)}</strong></div>
                   </div>
                   <div className="action-row" style={{ marginTop: 14 }}>
                     <button

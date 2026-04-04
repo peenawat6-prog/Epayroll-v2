@@ -3,6 +3,7 @@ import type {
   EmployeeType,
   PaymentStatus,
   PayType,
+  UserRole,
   WorkShift,
 } from "@prisma/client"
 import { AppError } from "@/lib/http"
@@ -11,6 +12,21 @@ const EMPLOYEE_TYPES: EmployeeType[] = ["FULL_TIME", "PART_TIME"]
 const PAY_TYPES: PayType[] = ["MONTHLY", "DAILY", "HOURLY"]
 const WORK_SHIFTS: WorkShift[] = ["MORNING", "AFTERNOON", "NIGHT"]
 const PAYMENT_STATUSES: PaymentStatus[] = ["PENDING", "PAID", "FAILED"]
+const STAFF_MANAGEMENT_ROLES: UserRole[] = [
+  "EMPLOYEE",
+  "ADMIN",
+  "HR",
+  "FINANCE",
+]
+const WEEKDAY_CODES = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+] as const
 const ATTENDANCE_STATUSES: AttendanceStatus[] = [
   "PRESENT",
   "LATE",
@@ -313,4 +329,48 @@ export function asPaymentStatus(value: unknown): PaymentStatus {
   }
 
   return normalized
+}
+
+export function asPositiveDays(value: unknown, fieldName = "days") {
+  const parsed = asOptionalInteger(value)
+
+  if (parsed === null || parsed < 1 || parsed > 3650) {
+    throw new AppError(`${fieldName} is invalid`, 400, "INVALID_INPUT")
+  }
+
+  return parsed
+}
+
+export function asStaffManagementRole(value: unknown): UserRole {
+  const normalized = String(value ?? "").trim() as UserRole
+
+  if (!STAFF_MANAGEMENT_ROLES.includes(normalized)) {
+    throw new AppError("Invalid user role", 400, "INVALID_INPUT")
+  }
+
+  return normalized
+}
+
+export function asDayOffWeekdays(value: unknown) {
+  if (value === undefined || value === null) {
+    return [] as string[]
+  }
+
+  if (!Array.isArray(value)) {
+    throw new AppError("dayOffWeekdays must be an array", 400, "INVALID_INPUT")
+  }
+
+  const normalizedValues = value
+    .map((item) => String(item ?? "").trim().toUpperCase())
+    .filter((item) => item.length > 0)
+
+  const uniqueValues = Array.from(new Set(normalizedValues))
+
+  for (const weekday of uniqueValues) {
+    if (!WEEKDAY_CODES.includes(weekday as (typeof WEEKDAY_CODES)[number])) {
+      throw new AppError("Invalid day off weekday", 400, "INVALID_INPUT")
+    }
+  }
+
+  return uniqueValues
 }

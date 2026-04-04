@@ -227,6 +227,30 @@ textarea {
   gap: 14px;
 }
 
+.weekday-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.weekday-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.weekday-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+
 .field {
   display: flex;
   flex-direction: column;

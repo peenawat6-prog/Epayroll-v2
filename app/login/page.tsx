@@ -62,7 +62,13 @@ export default function LoginPage() {
 
     window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim().toLowerCase())
     markBrowserSessionActive()
-    router.push(me?.role === "EMPLOYEE" ? "/employee" : "/dashboard")
+    router.push(
+      me?.role === "EMPLOYEE"
+        ? "/employee"
+        : me?.role === "DEV"
+          ? "/dev/dashboard"
+          : "/dashboard",
+    )
     router.refresh()
   }
 
@@ -106,6 +112,20 @@ export default function LoginPage() {
             onClick={() => router.push("/employee/register")}
           >
             {t("ลงทะเบียนพนักงาน", "Employee registration")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => router.push("/shop/register")}
+          >
+            {t("ลงทะเบียนร้านค้า", "Register new shop")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => router.push("/sales/register")}
+          >
+            {t("ลงทะเบียนเซลล์", "Sales registration")}
           </button>
         </div>
       </form>

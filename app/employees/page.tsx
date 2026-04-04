@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
+import {
+  getEmployeeTypeLabel,
+  getPayTypeLabel,
+  getRequestStatusLabel,
+  getRoleLabel,
+} from '@/lib/ui-format'
 
 type EmployeeRow = {
   id: string
@@ -21,11 +27,17 @@ type EmployeeRow = {
   employeeType: 'FULL_TIME' | 'PART_TIME'
   payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
   workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
+  dayOffWeekdays: string[]
   baseSalary: number | null
   dailyRate: number | null
   hourlyRate: number | null
   active: boolean
   startDate: string
+  user: {
+    id: string
+    role: 'DEV' | 'OWNER' | 'ADMIN' | 'HR' | 'FINANCE' | 'EMPLOYEE'
+    email: string
+  } | null
   bank: {
     bankName: string
     accountName: string
@@ -53,6 +65,7 @@ type RegistrationRequest = {
   employeeType: 'FULL_TIME' | 'PART_TIME'
   payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
   workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
+  dayOffWeekdays: string[]
   bankName: string | null
   accountName: string | null
   accountNumber: string | null
@@ -68,8 +81,18 @@ type BranchOption = {
   name: string
 }
 
+const DAY_OFF_OPTIONS = [
+  { value: 'SUNDAY', th: 'อาทิตย์', en: 'Sunday' },
+  { value: 'MONDAY', th: 'จันทร์', en: 'Monday' },
+  { value: 'TUESDAY', th: 'อังคาร', en: 'Tuesday' },
+  { value: 'WEDNESDAY', th: 'พุธ', en: 'Wednesday' },
+  { value: 'THURSDAY', th: 'พฤหัสบดี', en: 'Thursday' },
+  { value: 'FRIDAY', th: 'ศุกร์', en: 'Friday' },
+  { value: 'SATURDAY', th: 'เสาร์', en: 'Saturday' },
+] as const
+
 export default function EmployeesPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [branches, setBranches] = useState<BranchOption[]>([])
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
@@ -84,6 +107,7 @@ export default function EmployeesPage() {
     employeeType: 'FULL_TIME',
     payType: 'MONTHLY',
     workShift: 'MORNING',
+    dayOffWeekdays: [] as string[],
     baseSalary: '',
     dailyRate: '',
     hourlyRate: '',
@@ -92,6 +116,7 @@ export default function EmployeesPage() {
     accountName: '',
     accountNumber: '',
     promptPayId: '',
+    userRole: 'EMPLOYEE' as 'EMPLOYEE' | 'ADMIN' | 'HR' | 'FINANCE',
   })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -105,10 +130,20 @@ export default function EmployeesPage() {
     user?.role === 'OWNER' ||
     user?.role === 'ADMIN' ||
     user?.role === 'HR'
+  const canGrantStaffRole = user?.role === 'DEV' || user?.role === 'OWNER'
   const workShiftLabels = {
     MORNING: t('กะเช้า', 'Morning shift'),
     AFTERNOON: t('กะบ่าย', 'Afternoon shift'),
     NIGHT: t('กะดึก', 'Night shift'),
+  } as const
+  const dayOffLabelMap = {
+    SUNDAY: t('อาทิตย์', 'Sunday'),
+    MONDAY: t('จันทร์', 'Monday'),
+    TUESDAY: t('อังคาร', 'Tuesday'),
+    WEDNESDAY: t('พุธ', 'Wednesday'),
+    THURSDAY: t('พฤหัสบดี', 'Thursday'),
+    FRIDAY: t('ศุกร์', 'Friday'),
+    SATURDAY: t('เสาร์', 'Saturday'),
   } as const
 
   const fetchEmployees = () => {
@@ -177,6 +212,7 @@ export default function EmployeesPage() {
       employeeType: 'FULL_TIME',
       payType: 'MONTHLY',
       workShift: 'MORNING',
+      dayOffWeekdays: [],
       baseSalary: '',
       dailyRate: '',
       hourlyRate: '',
@@ -185,6 +221,7 @@ export default function EmployeesPage() {
       accountName: '',
       accountNumber: '',
       promptPayId: '',
+      userRole: 'EMPLOYEE',
     })
     setMessage('')
     setError('')
@@ -201,6 +238,7 @@ export default function EmployeesPage() {
       employeeType: emp.employeeType,
       payType: emp.payType,
       workShift: emp.workShift,
+      dayOffWeekdays: emp.dayOffWeekdays ?? [],
       baseSalary: emp.baseSalary?.toString() ?? '',
       dailyRate: emp.dailyRate?.toString() ?? '',
       hourlyRate: emp.hourlyRate?.toString() ?? '',
@@ -209,6 +247,12 @@ export default function EmployeesPage() {
       accountName: emp.bank?.accountName ?? '',
       accountNumber: emp.bank?.accountNumber ?? '',
       promptPayId: emp.bank?.promptPayId ?? '',
+      userRole:
+        emp.user?.role === 'ADMIN' ||
+        emp.user?.role === 'HR' ||
+        emp.user?.role === 'FINANCE'
+          ? emp.user.role
+          : 'EMPLOYEE',
     })
     setMessage('')
     setError('')
@@ -218,6 +262,15 @@ export default function EmployeesPage() {
         block: 'start',
       })
     })
+  }
+
+  const toggleDayOff = (weekday: string) => {
+    setForm((current) => ({
+      ...current,
+      dayOffWeekdays: current.dayOffWeekdays.includes(weekday)
+        ? current.dayOffWeekdays.filter((item) => item !== weekday)
+        : [...current.dayOffWeekdays, weekday],
+    }))
   }
 
   const handleDelete = async (id: string) => {
@@ -268,6 +321,7 @@ export default function EmployeesPage() {
       employeeType: form.employeeType,
       payType: form.payType,
       workShift: form.workShift,
+      dayOffWeekdays: form.dayOffWeekdays,
       baseSalary: form.baseSalary,
       dailyRate: form.dailyRate,
       hourlyRate: form.hourlyRate,
@@ -276,6 +330,10 @@ export default function EmployeesPage() {
       accountName: form.accountName,
       accountNumber: form.accountNumber,
       promptPayId: form.promptPayId,
+    }
+
+    if (editId && canGrantStaffRole) {
+      body.userRole = form.userRole
     }
 
     if (!editId) {
@@ -371,7 +429,6 @@ export default function EmployeesPage() {
               {t('พนักงานทั้งหมด', 'Total employees')} {employees.length}{' '}
               {t('รายการ', 'records')}
             </div>
-            <div className="badge">{t('สิทธิ์', 'Role')} {user?.role}</div>
             {registrationRequests.filter((item) => item.status === 'PENDING').length ? (
               <div className="badge">
                 {t('รออนุมัติ', 'Pending approval')}{' '}
@@ -457,8 +514,12 @@ export default function EmployeesPage() {
                   value={form.employeeType}
                   onChange={(e) => setForm({ ...form, employeeType: e.target.value as 'FULL_TIME' | 'PART_TIME' })}
                 >
-                  <option value="FULL_TIME">Full-time</option>
-                  <option value="PART_TIME">Part-time</option>
+                  <option value="FULL_TIME">
+                    {getEmployeeTypeLabel('FULL_TIME', language)}
+                  </option>
+                  <option value="PART_TIME">
+                    {getEmployeeTypeLabel('PART_TIME', language)}
+                  </option>
                 </select>
               </div>
               <div className="field">
@@ -487,6 +548,21 @@ export default function EmployeesPage() {
                   <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
                   <option value="NIGHT">{workShiftLabels.NIGHT}</option>
                 </select>
+              </div>
+              <div className="field">
+                <label>{t('วันหยุดประจำสัปดาห์', 'Weekly days off')}</label>
+                <div className="weekday-picker">
+                  {DAY_OFF_OPTIONS.map((day) => (
+                    <label key={day.value} className="weekday-option">
+                      <input
+                        type="checkbox"
+                        checked={form.dayOffWeekdays.includes(day.value)}
+                        onChange={() => toggleDayOff(day.value)}
+                      />
+                      <span>{t(day.th, day.en)}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="field">
                 <label>{t('เงินเดือนฐาน', 'Base salary')}</label>
@@ -550,6 +626,29 @@ export default function EmployeesPage() {
                   placeholder={t('เบอร์โทรหรือเลขบัตร', 'Phone number or ID number')}
                 />
               </div>
+              {editId && canGrantStaffRole ? (
+                <div className="field">
+                  <label>{t('สิทธิ์ใช้งานระบบ', 'System role')}</label>
+                  <select
+                    value={form.userRole}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        userRole: e.target.value as
+                          | 'EMPLOYEE'
+                          | 'ADMIN'
+                          | 'HR'
+                          | 'FINANCE',
+                      })
+                    }
+                  >
+                    <option value="EMPLOYEE">{t('พนักงาน', 'Employee')}</option>
+                    <option value="ADMIN">{t('แอดมิน', 'Admin')}</option>
+                    <option value="HR">{t('ฝ่ายบุคคล', 'HR')}</option>
+                    <option value="FINANCE">{t('ฝ่ายการเงิน', 'Finance')}</option>
+                  </select>
+                </div>
+              ) : null}
             </div>
 
             <div className="action-row" style={{ marginTop: 16 }}>
@@ -620,7 +719,7 @@ export default function EmployeesPage() {
                             : 'warning'
                       }`}
                     >
-                      {request.status}
+                      {getRequestStatusLabel(request.status, language)}
                     </span>
                   </div>
 
@@ -644,12 +743,28 @@ export default function EmployeesPage() {
                     <div className="record-line">
                       <span>{t('ประเภท', 'Type')}</span>
                       <strong>
-                        {request.employeeType} / {request.payType}
+                        {getEmployeeTypeLabel(request.employeeType, language)} /{' '}
+                        {getPayTypeLabel(request.payType, language)}
                       </strong>
                     </div>
                     <div className="record-line">
                       <span>{t('กะทำงาน', 'Shift')}</span>
                       <strong>{workShiftLabels[request.workShift]}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('วันหยุดประจำ', 'Days off')}</span>
+                      <strong>
+                        {request.dayOffWeekdays.length
+                          ? request.dayOffWeekdays
+                              .map(
+                                (weekday) =>
+                                  dayOffLabelMap[
+                                    weekday as keyof typeof dayOffLabelMap
+                                  ] ?? weekday,
+                              )
+                              .join(', ')
+                          : '-'}
+                      </strong>
                     </div>
                     <div className="record-line">
                       <span>{t('ธนาคาร', 'Bank')}</span>
@@ -716,9 +831,11 @@ export default function EmployeesPage() {
                 <th>{t('สาขา', 'Branch')}</th>
                 <th>{t('รูปแบบจ่าย', 'Pay type')}</th>
                 <th>{t('กะทำงาน', 'Shift')}</th>
+                <th>{t('วันหยุดประจำ', 'Days off')}</th>
                 <th>{t('อัตราค่าจ้าง', 'Pay rate')}</th>
                 <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
                 <th>{t('สถานะ', 'Status')}</th>
+                <th>{t('สิทธิ์ระบบ', 'System role')}</th>
                 <th>{t('จัดการ', 'Actions')}</th>
               </tr>
             </thead>
@@ -729,8 +846,20 @@ export default function EmployeesPage() {
                   <td>{emp.firstName} {emp.lastName}</td>
                   <td>{emp.position}</td>
                   <td>{emp.branch?.name ?? '-'}</td>
-                  <td>{emp.payType}</td>
+                  <td>{getPayTypeLabel(emp.payType, language)}</td>
                   <td>{workShiftLabels[emp.workShift]}</td>
+                  <td>
+                    {emp.dayOffWeekdays.length
+                      ? emp.dayOffWeekdays
+                          .map(
+                            (weekday) =>
+                              dayOffLabelMap[
+                                weekday as keyof typeof dayOffLabelMap
+                              ] ?? weekday,
+                          )
+                          .join(', ')
+                      : '-'}
+                  </td>
                   <td>
                     {emp.payType === 'MONTHLY'
                       ? `${emp.baseSalary ?? 0} ${t('บาท/เดือน', 'THB/month')}`
@@ -751,6 +880,11 @@ export default function EmployeesPage() {
                     <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
                       {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
                     </span>
+                  </td>
+                  <td>
+                    {emp.user?.role
+                      ? getRoleLabel(emp.user.role, language)
+                      : t('ยังไม่มีบัญชี', 'No login account')}
                   </td>
                   <td>
                     <div className="action-row">
@@ -789,14 +923,40 @@ export default function EmployeesPage() {
                 <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{emp.code}</strong></div>
                 <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{emp.position}</strong></div>
                 <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{emp.branch?.name ?? '-'}</strong></div>
-                <div className="record-line"><span>{t('รูปแบบจ่าย', 'Pay type')}</span><strong>{emp.payType}</strong></div>
+                <div className="record-line">
+                  <span>{t('รูปแบบจ่าย', 'Pay type')}</span>
+                  <strong>{getPayTypeLabel(emp.payType, language)}</strong>
+                </div>
                 <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[emp.workShift]}</strong></div>
+                <div className="record-line">
+                  <span>{t('วันหยุดประจำ', 'Days off')}</span>
+                  <strong>
+                    {emp.dayOffWeekdays.length
+                      ? emp.dayOffWeekdays
+                          .map(
+                            (weekday) =>
+                              dayOffLabelMap[
+                                weekday as keyof typeof dayOffLabelMap
+                              ] ?? weekday,
+                          )
+                          .join(', ')
+                      : '-'}
+                  </strong>
+                </div>
                 <div className="record-line">
                   <span>{t('บัญชีรับเงิน', 'Payment account')}</span>
                   <strong>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong>
                 </div>
                 <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{emp.bank?.accountNumber ?? '-'}</strong></div>
                 <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{emp.bank?.promptPayId ?? '-'}</strong></div>
+                <div className="record-line">
+                  <span>{t('สิทธิ์ระบบ', 'System role')}</span>
+                  <strong>
+                    {emp.user?.role
+                      ? getRoleLabel(emp.user.role, language)
+                      : t('ยังไม่มีบัญชี', 'No login account')}
+                  </strong>
+                </div>
               </div>
               <div className="action-row" style={{ marginTop: 12 }}>
                 {canManage ? (

@@ -2,8 +2,15 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const PUBLIC_PATHS = ["/login", "/employee/login", "/employee/register"]
+const PUBLIC_PATHS = [
+  "/login",
+  "/employee/login",
+  "/employee/register",
+  "/shop/register",
+  "/sales/register",
+]
 const PROTECTED_PATHS = [
+  "/dev/dashboard",
   "/dashboard",
   "/employees",
   "/attendance",
@@ -14,6 +21,7 @@ const PROTECTED_PATHS = [
   "/employee",
 ]
 const EMPLOYEE_ONLY_PATHS = ["/employee"]
+const DEV_ONLY_PATHS = ["/dev/dashboard"]
 const BACKOFFICE_PATHS = ["/dashboard", "/employees", "/attendance", "/payroll", "/audit", "/ops"]
 
 function isProtectedPath(pathname: string) {
@@ -40,6 +48,32 @@ export async function proxy(req: NextRequest) {
   }
 
   if (token && isPublicPath(pathname)) {
+    return NextResponse.redirect(
+      new URL(
+        token.role === "EMPLOYEE"
+          ? "/employee"
+          : token.role === "DEV"
+            ? "/dev/dashboard"
+            : "/dashboard",
+        req.url,
+      ),
+    )
+  }
+
+  if (
+    token?.role === "DEV" &&
+    pathname.startsWith("/dashboard")
+  ) {
+    return NextResponse.redirect(new URL("/dev/dashboard", req.url))
+  }
+
+  if (
+    token &&
+    token.role !== "DEV" &&
+    DEV_ONLY_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    )
+  ) {
     return NextResponse.redirect(
       new URL(token.role === "EMPLOYEE" ? "/employee" : "/dashboard", req.url),
     )
@@ -71,6 +105,9 @@ export const config = {
   matcher: [
     "/login",
     "/employee/login",
+    "/shop/register",
+    "/sales/register",
+    "/dev/dashboard/:path*",
     "/dashboard/:path*",
     "/employees/:path*",
     "/attendance/:path*",

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt"
 import type { EmployeeRegistrationStatus, WorkShift } from "@prisma/client"
+import { assertCanAddActiveEmployee } from "@/lib/business-limits"
 import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
@@ -17,6 +18,7 @@ export async function submitEmployeeRegistrationRequest(params: {
   employeeType: "FULL_TIME" | "PART_TIME"
   payType: "MONTHLY" | "DAILY" | "HOURLY"
   workShift: WorkShift
+  dayOffWeekdays: string[]
   bankName: string
   accountName: string
   accountNumber: string
@@ -35,6 +37,8 @@ export async function submitEmployeeRegistrationRequest(params: {
   if (!tenant) {
     throw new AppError("รหัสร้านไม่ถูกต้อง", 404, "TENANT_NOT_FOUND")
   }
+
+  await assertCanAddActiveEmployee(tenant.id)
 
   if (params.branchId) {
     const branch = await prisma.branch.findFirst({
@@ -119,6 +123,7 @@ export async function submitEmployeeRegistrationRequest(params: {
       employeeType: params.employeeType,
       payType: params.payType,
       workShift: params.workShift,
+      dayOffWeekdays: params.dayOffWeekdays,
       bankName: params.bankName,
       accountName: params.accountName,
       accountNumber: params.accountNumber,
@@ -138,6 +143,7 @@ export async function submitEmployeeRegistrationRequest(params: {
       position: true,
       email: true,
       workShift: true,
+      dayOffWeekdays: true,
       bankName: true,
       accountName: true,
       accountNumber: true,
@@ -186,6 +192,7 @@ export async function listEmployeeRegistrationRequests(tenantId: string) {
       employeeType: true,
       payType: true,
       workShift: true,
+      dayOffWeekdays: true,
       bankName: true,
       accountName: true,
       accountNumber: true,
@@ -300,6 +307,8 @@ export async function reviewEmployeeRegistrationRequest(params: {
   }
 
   return prisma.$transaction(async (tx) => {
+    await assertCanAddActiveEmployee(params.tenantId, tx)
+
     const user = await tx.user.create({
       data: {
         tenantId: params.tenantId,
@@ -325,6 +334,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
         employeeType: request.employeeType,
         payType: request.payType,
         workShift: request.workShift,
+        dayOffWeekdays: request.dayOffWeekdays,
         startDate: new Date(),
         active: true,
         ...(request.bankName && request.accountName && request.accountNumber
@@ -371,6 +381,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
           employeeId: employee.id,
           branchId: request.branchId,
           workShift: request.workShift,
+          dayOffWeekdays: request.dayOffWeekdays,
         },
       },
     })

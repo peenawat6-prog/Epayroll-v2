@@ -86,6 +86,18 @@ enum EmployeeRegistrationStatus {
   REJECTED
 }
 
+enum ShopRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SalesAgentRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum WorkShift {
   MORNING
   AFTERNOON
@@ -115,6 +127,7 @@ model Tenant {
   latitude              Float?
   longitude             Float?
   allowedRadiusMeters   Int                @default(150)
+  salesAgentId          String?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -131,6 +144,83 @@ model Tenant {
   overtimeRequests      OvertimeRequest[]
   earlyCheckoutRequests EarlyCheckoutRequest[]
   resignationRequests   ResignationRequest[]
+  shopRegistrationRequests ShopRegistrationRequest[]
+  salesAgent            SalesAgent? @relation(fields: [salesAgentId], references: [id])
+
+  @@index([salesAgentId])
+}
+
+model ShopRegistrationRequest {
+  id                         String                 @id @default(cuid())
+  tenantId                   String?
+  shopName                   String
+  branchName                 String
+  ownerFirstName             String
+  ownerLastName              String
+  ownerPhone                 String?
+  ownerEmail                 String
+  ownerPasswordHash          String
+  registrationCode           String?
+  payrollPayday              Int
+  morningShiftStartMinutes   Int
+  morningShiftEndMinutes     Int
+  afternoonShiftStartMinutes Int
+  afternoonShiftEndMinutes   Int
+  nightShiftStartMinutes     Int
+  nightShiftEndMinutes       Int
+  latitude                   Float
+  longitude                  Float
+  allowedRadiusMeters        Int
+  requestedSubscriptionDays  Int                    @default(365)
+  salesAgentId               String?
+  status                     ShopRegistrationStatus @default(PENDING)
+  reviewNote                 String?
+  reviewedByUserId           String?
+  reviewedAt                 DateTime?
+  createdAt                  DateTime               @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  salesAgent SalesAgent? @relation(fields: [salesAgentId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([ownerEmail])
+  @@index([salesAgentId])
+}
+
+model SalesAgent {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  firstName       String
+  lastName        String
+  phone           String?
+  email           String   @unique
+  lineId          String?
+  commissionPerShopBaht Int @default(50)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenants                 Tenant[]
+  shopRegistrationRequests ShopRegistrationRequest[]
+
+  @@index([active, createdAt])
+}
+
+model SalesAgentRegistrationRequest {
+  id               String                        @id @default(cuid())
+  firstName        String
+  lastName         String
+  phone            String?
+  email            String
+  lineId           String?
+  status           SalesAgentRegistrationStatus  @default(PENDING)
+  reviewNote       String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                      @default(now())
+
+  @@index([status, createdAt])
+  @@index([email])
 }
 
 model EmployeeRegistrationRequest {
@@ -147,6 +237,7 @@ model EmployeeRegistrationRequest {
   employeeType     EmployeeType
   payType          PayType
   workShift        WorkShift                  @default(MORNING)
+  dayOffWeekdays   String[]                   @default([])
   bankName         String?
   accountName      String?
   accountNumber    String?
@@ -212,6 +303,7 @@ model Employee {
   employeeType EmployeeType
   payType      PayType
   workShift    WorkShift    @default(MORNING)
+  dayOffWeekdays String[]   @default([])
 
   baseSalary Float?
   dailyRate  Float?
@@ -267,6 +359,10 @@ model Attendance {
   checkInLatitude       Float?
   checkInLongitude      Float?
   checkInDistanceMeters Int?
+  checkOutPhotoUrl       String?
+  checkOutLatitude       Float?
+  checkOutLongitude      Float?
+  checkOutDistanceMeters Int?
 
   employee    Employee               @relation(fields: [employeeId], references: [id])
   corrections AttendanceCorrection[]

@@ -107,3 +107,61 @@ export const PATCH = withAuthorizedRoute(
     return jsonResponse(updatedBranch)
   },
 )
+
+export const DELETE = withAuthorizedRoute(
+  {
+    roles: ROLE_GROUPS.opsView,
+  },
+  async (_req, context: { params: Promise<{ id: string }> }, access) => {
+    const { id } = await context.params
+
+    const branch = await prisma.branch.findFirst({
+      where: {
+        id,
+        tenantId: access.user.tenantId,
+      },
+      include: {
+        _count: {
+          select: {
+            employees: true,
+            employeeRegistrations: true,
+          },
+        },
+      },
+    })
+
+    if (!branch) {
+      throw new AppError("ไม่พบสาขานี้", 404, "NOT_FOUND")
+    }
+
+    if (branch._count.employees > 0 || branch._count.employeeRegistrations > 0) {
+      throw new AppError(
+        "ลบสาขานี้ไม่ได้ เพราะยังมีพนักงานหรือคำขอลงทะเบียนผูกอยู่",
+        409,
+        "BRANCH_IN_USE",
+      )
+    }
+
+    await prisma.branch.delete({
+      where: {
+        id: branch.id,
+      },
+    })
+
+    await createAuditLog({
+      tenantId: access.user.tenantId,
+      userId: access.user.id,
+      action: "branch.deleted",
+      entityType: "Branch",
+      entityId: branch.id,
+      metadata: {
+        name: branch.name,
+      },
+    })
+
+    return jsonResponse({
+      ok: true,
+      branchId: branch.id,
+    })
+  },
+)

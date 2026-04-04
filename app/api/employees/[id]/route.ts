@@ -5,11 +5,13 @@ import { AppError, handleApiError, jsonResponse, readJsonBody } from "@/lib/http
 import { ROLE_GROUPS } from "@/lib/role"
 import {
   asBusinessDate,
+  asDayOffWeekdays,
   asEmployeeType,
   asOptionalBusinessDate,
   asOptionalNumber,
   asOptionalTrimmedString,
   asPayType,
+  asStaffManagementRole,
   asTrimmedString,
   asWorkShift,
 } from "@/lib/validators"
@@ -23,6 +25,7 @@ type EmployeeUpdateBody = {
   employeeType?: unknown
   payType?: unknown
   workShift?: unknown
+  dayOffWeekdays?: unknown
   baseSalary?: unknown
   dailyRate?: unknown
   hourlyRate?: unknown
@@ -33,6 +36,7 @@ type EmployeeUpdateBody = {
   accountName?: unknown
   accountNumber?: unknown
   promptPayId?: unknown
+  userRole?: unknown
 }
 
 async function getScopedEmployee(employeeId: string, tenantId: string) {
@@ -46,6 +50,13 @@ async function getScopedEmployee(employeeId: string, tenantId: string) {
         select: {
           id: true,
           name: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          role: true,
+          email: true,
         },
       },
       bank: true,
@@ -92,6 +103,27 @@ export async function PATCH(
         ? employee.bank?.promptPayId ?? null
         : asOptionalTrimmedString(body.promptPayId)
     const shouldKeepBankAccount = Boolean(bankName && accountName && accountNumber)
+    const nextUserRole =
+      body.userRole === undefined
+        ? employee.user?.role
+        : asStaffManagementRole(body.userRole)
+    const canAssignRole = ["DEV", "OWNER"].includes(access.user.role)
+
+    if (body.userRole !== undefined && !canAssignRole) {
+      throw new AppError(
+        "เฉพาะเจ้าของร้านหรือทีมซัพพอร์ตเท่านั้นที่เปลี่ยนสิทธิ์พนักงานได้",
+        403,
+        "FORBIDDEN",
+      )
+    }
+
+    if (body.userRole !== undefined && !employee.userId) {
+      throw new AppError(
+        "พนักงานคนนี้ยังไม่มีบัญชีล็อกอิน จึงยังเปลี่ยนสิทธิ์ไม่ได้",
+        409,
+        "EMPLOYEE_LOGIN_NOT_FOUND",
+      )
+    }
 
     if (!active) {
       const openAttendance = await prisma.attendance.findFirst({
@@ -159,6 +191,10 @@ export async function PATCH(
           body.workShift === undefined
             ? employee.workShift
             : asWorkShift(body.workShift),
+        dayOffWeekdays:
+          body.dayOffWeekdays === undefined
+            ? employee.dayOffWeekdays
+            : asDayOffWeekdays(body.dayOffWeekdays),
         baseSalary:
           body.baseSalary === undefined
             ? employee.baseSalary
@@ -212,9 +248,32 @@ export async function PATCH(
             name: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            role: true,
+            email: true,
+          },
+        },
         bank: true,
       },
     })
+
+    if (nextUserRole && employee.userId && employee.user?.role !== nextUserRole) {
+      await prisma.user.update({
+        where: {
+          id: employee.userId,
+        },
+        data: {
+          role: nextUserRole,
+        },
+      })
+      updated.user = {
+        id: employee.userId,
+        role: nextUserRole,
+        email: employee.user?.email ?? "",
+      }
+    }
 
     await createAuditLog({
       tenantId: access.user.tenantId,
@@ -226,8 +285,10 @@ export async function PATCH(
         active: updated.active,
         payType: updated.payType,
         workShift: updated.workShift,
+        dayOffWeekdays: updated.dayOffWeekdays,
         branchId: updated.branchId,
         hasBank: shouldKeepBankAccount,
+        userRole: nextUserRole ?? null,
       },
     })
 

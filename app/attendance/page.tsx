@@ -203,7 +203,10 @@ export default function AttendancePage() {
     setPhotoDataUrl(canvas.toDataURL('image/jpeg', CAPTURE_IMAGE_QUALITY))
     setPhotoName(`camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`)
     setStatusMessage(
-      t('ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย', 'Photo captured. You can now clock in.'),
+      t(
+        'ถ่ายรูปเรียบร้อยแล้ว เลือกบันทึกเข้างานหรือออกงานได้เลย',
+        'Photo captured. You can now clock in or clock out.',
+      ),
     )
     stopCamera()
   }
@@ -263,20 +266,46 @@ export default function AttendancePage() {
       setMessage(t('กรุณาเลือกพนักงานก่อน', 'Please select an employee first'))
       return
     }
-    setLoading(true)
-    const res = await fetch('/api/attendance/check-out', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: selectedEmployee }),
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      setMessage(data.error || t('บันทึกออกงานไม่สำเร็จ', 'Clock-out failed'))
-    } else {
-      setStatusMessage(t('บันทึกออกงานเรียบร้อยแล้ว', 'Clock-out saved'))
+    if (!photoDataUrl) {
+      setMessage(t('กรุณาถ่ายรูปก่อนบันทึกออกงาน', 'Please take a photo before clocking out'))
+      return
     }
+    setLoading(true)
+
+    try {
+      const location = await getCurrentPosition()
+      setLocationLabel(
+        `${t('ละติจูด', 'Lat')} ${location.latitude.toFixed(5)} / ${t('ลองจิจูด', 'Lng')} ${location.longitude.toFixed(5)}`,
+      )
+
+      const res = await fetch('/api/attendance/check-out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: selectedEmployee,
+          photo: photoDataUrl,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessage(data.error || t('บันทึกออกงานไม่สำเร็จ', 'Clock-out failed'))
+      } else {
+        setStatusMessage(t('บันทึกออกงานเรียบร้อยแล้ว', 'Clock-out saved'))
+        setPhotoDataUrl('')
+        setPhotoName('')
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t('บันทึกออกงานไม่สำเร็จ', 'Clock-out failed'),
+      )
+    }
+
     setLoading(false)
   }
 
@@ -291,10 +320,10 @@ export default function AttendancePage() {
               {t('พนักงานที่เลือก', 'Selected employee')}:{' '}
               {selectedEmployee ? t('พร้อมลงเวลา', 'Ready') : t('ยังไม่ได้เลือก', 'Not selected')}
             </div>
-            <div className="badge">
-              {t(
-                'ต้องถ่ายรูปและเปิดตำแหน่งก่อนเข้างาน',
-                'Photo and location are required for clock-in',
+          <div className="badge">
+            {t(
+                'ต้องถ่ายรูปและเปิดตำแหน่งก่อนเข้างาน/ออกงาน',
+                'Photo and location are required for clock-in and clock-out',
               )}
             </div>
           </div>
@@ -321,7 +350,7 @@ export default function AttendancePage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">{t('ลงเวลาเข้างาน', 'Clock in')}</h2>
+        <h2 className="panel-title">{t('ลงเวลาเข้าออกงาน', 'Clock in / out')}</h2>
         <div className="field" style={{ marginTop: 14 }}>
           <label>{t('พนักงานที่ต้องการลงเวลา', 'Employee')}</label>
           <select
@@ -342,7 +371,12 @@ export default function AttendancePage() {
         </div>
 
         <div className="field" style={{ marginTop: 14 }}>
-          <label>{t('ถ่ายรูปหน้าพนักงานก่อนบันทึก', 'Take employee photo before clock-in')}</label>
+          <label>
+            {t(
+              'ถ่ายรูปหน้าพนักงานก่อนบันทึกเข้างาน/ออกงาน',
+              'Take employee photo before clock-in / clock-out',
+            )}
+          </label>
           <div className="camera-box">
             <video
               ref={videoRef}
@@ -364,8 +398,8 @@ export default function AttendancePage() {
             {!cameraReady && !photoDataUrl ? (
               <div className="camera-placeholder">
                 {t(
-                  'ยังไม่มีรูปถ่าย กด “เปิดกล้อง” เพื่อถ่ายจากหน้านี้ได้เลย',
-                  'No photo yet. Tap “Open camera” to capture here.',
+                  'ยังไม่มีรูปถ่าย กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างานหรือออกงาน',
+                  'No photo yet. Tap “Open camera” before clock-in or clock-out.',
                 )}
               </div>
             ) : null}
@@ -431,15 +465,15 @@ export default function AttendancePage() {
 
         <div className="badge-row" style={{ marginTop: 14 }}>
           <div className="badge">
-            {t('สถานะตำแหน่ง', 'Location status')}: {locationStatusLabel}
+            {t('ตำแหน่งปัจจุบัน', 'Current location')}: {locationStatusLabel}
           </div>
         </div>
 
         <div className="action-row" style={{ marginTop: 18 }}>
-          <button className="btn btn-primary" onClick={handleCheckIn} disabled={loading}>
+          <button className="btn btn-primary" onClick={handleCheckIn} disabled={loading || !photoDataUrl}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกเข้างาน', 'Clock in')}
           </button>
-          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading}>
+          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading || !photoDataUrl}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกออกงาน', 'Clock out')}
           </button>
         </div>

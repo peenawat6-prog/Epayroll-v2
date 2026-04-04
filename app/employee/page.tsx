@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiTime24h } from "@/lib/display-time"
 import { useLanguage } from "@/lib/language"
+import { getAttendanceStatusLabel, getWorkShiftLabel, maskAccountValue } from "@/lib/ui-format"
 
 type EmployeeProfile = {
   id: string
@@ -28,6 +29,7 @@ type TodayAttendance = {
   checkIn: string | null
   checkOut: string | null
   checkInPhotoUrl: string | null
+  checkOutPhotoUrl: string | null
   workedMinutes: number
   lateMinutes: number
   status: string
@@ -74,7 +76,7 @@ function getCurrentPosition() {
 
 export default function EmployeePage() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null)
   const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(
     null,
@@ -99,11 +101,6 @@ export default function EmployeePage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const workShiftLabels = {
-    MORNING: t("กะเช้า", "Morning shift"),
-    AFTERNOON: t("กะบ่าย", "Afternoon shift"),
-    NIGHT: t("กะดึก", "Night shift"),
-  } as const
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -233,7 +230,11 @@ export default function EmployeePage() {
     setPhotoName(
       `camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.jpg`,
     )
-    setStatusMessage(t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย", "Photo captured. You can now clock in."))
+    setStatusMessage(
+      todayAttendance?.checkIn && !todayAttendance?.checkOut
+        ? t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกออกงานได้เลย", "Photo captured. You can now clock out.")
+        : t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย", "Photo captured. You can now clock in."),
+    )
     stopCamera()
   }
 
@@ -287,11 +288,30 @@ export default function EmployeePage() {
 
   const handleCheckOut = async () => {
     clearMessages()
+
+    if (!photoDataUrl) {
+      setMessage(t("กรุณาถ่ายรูปก่อนบันทึกออกงาน", "Please take a photo before clocking out"))
+      return
+    }
+
     setLoading(true)
 
     try {
+      const location = await getCurrentPosition()
+      setLocationLabel(
+        `${t("อ่านตำแหน่งแล้ว", "Location ready")} ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`,
+      )
+
       const res = await fetch("/api/employee/check-out", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          photo: photoDataUrl,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
       })
       const data = await res.json()
 
@@ -300,6 +320,8 @@ export default function EmployeePage() {
       }
 
       setStatusMessage(t("บันทึกออกงานเรียบร้อยแล้ว", "Clock-out saved"))
+      setPhotoDataUrl("")
+      setPhotoName("")
       await loadProfile()
     } catch (error) {
       setMessage(
@@ -390,13 +412,15 @@ export default function EmployeePage() {
         <article className="stat-card">
           <p className="stat-label">{t("กะทำงาน", "Shift")}</p>
           <p className="stat-value">
-            {employee?.workShift ? workShiftLabels[employee.workShift] : "-"}
+            {employee?.workShift ? getWorkShiftLabel(employee.workShift, language) : "-"}
           </p>
         </article>
         <article className="stat-card">
           <p className="stat-label">{t("สถานะวันนี้", "Today status")}</p>
           <p className="stat-value">
-            {todayAttendance?.status ?? t("ยังไม่ได้ลงเวลา", "Not checked in yet")}
+            {todayAttendance?.status
+              ? getAttendanceStatusLabel(todayAttendance.status, language)
+              : t("ยังไม่ได้ลงเวลา", "Not checked in yet")}
           </p>
         </article>
         <article className="stat-card">
@@ -469,6 +493,11 @@ export default function EmployeePage() {
                 }
                 placeholder={t("กรอกเลขบัญชี", "Enter account number")}
               />
+              {bankForm.accountNumber ? (
+                <div className="table-meta">
+                  {t("แสดงในหน้ารวมเป็น", "Shown in list as")} {maskAccountValue(bankForm.accountNumber)}
+                </div>
+              ) : null}
             </div>
             <div className="field">
               <label htmlFor="employee-promptpay-id">{t("พร้อมเพย์", "PromptPay")}</label>
@@ -483,6 +512,11 @@ export default function EmployeePage() {
                 }
                 placeholder={t("เบอร์โทรหรือเลขบัตร", "Phone number or ID number")}
               />
+              {bankForm.promptPayId ? (
+                <div className="table-meta">
+                  {t("แสดงในหน้ารวมเป็น", "Shown in list as")} {maskAccountValue(bankForm.promptPayId)}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -496,11 +530,15 @@ export default function EmployeePage() {
 
       <section className="panel">
         <h2 className="panel-title">
-          {t("บันทึกเข้างานด้วยรูปถ่ายและตำแหน่ง", "Clock in with photo and GPS")}
+          {t("ถ่ายรูปยืนยันตัวตนก่อนเข้างาน/ออกงาน", "Take a photo before clock-in / clock-out")}
         </h2>
 
         <div className="field" style={{ marginTop: 14 }}>
-          <label>{t("ถ่ายรูปหน้าพนักงาน", "Take employee photo")}</label>
+          <label>
+            {todayAttendance?.checkIn && !todayAttendance?.checkOut
+              ? t("ถ่ายรูปก่อนบันทึกออกงาน", "Take a photo before clock-out")
+              : t("ถ่ายรูปก่อนบันทึกเข้างาน", "Take a photo before clock-in")}
+          </label>
           <div className="camera-box">
             <video
               ref={videoRef}
@@ -521,8 +559,11 @@ export default function EmployeePage() {
 
             {!cameraReady && !photoDataUrl && todayAttendance?.checkInPhotoUrl ? (
               <img
-                src={todayAttendance.checkInPhotoUrl}
-                alt={t("รูปเข้างานวันนี้", "Today check-in photo")}
+                src={
+                  todayAttendance.checkOutPhotoUrl ||
+                  todayAttendance.checkInPhotoUrl
+                }
+                alt={t("รูปล่าสุดของวันนี้", "Latest photo today")}
                 className="camera-preview"
               />
             ) : null}
@@ -530,8 +571,8 @@ export default function EmployeePage() {
             {!cameraReady && !photoDataUrl && !todayAttendance?.checkInPhotoUrl ? (
               <div className="camera-placeholder">
                 {t(
-                  "ยังไม่มีรูปถ่ายวันนี้ กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างาน",
-                  'No photo yet today. Tap "Open camera" before clock-in.',
+                  "กด “เปิดกล้อง” แล้วถ่ายรูปก่อนบันทึกเข้างานหรือออกงาน",
+                  'Tap "Open camera" and take a photo before clock-in or clock-out.',
                 )}
               </div>
             ) : null}
@@ -544,7 +585,7 @@ export default function EmployeePage() {
               type="button"
               className="btn btn-secondary"
               onClick={openCamera}
-              disabled={loading || cameraOpening || Boolean(todayAttendance?.checkIn)}
+              disabled={loading || cameraOpening || Boolean(todayAttendance?.checkOut)}
             >
               {cameraOpening
                 ? t("กำลังเปิดกล้อง...", "Opening camera...")
@@ -556,7 +597,7 @@ export default function EmployeePage() {
               type="button"
               className="btn btn-primary"
               onClick={capturePhoto}
-              disabled={loading || !cameraReady || Boolean(todayAttendance?.checkIn)}
+              disabled={loading || !cameraReady || Boolean(todayAttendance?.checkOut)}
             >
               {t("ถ่ายรูป", "Take photo")}
             </button>
@@ -581,28 +622,31 @@ export default function EmployeePage() {
             </div>
           ) : null}
 
-          {photoName ? (
-            <div className="table-meta">
-              {t("รูปล่าสุด", "Latest photo")}: {photoName}
-            </div>
-          ) : null}
           <div className="table-meta">
-            {t("ตำแหน่ง GPS", "GPS location")}: {locationLabel || t("ยังไม่ได้อ่านตำแหน่ง", "Location not loaded yet")}
+            {locationLabel
+              ? t("อ่านตำแหน่งเรียบร้อยแล้ว", "Location ready")
+              : t("จะอ่านตำแหน่งให้อัตโนมัติตอนกดบันทึกเข้างาน", "Location will be checked automatically when you tap clock in")}
           </div>
+            {photoName ? <div className="table-meta">{t("มีรูปพร้อมบันทึกแล้ว", "Photo ready")}</div> : null}
         </div>
 
         <div className="action-row" style={{ marginTop: 18 }}>
           <button
             className="btn btn-primary"
             onClick={handleCheckIn}
-            disabled={loading || Boolean(todayAttendance?.checkIn)}
+            disabled={loading || !photoDataUrl || Boolean(todayAttendance?.checkIn)}
           >
             {loading ? t("กำลังบันทึก...", "Saving...") : t("บันทึกเข้างาน", "Clock in")}
           </button>
           <button
             className="btn btn-secondary"
             onClick={handleCheckOut}
-            disabled={loading || !todayAttendance?.checkIn || Boolean(todayAttendance?.checkOut)}
+            disabled={
+              loading ||
+              !photoDataUrl ||
+              !todayAttendance?.checkIn ||
+              Boolean(todayAttendance?.checkOut)
+            }
           >
             {loading ? t("กำลังบันทึก...", "Saving...") : t("บันทึกออกงาน", "Clock out")}
           </button>

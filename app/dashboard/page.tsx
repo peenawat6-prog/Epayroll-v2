@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
+import { getRoleLabel, getSubscriptionStatusLabel } from '@/lib/ui-format'
 import type { UserRole } from '@prisma/client'
 
 type CurrentUser = {
@@ -96,15 +97,6 @@ export default function DashboardPage() {
     }
   }, [router])
 
-  const roleLabels: Record<UserRole, string> = {
-    DEV: t('ผู้ดูแลระบบ Dev', 'Dev admin'),
-    OWNER: t('เจ้าของร้าน', 'Owner'),
-    ADMIN: t('ผู้จัดการร้าน', 'Manager'),
-    HR: t('ฝ่ายบุคคล', 'HR'),
-    FINANCE: t('ฝ่ายการเงิน', 'Finance'),
-    EMPLOYEE: t('พนักงาน', 'Employee'),
-  }
-
   if (loading) {
     return <div className="page">Loading...</div>
   }
@@ -118,13 +110,8 @@ export default function DashboardPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">
-              {t('สิทธิ์', 'Role')}: {roleLabels[user.role]}
+            <div className="badge">{getRoleLabel(user.role, language)}</div>
             </div>
-            <div className="badge">
-              {t('รหัสร้าน', 'Shop ID')}: {user.tenantId}
-            </div>
-          </div>
           <h1 className="hero-title">{t('หน้าแรกของร้าน', 'Shop dashboard')}</h1>
           <p className="hero-subtitle">
             {t(
@@ -222,8 +209,8 @@ export default function DashboardPage() {
           <section className="panel">
             <h2 className="panel-title">{t('สถานะ Subscription', 'Subscription status')}</h2>
             <p className="panel-subtitle">
-              {t('แพ็กเกจ', 'Plan')} {summary.subscription.plan} /{' '}
-              {t('สถานะ', 'Status')} {summary.subscription.status}
+              {t('สถานะการใช้งาน', 'Subscription')}:{' '}
+              {getSubscriptionStatusLabel(summary.subscription.status, language)}
             </p>
             <div className="badge-row" style={{ marginTop: 14 }}>
               <div className="badge">

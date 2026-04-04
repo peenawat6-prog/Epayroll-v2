@@ -21,12 +21,14 @@ type SaveCheckInPhotoInput = {
   employeeId: string
   attendanceId: string
   photoDataUrl: string
+  photoKind?: "check-in" | "check-out"
 }
 
 type StoredCheckInPhotoInput = {
   tenantId: string
   employeeId: string
   attendanceId: string
+  photoKind?: "check-in" | "check-out"
 }
 
 type R2RequestInput = {
@@ -56,14 +58,18 @@ function getEmployeePhotoDirectory(tenantId: string, employeeId: string) {
 }
 
 function getStoredPhotoPath(input: StoredCheckInPhotoInput) {
+  const fileSuffix = input.photoKind === "check-out" ? "-check-out" : ""
+
   return path.join(
     getEmployeePhotoDirectory(input.tenantId, input.employeeId),
-    `${input.attendanceId}.${CHECK_IN_PHOTO_EXTENSION}`,
+    `${input.attendanceId}${fileSuffix}.${CHECK_IN_PHOTO_EXTENSION}`,
   )
 }
 
 function getStoredPhotoObjectKey(input: StoredCheckInPhotoInput) {
-  return `${input.tenantId}/${input.employeeId}/${input.attendanceId}.${CHECK_IN_PHOTO_EXTENSION}`
+  const fileSuffix = input.photoKind === "check-out" ? "-check-out" : ""
+
+  return `${input.tenantId}/${input.employeeId}/${input.attendanceId}${fileSuffix}.${CHECK_IN_PHOTO_EXTENSION}`
 }
 
 function parsePhotoDataUrl(photoDataUrl: string) {
@@ -84,6 +90,10 @@ function parsePhotoDataUrl(photoDataUrl: string) {
 
 export function buildCheckInPhotoUrl(attendanceId: string) {
   return `/api/attendance/photos/${attendanceId}`
+}
+
+export function buildCheckOutPhotoUrl(attendanceId: string) {
+  return `/api/attendance/photos/${attendanceId}?kind=check-out`
 }
 
 function toAmzDate(date: Date) {

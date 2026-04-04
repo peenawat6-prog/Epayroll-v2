@@ -3,6 +3,7 @@ import { handleApiError } from "@/lib/http"
 import { submitEmployeeRegistrationRequest } from "@/lib/employee-registration"
 import {
   asEmail,
+  asDayOffWeekdays,
   asEmployeeType,
   asOptionalTrimmedString,
   asPassword,
@@ -23,6 +24,7 @@ type RegisterBody = {
   employeeType?: unknown
   payType?: unknown
   workShift?: unknown
+  dayOffWeekdays?: unknown
   bankName?: unknown
   accountName?: unknown
   accountNumber?: unknown
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
       employeeType: asEmployeeType(body.employeeType),
       payType: asPayType(body.payType),
       workShift: asWorkShift(body.workShift),
+      dayOffWeekdays: asDayOffWeekdays(body.dayOffWeekdays),
       bankName: asTrimmedString(body.bankName, "bankName"),
       accountName: asTrimmedString(body.accountName, "accountName"),
       accountNumber: asTrimmedString(body.accountNumber, "accountNumber"),

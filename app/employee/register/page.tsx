@@ -16,27 +16,40 @@ type ShopOption = {
   branches: PublicBranch[]
 }
 
+const DAY_OFF_OPTIONS = [
+  { value: "SUNDAY", th: "อาทิตย์", en: "Sunday" },
+  { value: "MONDAY", th: "จันทร์", en: "Monday" },
+  { value: "TUESDAY", th: "อังคาร", en: "Tuesday" },
+  { value: "WEDNESDAY", th: "พุธ", en: "Wednesday" },
+  { value: "THURSDAY", th: "พฤหัสบดี", en: "Thursday" },
+  { value: "FRIDAY", th: "ศุกร์", en: "Friday" },
+  { value: "SATURDAY", th: "เสาร์", en: "Saturday" },
+] as const
+
+const createEmptyForm = () => ({
+  shopName: "",
+  registrationCode: "",
+  branchId: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
+  position: "",
+  email: "",
+  password: "",
+  employeeType: "FULL_TIME",
+  payType: "MONTHLY",
+  workShift: "MORNING",
+  dayOffWeekdays: [] as string[],
+  bankName: "",
+  accountName: "",
+  accountNumber: "",
+  promptPayId: "",
+})
+
 export default function EmployeeRegisterPage() {
   const router = useRouter()
   const { t } = useLanguage()
-  const [form, setForm] = useState({
-    shopName: "",
-    registrationCode: "",
-    branchId: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    position: "",
-    email: "",
-    password: "",
-    employeeType: "FULL_TIME",
-    payType: "MONTHLY",
-    workShift: "MORNING",
-    bankName: "",
-    accountName: "",
-    accountNumber: "",
-    promptPayId: "",
-  })
+  const [form, setForm] = useState(createEmptyForm)
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
   const [shopOptions, setShopOptions] = useState<ShopOption[]>([])
@@ -145,24 +158,7 @@ export default function EmployeeRegisterPage() {
           "Registration request sent. Please wait for approval.",
         ),
       )
-      setForm({
-        shopName: "",
-        registrationCode: "",
-        branchId: "",
-        firstName: "",
-        lastName: "",
-        phone: "",
-        position: "",
-        email: "",
-        password: "",
-        employeeType: "FULL_TIME",
-        payType: "MONTHLY",
-        workShift: "MORNING",
-        bankName: "",
-        accountName: "",
-        accountNumber: "",
-        promptPayId: "",
-      })
+      setForm(createEmptyForm())
       setShopOptions([])
       setShowShopOptions(false)
       setBranches([])
@@ -175,6 +171,15 @@ export default function EmployeeRegisterPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleDayOff = (weekday: string) => {
+    setForm((current) => ({
+      ...current,
+      dayOffWeekdays: current.dayOffWeekdays.includes(weekday)
+        ? current.dayOffWeekdays.filter((item) => item !== weekday)
+        : [...current.dayOffWeekdays, weekday],
+    }))
   }
 
   return (
@@ -380,6 +385,28 @@ export default function EmployeeRegisterPage() {
             <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
             <option value="NIGHT">{workShiftLabels.NIGHT}</option>
           </select>
+        </div>
+
+        <div className="field">
+          <label>{t("วันหยุดประจำสัปดาห์", "Weekly days off")}</label>
+          <div className="weekday-picker">
+            {DAY_OFF_OPTIONS.map((day) => (
+              <label key={day.value} className="weekday-option">
+                <input
+                  type="checkbox"
+                  checked={form.dayOffWeekdays.includes(day.value)}
+                  onChange={() => toggleDayOff(day.value)}
+                />
+                <span>{t(day.th, day.en)}</span>
+              </label>
+            ))}
+          </div>
+          <div className="table-meta">
+            {t(
+              "ถ้าเป็นพนักงานเงินเดือน ให้เลือกวันหยุดประจำ เช่น ทุกวันอังคารหรือวันพุธ",
+              "For monthly staff, choose recurring weekly days off, e.g. every Tuesday or Wednesday.",
+            )}
+          </div>
         </div>
 
         <div className="field">

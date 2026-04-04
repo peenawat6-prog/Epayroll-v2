@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
+import { getRequestStatusLabel, getRoleLabel } from '@/lib/ui-format'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -65,7 +66,7 @@ function getDetailText(item: StaffRequestItem, t: (th: string, en: string) => st
 
 export default function StaffRequestsPage() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [requests, setRequests] = useState<StaffRequestItem[]>([])
@@ -107,9 +108,9 @@ export default function StaffRequestsPage() {
   } as const
 
   const statusLabels = {
-    PENDING: t('รอตรวจ', 'Pending'),
-    APPROVED: t('อนุมัติแล้ว', 'Approved'),
-    REJECTED: t('ไม่อนุมัติ', 'Rejected'),
+    PENDING: getRequestStatusLabel('PENDING', language),
+    APPROVED: getRequestStatusLabel('APPROVED', language),
+    REJECTED: getRequestStatusLabel('REJECTED', language),
   } as const
 
   const loadRequests = async () => {
@@ -260,8 +261,10 @@ export default function StaffRequestsPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">{t('เมนูคำขอพนักงาน', 'Staff request menu')}</div>
-            <div className="badge">{t('สิทธิ์', 'Role')}: {user?.role}</div>
+            <div className="badge">{t('คำขอพนักงาน', 'Staff requests')}</div>
+            {user?.role ? (
+              <div className="badge">{getRoleLabel(user.role as any, language)}</div>
+            ) : null}
             {requests.filter((item) => item.status === 'PENDING').length ? (
               <div className="badge">
                 {t('รอตรวจ', 'Pending')}{' '}
