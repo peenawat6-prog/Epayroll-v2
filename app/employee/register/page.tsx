@@ -503,7 +503,7 @@ export default function EmployeeRegisterPage() {
         {message ? <div className="message message-success">{message}</div> : null}
         {error ? <div className="message message-error">{error}</div> : null}
 
-        <div className="action-row">
+        <div className="action-row employee-register-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading
               ? t("กำลังส่ง...", "Sending...")

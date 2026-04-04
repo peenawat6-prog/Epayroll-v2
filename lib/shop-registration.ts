@@ -570,6 +570,7 @@ export async function listDevTenants() {
       subscriptionPlan: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
+      isPubliclyVisible: true,
       createdAt: true,
       salesAgent: {
         select: {
@@ -587,6 +588,77 @@ export async function listDevTenants() {
       },
     },
   })
+}
+
+export async function updateTenantPublicVisibility(params: {
+  tenantId: string
+  devUserId: string
+  isPubliclyVisible: boolean
+}) {
+  const tenant = await prisma.tenant.findUnique({
+    where: {
+      id: params.tenantId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  })
+
+  if (!tenant) {
+    throw new AppError("ไม่พบร้านค้านี้", 404, "NOT_FOUND")
+  }
+
+  const updatedTenant = await prisma.tenant.update({
+    where: {
+      id: params.tenantId,
+    },
+    data: {
+      isPubliclyVisible: params.isPubliclyVisible,
+    },
+    select: {
+      id: true,
+      name: true,
+      registrationCode: true,
+      subscriptionPlan: true,
+      subscriptionStatus: true,
+      subscriptionExpiresAt: true,
+      isPubliclyVisible: true,
+      createdAt: true,
+      salesAgent: {
+        select: {
+          id: true,
+          code: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      _count: {
+        select: {
+          employees: true,
+          branches: true,
+        },
+      },
+    },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      tenantId: params.tenantId,
+      userId: params.devUserId,
+      action: params.isPubliclyVisible
+        ? "tenant.public_search_enabled"
+        : "tenant.public_search_hidden",
+      entityType: "Tenant",
+      entityId: params.tenantId,
+      metadata: {
+        shopName: tenant.name,
+        isPubliclyVisible: params.isPubliclyVisible,
+      },
+    },
+  })
+
+  return updatedTenant
 }
 
 export async function extendTenantSubscription(params: {

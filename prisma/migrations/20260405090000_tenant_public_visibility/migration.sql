@@ -1,0 +1,2 @@
+ALTER TABLE "Tenant"
+ADD COLUMN "isPubliclyVisible" BOOLEAN NOT NULL DEFAULT true;

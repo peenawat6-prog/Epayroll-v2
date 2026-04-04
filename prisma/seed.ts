@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 async function main() {
-  const passwordHash = await bcrypt.hash("demo1234", 10)
+  const passwordHash = await bcrypt.hash("@Epayroll2026", 10)
 
   const tenant = await prisma.tenant.upsert({
     where: {
@@ -113,6 +113,23 @@ async function main() {
 
   await prisma.user.upsert({
     where: {
+      email: "admin@demo.local",
+    },
+    update: {
+      tenantId: tenant.id,
+      passwordHash,
+      role: "ADMIN",
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "admin@demo.local",
+      passwordHash,
+      role: "ADMIN",
+    },
+  })
+
+  await prisma.user.upsert({
+    where: {
       email: "finance@demo.local",
     },
     update: {
@@ -130,7 +147,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: {
-      email: "dev@demo.local",
+      email: "dev@epayroll.cloud",
     },
     update: {
       tenantId: tenant.id,
@@ -139,8 +156,15 @@ async function main() {
     },
     create: {
       tenantId: tenant.id,
-      email: "dev@demo.local",
+      email: "dev@epayroll.cloud",
       passwordHash,
+      role: "DEV",
+    },
+  })
+
+  await prisma.user.deleteMany({
+    where: {
+      email: "dev@demo.local",
       role: "DEV",
     },
   })
@@ -235,11 +259,12 @@ async function main() {
   console.log("Seed done")
   console.log("Login email: owner@demo.local")
   console.log("Second owner login email: owner2@demo.local")
+  console.log("Admin login email: admin@demo.local")
   console.log("HR login email: hr@demo.local")
   console.log("Finance login email: finance@demo.local")
-  console.log("Dev login email: dev@demo.local")
+  console.log("Dev login email: dev@epayroll.cloud")
   console.log("Employee login email: employee@demo.local")
-  console.log("Login password: demo1234")
+  console.log("Login password: @Epayroll2026")
 }
 
 main()

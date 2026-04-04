@@ -85,6 +85,61 @@ export async function submitSalesAgentRegistrationRequest(params: {
   })
 }
 
+export async function createSalesAgentByDev(params: {
+  firstName: string
+  lastName: string
+  phone: string | null
+  email: string
+  lineId: string | null
+}) {
+  const existingAgent = await prisma.salesAgent.findUnique({
+    where: {
+      email: params.email,
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  if (existingAgent) {
+    throw new AppError("อีเมลนี้มีบัญชีเซลล์อยู่แล้ว", 409, "EMAIL_ALREADY_EXISTS")
+  }
+
+  const code = await generateUniqueSalesAgentCode(
+    params.firstName,
+    params.lastName,
+  )
+
+  return prisma.salesAgent.create({
+    data: {
+      code,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      phone: params.phone,
+      email: params.email,
+      lineId: params.lineId,
+      active: true,
+      commissionPerShopBaht: 50,
+    },
+    select: {
+      id: true,
+      code: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      email: true,
+      lineId: true,
+      commissionPerShopBaht: true,
+      createdAt: true,
+      _count: {
+        select: {
+          tenants: true,
+        },
+      },
+    },
+  })
+}
+
 export async function listPublicSalesAgents() {
   return prisma.salesAgent.findMany({
     where: {

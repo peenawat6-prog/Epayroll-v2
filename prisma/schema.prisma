@@ -115,6 +115,7 @@ model Tenant {
   subscriptionPlan      String             @default("starter")
   subscriptionStatus    SubscriptionStatus @default(TRIAL)
   subscriptionExpiresAt DateTime?
+  isPubliclyVisible     Boolean            @default(true)
   payrollPayday         Int                @default(31)
   workStartMinutes      Int                @default(540)
   workEndMinutes        Int                @default(1080)

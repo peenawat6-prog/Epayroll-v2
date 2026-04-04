@@ -47,6 +47,7 @@ type TenantItem = {
   subscriptionPlan: string
   subscriptionStatus: string
   subscriptionExpiresAt: string | null
+  isPubliclyVisible: boolean
   createdAt: string
   salesAgent: {
     id: string
@@ -99,6 +100,22 @@ type SalesAgentSummary = {
   }
 }
 
+type SalesAgentForm = {
+  firstName: string
+  lastName: string
+  phone: string
+  email: string
+  lineId: string
+}
+
+const DEFAULT_SALES_AGENT_FORM: SalesAgentForm = {
+  firstName: "",
+  lastName: "",
+  phone: "",
+  email: "",
+  lineId: "",
+}
+
 function formatMinutes(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 }
@@ -138,6 +155,9 @@ export default function DevDashboardPage() {
   const [requests, setRequests] = useState<ShopRequest[]>([])
   const [salesRequests, setSalesRequests] = useState<SalesRequest[]>([])
   const [salesAgents, setSalesAgents] = useState<SalesAgentSummary[]>([])
+  const [salesAgentForm, setSalesAgentForm] = useState<SalesAgentForm>(
+    DEFAULT_SALES_AGENT_FORM,
+  )
   const [tenants, setTenants] = useState<TenantItem[]>([])
   const [commissionMonth, setCommissionMonth] = useState(
     String(now.getMonth() + 1),
@@ -288,6 +308,40 @@ export default function DevDashboardPage() {
     }
   }
 
+  const createSalesAgent = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSavingId("create-sales-agent")
+    setError("")
+    setMessage("")
+
+    try {
+      const res = await fetch("/api/dev/sales-agents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(salesAgentForm),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "เพิ่มเซลล์ไม่สำเร็จ")
+      }
+
+      setSalesAgentForm(DEFAULT_SALES_AGENT_FORM)
+      setMessage(data.message || "เพิ่มเซลล์เรียบร้อยแล้ว")
+      await loadDashboard()
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "เพิ่มเซลล์ไม่สำเร็จ",
+      )
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   const extendSubscription = async (tenantId: string) => {
     setSavingId(tenantId)
     setError("")
@@ -316,6 +370,47 @@ export default function DevDashboardPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "ต่ออายุร้านไม่สำเร็จ",
+      )
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const updateTenantVisibility = async (
+    tenantId: string,
+    isPubliclyVisible: boolean,
+  ) => {
+    setSavingId(tenantId)
+    setError("")
+    setMessage("")
+
+    try {
+      const res = await fetch(`/api/dev/tenants/${tenantId}/visibility`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          isPubliclyVisible,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "ปรับการแสดงร้านไม่สำเร็จ")
+      }
+
+      setMessage(
+        isPubliclyVisible
+          ? "เปิดให้ค้นหาร้านนี้ได้แล้ว"
+          : "ซ่อนร้านนี้จากหน้าลงทะเบียนแล้ว",
+      )
+      await loadDashboard()
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "ปรับการแสดงร้านไม่สำเร็จ",
       )
     } finally {
       setSavingId(null)
@@ -456,6 +551,89 @@ export default function DevDashboardPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">เพิ่มเซลล์ใหม่</h2>
+        <p className="panel-subtitle">
+          ทีมซัพพอร์ตสร้างเซลล์ในหน้านี้ได้เลย เซลล์จะพร้อมให้ร้านเลือกทันที
+        </p>
+
+        <form onSubmit={createSalesAgent}>
+          <div className="form-grid" style={{ marginTop: 16 }}>
+            <div className="field">
+              <label>ชื่อ</label>
+              <input
+                value={salesAgentForm.firstName}
+                onChange={(event) =>
+                  setSalesAgentForm((current) => ({
+                    ...current,
+                    firstName: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label>นามสกุล</label>
+              <input
+                value={salesAgentForm.lastName}
+                onChange={(event) =>
+                  setSalesAgentForm((current) => ({
+                    ...current,
+                    lastName: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label>เบอร์โทร</label>
+              <input
+                value={salesAgentForm.phone}
+                onChange={(event) =>
+                  setSalesAgentForm((current) => ({
+                    ...current,
+                    phone: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label>อีเมล</label>
+              <input
+                type="email"
+                value={salesAgentForm.email}
+                onChange={(event) =>
+                  setSalesAgentForm((current) => ({
+                    ...current,
+                    email: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label>LINE ID</label>
+              <input
+                value={salesAgentForm.lineId}
+                onChange={(event) =>
+                  setSalesAgentForm((current) => ({
+                    ...current,
+                    lineId: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="action-row" style={{ marginTop: 16 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={savingId === "create-sales-agent"}
+            >
+              เพิ่มเซลล์
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="panel">
@@ -688,83 +866,126 @@ export default function DevDashboardPage() {
       <section className="panel">
         <h2 className="panel-title">ร้านค้าที่อยู่ในระบบ</h2>
         <p className="panel-subtitle">
-          ดูวันหมดอายุร้านและเพิ่มวันใช้งานหลังร้านชำระเงินต่ออายุ
+          ดูวันหมดอายุร้าน เพิ่มวันใช้งาน และซ่อนร้านที่ไม่ต้องการให้พนักงานค้นเจอ
         </p>
 
         {tenants.length === 0 ? (
           <div className="empty-state">ยังไม่มีร้านค้าในระบบ</div>
         ) : (
-          <div className="mobile-card-list" style={{ marginTop: 16 }}>
-            {tenants.map((tenant) => {
-              const daysRemaining = getDaysRemaining(tenant.subscriptionExpiresAt)
+          <div className="table-wrap" style={{ marginTop: 16 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ร้าน</th>
+                  <th>เซลล์ผู้ขาย</th>
+                  <th>สถานะร้าน</th>
+                  <th>ค้นหาในหน้าลงทะเบียน</th>
+                  <th>วันหมดอายุ</th>
+                  <th>วันคงเหลือ</th>
+                  <th>สาขา</th>
+                  <th>พนักงาน</th>
+                  <th>เพิ่มวัน</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((tenant) => {
+                  const daysRemaining = getDaysRemaining(
+                    tenant.subscriptionExpiresAt,
+                  )
 
-              return (
-                <article key={tenant.id} className="record-card">
-                  <div className="record-card-head">
-                    <strong>{tenant.name}</strong>
-                    <span className={getStatusPillClass(tenant.subscriptionStatus)}>
-                      {getSubscriptionStatusLabel(tenant.subscriptionStatus)}
-                    </span>
-                  </div>
-                  <div className="record-card-body">
-                    <div className="record-line">
-                      <span>เซลล์ผู้ขาย</span>
-                      <strong>{getSalesAgentName(tenant.salesAgent)}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>วันหมดอายุ</span>
-                      <strong>
+                  return (
+                    <tr key={tenant.id}>
+                      <td>
+                        <strong>{tenant.name}</strong>
+                        <div className="table-meta">
+                          เริ่มใช้ {formatThaiDateTime24h(tenant.createdAt)}
+                        </div>
+                      </td>
+                      <td>{getSalesAgentName(tenant.salesAgent)}</td>
+                      <td>
+                        <span
+                          className={getStatusPillClass(
+                            tenant.subscriptionStatus,
+                          )}
+                        >
+                          {getSubscriptionStatusLabel(
+                            tenant.subscriptionStatus,
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            tenant.isPubliclyVisible
+                              ? "status-pill success"
+                              : "status-pill danger"
+                          }
+                        >
+                          {tenant.isPubliclyVisible ? "แสดงอยู่" : "ซ่อนอยู่"}
+                        </span>
+                      </td>
+                      <td>
                         {tenant.subscriptionExpiresAt
                           ? formatThaiDateTime24h(tenant.subscriptionExpiresAt)
                           : "-"}
-                      </strong>
-                    </div>
-                    <div className="record-line">
-                      <span>วันคงเหลือ</span>
-                      <strong>
+                      </td>
+                      <td>
                         {daysRemaining === null ? "-" : `${daysRemaining} วัน`}
-                      </strong>
-                    </div>
-                    <div className="record-line">
-                      <span>จำนวนสาขา</span>
-                      <strong>{tenant._count.branches}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>จำนวนพนักงาน</span>
-                      <strong>{tenant._count.employees}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>เริ่มใช้งาน</span>
-                      <strong>{formatThaiDateTime24h(tenant.createdAt)}</strong>
-                    </div>
-                  </div>
-                  <div className="action-row" style={{ marginTop: 14 }}>
-                    <input
-                      className="btn btn-secondary"
-                      type="number"
-                      min="1"
-                      max="3650"
-                      value={extraDaysByTenantId[tenant.id] ?? "30"}
-                      onChange={(event) =>
-                        setExtraDaysByTenantId((current) => ({
-                          ...current,
-                          [tenant.id]: event.target.value,
-                        }))
-                      }
-                      style={{ maxWidth: 120, cursor: "text" }}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={savingId === tenant.id}
-                      onClick={() => extendSubscription(tenant.id)}
-                    >
-                      เพิ่มวันใช้งาน
-                    </button>
-                  </div>
-                </article>
-              )
-            })}
+                      </td>
+                      <td>{tenant._count.branches}</td>
+                      <td>{tenant._count.employees}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          max="3650"
+                          value={extraDaysByTenantId[tenant.id] ?? "30"}
+                          onChange={(event) =>
+                            setExtraDaysByTenantId((current) => ({
+                              ...current,
+                              [tenant.id]: event.target.value,
+                            }))
+                          }
+                          style={{ minWidth: 88 }}
+                        />
+                      </td>
+                      <td>
+                        <div className="stacked-actions">
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            disabled={savingId === tenant.id}
+                            onClick={() => extendSubscription(tenant.id)}
+                          >
+                            เพิ่มวันใช้งาน
+                          </button>
+                          <button
+                            type="button"
+                            className={
+                              tenant.isPubliclyVisible
+                                ? "btn btn-danger"
+                                : "btn btn-secondary"
+                            }
+                            disabled={savingId === tenant.id}
+                            onClick={() =>
+                              updateTenantVisibility(
+                                tenant.id,
+                                !tenant.isPubliclyVisible,
+                              )
+                            }
+                          >
+                            {tenant.isPubliclyVisible
+                              ? "ซ่อนร้าน"
+                              : "เปิดแสดงร้าน"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

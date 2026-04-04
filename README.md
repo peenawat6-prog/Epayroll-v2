@@ -72,8 +72,10 @@ npm run start
 
 ## Demo Account
 
-- Email: `owner@demo.local`
-- Password: `demo1234`
+- Owner: `owner@demo.local`
+- Admin: `admin@demo.local`
+- Dev: `dev@epayroll.cloud`
+- Password: `@Epayroll2026`
 
 ## Deployment Checklist
 

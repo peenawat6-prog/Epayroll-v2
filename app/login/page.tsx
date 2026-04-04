@@ -120,13 +120,6 @@ export default function LoginPage() {
           >
             {t("ลงทะเบียนร้านค้า", "Register new shop")}
           </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => router.push("/sales/register")}
-          >
-            {t("ลงทะเบียนเซลล์", "Sales registration")}
-          </button>
         </div>
       </form>
     </div>

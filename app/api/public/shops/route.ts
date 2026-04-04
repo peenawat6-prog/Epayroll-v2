@@ -13,6 +13,7 @@ export async function GET(req: Request) {
 
     const shops = await prisma.tenant.findMany({
       where: {
+        isPubliclyVisible: true,
         name: {
           contains: name,
           mode: "insensitive",

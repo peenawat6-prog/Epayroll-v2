@@ -230,25 +230,31 @@ textarea {
 .weekday-picker {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .weekday-option {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.9);
   color: var(--foreground);
+  font-size: 0.88rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .weekday-option input {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   accent-color: var(--brand);
+}
+
+.employee-register-actions {
+  margin-top: 18px;
 }
 
 .field {
