@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { markBrowserSessionActive } from "@/lib/browser-session"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -37,6 +38,7 @@ export default function LoginPage() {
     const meRes = await fetch("/api/me")
     const me = await meRes.json()
 
+    markBrowserSessionActive()
     router.push(me?.role === "EMPLOYEE" ? "/employee" : "/dashboard")
     router.refresh()
   }

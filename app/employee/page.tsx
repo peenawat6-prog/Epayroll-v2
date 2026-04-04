@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import LogoutButton from "@/app/components/logout-button"
 import { formatThaiTime24h } from "@/lib/display-time"
 
 type EmployeeProfile = {
@@ -354,9 +354,7 @@ export default function EmployeePage() {
           <button className="btn btn-secondary" onClick={() => router.push("/requests")}>
             ขอลา/OT/ลาออก
           </button>
-          <button className="btn btn-ghost" onClick={() => signOut({ callbackUrl: "/login" })}>
-            ออกจากระบบ
-          </button>
+          <LogoutButton />
         </div>
       </section>
 

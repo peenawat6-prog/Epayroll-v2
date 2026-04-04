@@ -1,8 +1,8 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import LogoutButton from '@/app/components/logout-button'
 
 type CurrentUser = {
   id: string
@@ -16,6 +16,10 @@ type Summary = {
   checkedInToday: number
   checkedOutToday: number
   absentToday: number
+  pendingEmployeeRegistrations: number
+  pendingStaffRequests: number
+  pendingAttendanceCorrections: number
+  pendingTotalRequests: number
   subscription: {
     plan: string
     status: string
@@ -104,6 +108,11 @@ export default function DashboardPage() {
           </button>
           <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
             คำขอพนักงาน
+            {summary?.pendingTotalRequests ? (
+              <span className="notification-badge">
+                {summary.pendingTotalRequests}
+              </span>
+            ) : null}
           </button>
           <button className="btn btn-primary" onClick={() => router.push('/payroll')}>
             สรุปเงินเดือน
@@ -111,9 +120,7 @@ export default function DashboardPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
             ตั้งค่าร้าน
           </button>
-          <button className="btn btn-ghost" onClick={() => signOut({ callbackUrl: '/login' })}>
-            ออกจากระบบ
-          </button>
+          <LogoutButton />
         </div>
       </section>
 
@@ -166,9 +173,19 @@ export default function DashboardPage() {
                 onClick={() => router.push('/attendance/corrections')}
               >
                 แก้ไขการลงเวลา
+                {summary.pendingAttendanceCorrections ? (
+                  <span className="notification-badge">
+                    {summary.pendingAttendanceCorrections}
+                  </span>
+                ) : null}
               </button>
               <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
                 ดูคำขอลา/OT/ลาออก
+                {summary.pendingStaffRequests ? (
+                  <span className="notification-badge">
+                    {summary.pendingStaffRequests}
+                  </span>
+                ) : null}
               </button>
               <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
                 ตั้งค่าร้าน

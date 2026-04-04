@@ -1,7 +1,7 @@
 "use client"
 
-import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import LogoutButton from "@/app/components/logout-button"
 
 export default function SubscriptionExpiredPage() {
   const router = useRouter()
@@ -17,12 +17,7 @@ export default function SubscriptionExpiredPage() {
           <button className="btn btn-secondary" onClick={() => router.push("/login")}>
             กลับหน้าเข้าสู่ระบบ
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-          >
-            ออกจากระบบ
-          </button>
+          <LogoutButton className="btn btn-primary" />
         </div>
       </div>
     </div>

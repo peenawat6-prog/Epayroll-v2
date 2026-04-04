@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 
 type AuditItem = {
@@ -137,6 +138,7 @@ export default function AuditPage() {
           <button className="btn btn-primary" onClick={exportCsv}>
             ดาวน์โหลด CSV
           </button>
+          <LogoutButton />
         </div>
       </section>
 

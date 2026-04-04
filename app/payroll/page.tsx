@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -272,6 +273,7 @@ export default function PayrollPage() {
           <button className="btn btn-primary" onClick={exportCsv}>
             ดาวน์โหลดรายการโอน
           </button>
+          <LogoutButton />
         </div>
       </section>
 

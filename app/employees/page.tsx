@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDateTime24h } from '@/lib/display-time'
+import LogoutButton from '@/app/components/logout-button'
 
 type EmployeeRow = {
   id: string
@@ -56,7 +57,6 @@ export default function EmployeesPage() {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({
-    code: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -135,7 +135,6 @@ export default function EmployeesPage() {
   const resetForm = () => {
     setEditId(null)
     setForm({
-      code: '',
       firstName: '',
       lastName: '',
       phone: '',
@@ -158,7 +157,6 @@ export default function EmployeesPage() {
   const handleEditClick = (emp: EmployeeRow) => {
     setEditId(emp.id)
     setForm({
-      code: emp.code,
       firstName: emp.firstName,
       lastName: emp.lastName,
       phone: emp.phone ?? '',
@@ -236,11 +234,7 @@ export default function EmployeesPage() {
     }
 
     if (!editId) {
-      if (!form.code) {
-        setError('กรุณากรอกรหัสพนักงาน')
-        return
-      }
-      body.code = form.code
+      body.code = undefined
     }
 
     const res = await fetch(url, {
@@ -324,6 +318,13 @@ export default function EmployeesPage() {
           <div className="badge-row">
             <div className="badge">พนักงานทั้งหมด {employees.length} รายการ</div>
             <div className="badge">สิทธิ์ {user?.role}</div>
+            {registrationRequests.filter((item) => item.status === 'PENDING').length ? (
+              <div className="badge">
+                รออนุมัติ{' '}
+                {registrationRequests.filter((item) => item.status === 'PENDING').length}{' '}
+                คำขอ
+              </div>
+            ) : null}
           </div>
           <h1 className="hero-title">จัดการพนักงาน</h1>
           <p className="hero-subtitle">เพิ่มข้อมูลพนักงานและบัญชีรับเงินให้พร้อมใช้ในงานจริงทั้งหน้าร้านและงานโอนเงิน</p>
@@ -332,6 +333,7 @@ export default function EmployeesPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
             กลับหน้าแรก
           </button>
+          <LogoutButton />
         </div>
       </section>
 
@@ -343,10 +345,7 @@ export default function EmployeesPage() {
               {!editId ? (
                 <div className="field">
                   <label>รหัสพนักงาน</label>
-                  <input
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value })}
-                  />
+                  <input value="ระบบจะรันให้อัตโนมัติ" disabled />
                 </div>
               ) : null}
               <div className="field">

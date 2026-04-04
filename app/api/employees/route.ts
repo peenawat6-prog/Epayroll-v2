@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
 import { createAuditLog } from "@/lib/audit"
+import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import {
@@ -66,7 +67,10 @@ export async function POST(req: Request) {
       roles: ROLE_GROUPS.employeeManage,
     })
     const body = await readJsonBody<EmployeeCreateBody>(req)
-    const code = asTrimmedString(body.code, "code")
+    const code =
+      body.code === undefined || body.code === null || String(body.code).trim() === ""
+        ? await generateNextEmployeeCode(access.user.tenantId)
+        : asTrimmedString(body.code, "code")
     const firstName = asTrimmedString(body.firstName, "firstName")
     const lastName = asTrimmedString(body.lastName, "lastName")
     const phone = asOptionalTrimmedString(body.phone)

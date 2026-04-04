@@ -7,7 +7,6 @@ export default function EmployeeRegisterPage() {
   const router = useRouter()
   const [form, setForm] = useState({
     registrationCode: "",
-    code: "",
     firstName: "",
     lastName: "",
     phone: "",
@@ -48,7 +47,6 @@ export default function EmployeeRegisterPage() {
       setMessage("ส่งคำขอลงทะเบียนแล้ว กรุณารอหัวหน้าอนุมัติ")
       setForm({
         registrationCode: "",
-        code: "",
         firstName: "",
         lastName: "",
         phone: "",
@@ -95,16 +93,8 @@ export default function EmployeeRegisterPage() {
           />
         </div>
 
-        <div className="field">
-          <label htmlFor="code">รหัสพนักงาน</label>
-          <input
-            id="code"
-            value={form.code}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, code: event.target.value }))
-            }
-            placeholder="เช่น EMP002"
-          />
+        <div className="message message-success">
+          ระบบจะออกรหัสพนักงานให้อัตโนมัติหลังส่งคำขอลงทะเบียน
         </div>
 
         <div className="form-grid">

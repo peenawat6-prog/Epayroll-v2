@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -248,6 +249,11 @@ export default function StaffRequestsPage() {
           <div className="badge-row">
             <div className="badge">เมนูคำขอพนักงาน</div>
             <div className="badge">สิทธิ์: {user?.role}</div>
+            {requests.filter((item) => item.status === 'PENDING').length ? (
+              <div className="badge">
+                รอตรวจ {requests.filter((item) => item.status === 'PENDING').length} คำขอ
+              </div>
+            ) : null}
           </div>
           <h1 className="hero-title">ขอลางาน / ขอ OT / ยื่นลาออก</h1>
           <p className="hero-subtitle">
@@ -261,6 +267,7 @@ export default function StaffRequestsPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
             กลับหน้าลงเวลา
           </button>
+          <LogoutButton />
         </div>
       </section>
 

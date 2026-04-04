@@ -1,12 +1,12 @@
 import bcrypt from "bcrypt"
 import type { EmployeeRegistrationStatus } from "@prisma/client"
+import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
 import { createAuditLog } from "@/lib/audit"
 
 export async function submitEmployeeRegistrationRequest(params: {
   registrationCode: string
-  code: string
   firstName: string
   lastName: string
   phone: string | null
@@ -34,6 +34,8 @@ export async function submitEmployeeRegistrationRequest(params: {
     throw new AppError("รหัสร้านไม่ถูกต้อง", 404, "TENANT_NOT_FOUND")
   }
 
+  const code = await generateNextEmployeeCode(tenant.id)
+
   const [existingUser, existingEmployee, existingPendingRequest] =
     await Promise.all([
       prisma.user.findUnique({
@@ -48,7 +50,7 @@ export async function submitEmployeeRegistrationRequest(params: {
         where: {
           tenantId_code: {
             tenantId: tenant.id,
-            code: params.code,
+            code,
           },
         },
         select: {
@@ -59,7 +61,7 @@ export async function submitEmployeeRegistrationRequest(params: {
         where: {
           tenantId: tenant.id,
           status: "PENDING",
-          OR: [{ email: params.email }, { code: params.code }],
+          email: params.email,
         },
         select: {
           id: true,
@@ -88,7 +90,7 @@ export async function submitEmployeeRegistrationRequest(params: {
   const registration = await prisma.employeeRegistrationRequest.create({
     data: {
       tenantId: tenant.id,
-      code: params.code,
+      code,
       firstName: params.firstName,
       lastName: params.lastName,
       phone: params.phone,
@@ -260,7 +262,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
   }
 
   if (existingEmployee) {
-    throw new AppError("รหัสพนักงานนี้ถูกใช้งานแล้ว", 409, "EMPLOYEE_CODE_EXISTS")
+    request.code = await generateNextEmployeeCode(params.tenantId)
   }
 
   return prisma.$transaction(async (tx) => {
@@ -312,6 +314,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
         id: request.id,
       },
       data: {
+        code: request.code,
         status: "APPROVED",
         reviewNote: params.reviewNote,
         reviewedByUserId: params.reviewedByUserId,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -257,6 +258,7 @@ export default function AttendanceCorrectionsPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
             กลับ Dashboard
           </button>
+          <LogoutButton />
         </div>
       </section>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 
 type EmployeeOption = {
   id: string
@@ -279,6 +280,7 @@ export default function AttendancePage() {
           <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
             ขอลา/OT/ลาออก
           </button>
+          <LogoutButton />
         </div>
       </section>
 

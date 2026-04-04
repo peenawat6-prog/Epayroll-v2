@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDate, formatThaiTime24h } from '@/lib/display-time'
 
 type AttendanceRecord = {
@@ -98,6 +99,7 @@ export default function AttendanceHistoryPage() {
           >
             ขอแก้ไขเวลา
           </button>
+          <LogoutButton />
         </div>
       </section>
 

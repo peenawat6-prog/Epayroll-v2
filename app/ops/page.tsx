@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 
 type OpsSummary = {
@@ -367,6 +368,7 @@ export default function OpsPage() {
           >
             คำขอแก้เวลา
           </button>
+          <LogoutButton />
         </div>
       </section>
 
