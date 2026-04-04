@@ -1,0 +1,36 @@
+{
+  "name": "cafe-saas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate",
+    "prebuild": "node scripts/validate-env.mjs",
+    "prestart": "node scripts/validate-env.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "cleanup:attendance-photos": "tsx scripts/purge-old-attendance-photos.ts",
+    "lint": "eslint",
+    "verify:attendance-photo-storage": "tsx scripts/verify-attendance-photo-storage.ts",
+    "verify:env": "node scripts/validate-env.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "bcrypt": "^6.0.0",
+    "next": "16.2.1",
+    "next-auth": "^4.24.13",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "25.5.0",
+    "@types/react": "19.2.14",
+    "postcss": "^8.5.8",
+    "prisma": "^6.19.2",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "6.0.2"
+  }
+}

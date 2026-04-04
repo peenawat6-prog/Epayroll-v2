@@ -1,0 +1,22 @@
+ALTER TABLE "Tenant"
+ADD COLUMN "payrollPayday" INTEGER NOT NULL DEFAULT 31,
+ADD COLUMN "latitude" DOUBLE PRECISION,
+ADD COLUMN "longitude" DOUBLE PRECISION,
+ADD COLUMN "allowedRadiusMeters" INTEGER NOT NULL DEFAULT 150;
+
+ALTER TABLE "Branch"
+ADD COLUMN "latitude" DOUBLE PRECISION,
+ADD COLUMN "longitude" DOUBLE PRECISION,
+ADD COLUMN "allowedRadiusMeters" INTEGER;
+
+ALTER TABLE "BankAccount"
+ADD COLUMN "promptPayId" TEXT;
+
+ALTER TABLE "Attendance"
+ADD COLUMN "checkInPhotoUrl" TEXT,
+ADD COLUMN "checkInLatitude" DOUBLE PRECISION,
+ADD COLUMN "checkInLongitude" DOUBLE PRECISION,
+ADD COLUMN "checkInDistanceMeters" INTEGER;
+
+ALTER TABLE "Payroll"
+ADD COLUMN "paymentStatus" "PaymentStatus" NOT NULL DEFAULT 'PENDING';

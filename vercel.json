@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/maintenance/attendance-photos",
+      "schedule": "0 20 * * *"
+    }
+  ]
+}

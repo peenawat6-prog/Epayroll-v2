@@ -1,0 +1,450 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// =========================
+/// ENUMS
+/// =========================
+
+enum UserRole {
+  DEV
+  OWNER
+  ADMIN
+  HR
+  FINANCE
+  EMPLOYEE
+}
+
+enum EmployeeType {
+  FULL_TIME
+  PART_TIME
+}
+
+enum PayType {
+  MONTHLY
+  DAILY
+  HOURLY
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  LEAVE
+  DAY_OFF
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+}
+
+enum ReceiptStatus {
+  ISSUED
+  VOID
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+}
+
+enum PayrollPeriodStatus {
+  OPEN
+  LOCKED
+}
+
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EmployeeRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// =========================
+/// CORE
+/// =========================
+
+model Tenant {
+  id                    String             @id @default(cuid())
+  name                  String
+  registrationCode      String             @unique
+  subscriptionPlan      String             @default("starter")
+  subscriptionStatus    SubscriptionStatus @default(TRIAL)
+  subscriptionExpiresAt DateTime?
+  payrollPayday         Int                @default(31)
+  workStartMinutes      Int                @default(540)
+  workEndMinutes        Int                @default(1080)
+  latitude              Float?
+  longitude             Float?
+  allowedRadiusMeters   Int                @default(150)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  users                 User[]
+  employees             Employee[]
+  branches              Branch[]
+  invoices              Invoice[]
+  receipts              Receipt[]
+  payrollPeriods        PayrollPeriod[]
+  auditLogs             AuditLog[]
+  attendanceCorrections AttendanceCorrection[]
+  employeeRegistrations EmployeeRegistrationRequest[]
+  leaves                Leave[]
+  overtimeRequests      OvertimeRequest[]
+  earlyCheckoutRequests EarlyCheckoutRequest[]
+  resignationRequests   ResignationRequest[]
+}
+
+model EmployeeRegistrationRequest {
+  id              String                     @id @default(cuid())
+  tenantId        String
+  code            String
+  firstName       String
+  lastName        String
+  phone           String?
+  position        String
+  email           String
+  passwordHash    String
+  employeeType    EmployeeType
+  payType         PayType
+  bankName        String?
+  accountName     String?
+  accountNumber   String?
+  promptPayId     String?
+  status          EmployeeRegistrationStatus @default(PENDING)
+  reviewNote      String?
+  reviewedByUserId String?
+  reviewedAt      DateTime?
+  createdAt       DateTime                   @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, code])
+  @@index([tenantId, email])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  employee Employee?
+
+  @@index([tenantId])
+}
+
+model Branch {
+  id                  String  @id @default(cuid())
+  tenantId            String
+  name                String
+  latitude            Float?
+  longitude           Float?
+  allowedRadiusMeters Int?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@index([tenantId])
+}
+
+/// =========================
+/// EMPLOYEE
+/// =========================
+
+model Employee {
+  id           String       @id @default(cuid())
+  tenantId     String
+  branchId     String?
+  userId       String?      @unique
+  code         String
+  firstName    String
+  lastName     String
+  phone        String?
+  position     String
+  employeeType EmployeeType
+  payType      PayType
+
+  baseSalary Float?
+  dailyRate  Float?
+  hourlyRate Float?
+
+  active       Boolean  @default(true)
+  startDate    DateTime
+  terminatedAt DateTime?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  attendances Attendance[]
+  leaves      Leave[]
+  overtimeRequests    OvertimeRequest[]
+  earlyCheckoutRequests EarlyCheckoutRequest[]
+  resignationRequests ResignationRequest[]
+  payrolls    Payroll[]
+  bank        BankAccount?
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+}
+
+model BankAccount {
+  id            String  @id @default(cuid())
+  employeeId    String  @unique
+  bankName      String
+  accountName   String
+  accountNumber String
+  promptPayId   String?
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+/// =========================
+/// ATTENDANCE
+/// =========================
+
+model Attendance {
+  id                    String           @id @default(cuid())
+  employeeId            String
+  workDate              DateTime
+  checkIn               DateTime?
+  checkOut              DateTime?
+  workedMinutes         Int              @default(0)
+  lateMinutes           Int              @default(0)
+  status                AttendanceStatus
+  checkInPhotoUrl       String?
+  checkInLatitude       Float?
+  checkInLongitude      Float?
+  checkInDistanceMeters Int?
+
+  employee    Employee               @relation(fields: [employeeId], references: [id])
+  corrections AttendanceCorrection[]
+
+  @@unique([employeeId, workDate])
+  @@index([workDate])
+}
+
+model AttendanceCorrection {
+  id                String                     @id @default(cuid())
+  tenantId          String
+  attendanceId      String
+  requestedByUserId String
+  reviewedByUserId  String?
+  requestedCheckIn  DateTime?
+  requestedCheckOut DateTime?
+  requestedStatus   AttendanceStatus?
+  requestedWorkDate DateTime?
+  reason            String
+  reviewNote        String?
+  status            AttendanceCorrectionStatus @default(PENDING)
+  createdAt         DateTime                   @default(now())
+  reviewedAt        DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  attendance Attendance @relation(fields: [attendanceId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([attendanceId, status])
+}
+
+/// =========================
+/// LEAVE
+/// =========================
+
+model Leave {
+  id                String      @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  requestedByUserId String
+  reviewedByUserId  String?
+  startDate         DateTime
+  endDate           DateTime
+  reason            String?
+  reviewNote        String?
+  status            LeaveStatus @default(PENDING)
+  createdAt         DateTime    @default(now())
+  reviewedAt        DateTime?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([employeeId, status, startDate])
+}
+
+model OvertimeRequest {
+  id                String      @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  requestedByUserId String
+  reviewedByUserId  String?
+  workDate          DateTime
+  overtimeMinutes   Int
+  reason            String?
+  reviewNote        String?
+  status            LeaveStatus @default(PENDING)
+  createdAt         DateTime    @default(now())
+  reviewedAt        DateTime?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([employeeId, status, workDate])
+}
+
+model ResignationRequest {
+  id                String      @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  requestedByUserId String
+  reviewedByUserId  String?
+  lastWorkDate      DateTime
+  reason            String?
+  reviewNote        String?
+  status            LeaveStatus @default(PENDING)
+  createdAt         DateTime    @default(now())
+  reviewedAt        DateTime?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([employeeId, status, lastWorkDate])
+}
+
+model EarlyCheckoutRequest {
+  id                String      @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  requestedByUserId String
+  reviewedByUserId  String?
+  workDate          DateTime
+  reason            String?
+  reviewNote        String?
+  status            LeaveStatus @default(PENDING)
+  createdAt         DateTime    @default(now())
+  reviewedAt        DateTime?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([employeeId, status, workDate])
+}
+
+/// =========================
+/// PAYROLL
+/// =========================
+
+model Payroll {
+  id              String        @id @default(cuid())
+  employeeId      String
+  month           Int
+  year            Int
+  payTypeSnapshot PayType
+  presentDays     Int           @default(0)
+  absentDays      Int           @default(0)
+  workedHours     Float         @default(0)
+  lateMinutes     Int           @default(0)
+  basePay         Float
+  overtimePay     Float
+  deduction       Float
+  netPay          Float
+  paymentStatus   PaymentStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+}
+
+model PayrollPeriod {
+  id             String              @id @default(cuid())
+  tenantId       String
+  month          Int
+  year           Int
+  status         PayrollPeriodStatus @default(OPEN)
+  lockedAt       DateTime?
+  lockedByUserId String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, month, year])
+  @@index([tenantId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+}
+
+/// =========================
+/// BILLING
+/// =========================
+
+model Invoice {
+  id        String        @id @default(cuid())
+  tenantId  String
+  amount    Float
+  status    InvoiceStatus @default(DRAFT)
+  createdAt DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Receipt {
+  id        String        @id @default(cuid())
+  tenantId  String
+  amount    Float
+  status    ReceiptStatus @default(ISSUED)
+  createdAt DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
