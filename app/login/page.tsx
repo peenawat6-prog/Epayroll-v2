@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { markBrowserSessionActive } from "@/lib/browser-session"
+import { useLanguage } from "@/lib/language"
 
 const REMEMBERED_EMAIL_KEY = "epayroll-remembered-email"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -36,12 +38,22 @@ export default function LoginPage() {
     setLoading(false)
 
     if (!result) {
-      setError("ไม่สามารถเชื่อมต่อระบบล็อกอินได้")
+      setError(
+        t(
+          "ไม่สามารถเชื่อมต่อระบบล็อกอินได้",
+          "Unable to connect to the login system.",
+        ),
+      )
       return
     }
 
     if (result.error) {
-      setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง")
+      setError(
+        t(
+          "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+          "Email or password is incorrect.",
+        ),
+      )
       return
     }
 
@@ -58,25 +70,23 @@ export default function LoginPage() {
     <div className="login-shell">
       <form onSubmit={handleSubmit} className="panel login-card">
         <div className="badge">Cafe SaaS</div>
-        <h1>เข้าสู่ระบบ</h1>
+        <h1>{t("เข้าสู่ระบบ", "Sign in")}</h1>
 
         <div className="field">
-          <label htmlFor="email">อีเมล</label>
+          <label htmlFor="email">{t("อีเมล", "Email")}</label>
           <input
             id="email"
             type="email"
-            placeholder="owner@demo.local"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
         <div className="field">
-          <label htmlFor="password">รหัสผ่าน</label>
+          <label htmlFor="password">{t("รหัสผ่าน", "Password")}</label>
           <input
             id="password"
             type="password"
-            placeholder="demo1234"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -86,14 +96,16 @@ export default function LoginPage() {
 
         <div className="action-row">
           <button type="submit" disabled={loading} className="btn btn-primary">
-            {loading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
+            {loading
+              ? t("กำลังตรวจสอบ...", "Checking...")
+              : t("เข้าสู่ระบบ", "Sign in")}
           </button>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => router.push("/employee/register")}
           >
-            ลงทะเบียนพนักงาน
+            {t("ลงทะเบียนพนักงาน", "Employee registration")}
           </button>
         </div>
       </form>
