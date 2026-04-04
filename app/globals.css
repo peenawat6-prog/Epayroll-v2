@@ -459,6 +459,52 @@ textarea {
   margin-top: 18px;
 }
 
+.shop-lookup-field {
+  position: relative;
+}
+
+.shop-lookup-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 244, 0.98);
+  box-shadow: 0 16px 44px rgba(94, 67, 39, 0.14);
+}
+
+.shop-lookup-option {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--foreground);
+}
+
+.shop-lookup-option span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.shop-lookup-option:hover:not(:disabled) {
+  background: rgba(243, 214, 191, 0.45);
+}
+
+.shop-lookup-option:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
 .language-switcher {
   position: fixed;
   top: 16px;

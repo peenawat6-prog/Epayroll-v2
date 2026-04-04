@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 type PublicBranch = {
@@ -8,9 +8,17 @@ type PublicBranch = {
   name: string
 }
 
+type ShopOption = {
+  id: string
+  name: string
+  registrationCode: string
+  branches: PublicBranch[]
+}
+
 export default function EmployeeRegisterPage() {
   const router = useRouter()
   const [form, setForm] = useState({
+    shopName: "",
     registrationCode: "",
     branchId: "",
     firstName: "",
@@ -28,53 +36,79 @@ export default function EmployeeRegisterPage() {
   })
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
-  const [tenantName, setTenantName] = useState("")
+  const [shopOptions, setShopOptions] = useState<ShopOption[]>([])
+  const [shopSearchLoading, setShopSearchLoading] = useState(false)
+  const [showShopOptions, setShowShopOptions] = useState(false)
   const [branches, setBranches] = useState<PublicBranch[]>([])
-  const [branchLoading, setBranchLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+  const shopLookupRef = useRef<HTMLDivElement | null>(null)
 
-  const loadBranches = async (registrationCode: string) => {
-    const normalizedCode = registrationCode.trim()
+  useEffect(() => {
+    const normalizedName = form.shopName.trim()
 
-    if (!normalizedCode) {
-      setTenantName("")
+    if (normalizedName.length < 2) {
+      setShopOptions([])
+      setShowShopOptions(false)
       setBranches([])
-      setForm((current) => ({ ...current, branchId: "" }))
+      setForm((current) => ({
+        ...current,
+        registrationCode: "",
+        branchId: "",
+      }))
       return
     }
 
-    setBranchLoading(true)
-    setError("")
+    const timer = window.setTimeout(async () => {
+      setShopSearchLoading(true)
 
-    try {
-      const res = await fetch(
-        `/api/public/branches?registrationCode=${encodeURIComponent(normalizedCode)}`,
-      )
-      const data = await res.json()
+      try {
+        const res = await fetch(
+          `/api/public/shops?name=${encodeURIComponent(normalizedName)}`,
+        )
+        const data = await res.json()
 
-      if (!res.ok) {
-        throw new Error(data.error || "โหลดสาขาไม่สำเร็จ")
+        if (!res.ok) {
+          throw new Error(data.error || "ค้นหาร้านไม่สำเร็จ")
+        }
+
+        setShopOptions(data.items ?? [])
+        setShowShopOptions(true)
+      } catch {
+        setShopOptions([])
+        setShowShopOptions(false)
+      } finally {
+        setShopSearchLoading(false)
       }
+    }, 250)
 
-      setTenantName(data.tenantName ?? "")
-      setBranches(data.branches ?? [])
-      setForm((current) => ({
-        ...current,
-        branchId:
-          data.branches?.some((branch: PublicBranch) => branch.id === current.branchId)
-            ? current.branchId
-            : "",
-      }))
-    } catch (caughtError) {
-      setTenantName("")
-      setBranches([])
-      setForm((current) => ({ ...current, branchId: "" }))
-      setError(
-        caughtError instanceof Error ? caughtError.message : "โหลดสาขาไม่สำเร็จ",
-      )
-    } finally {
-      setBranchLoading(false)
+    return () => window.clearTimeout(timer)
+  }, [form.shopName])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        shopLookupRef.current &&
+        !shopLookupRef.current.contains(event.target as Node)
+      ) {
+        setShowShopOptions(false)
+      }
     }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const selectShop = (shop: ShopOption) => {
+    setForm((current) => ({
+      ...current,
+      shopName: shop.name,
+      registrationCode: shop.registrationCode,
+      branchId: "",
+    }))
+    setBranches(shop.branches ?? [])
+    setShopOptions([])
+    setShowShopOptions(false)
+    setError("")
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -99,6 +133,7 @@ export default function EmployeeRegisterPage() {
 
       setMessage("ส่งคำขอลงทะเบียนแล้ว กรุณารอหัวหน้าอนุมัติ")
       setForm({
+        shopName: "",
         registrationCode: "",
         branchId: "",
         firstName: "",
@@ -114,7 +149,8 @@ export default function EmployeeRegisterPage() {
         accountNumber: "",
         promptPayId: "",
       })
-      setTenantName("")
+      setShopOptions([])
+      setShowShopOptions(false)
       setBranches([])
     } catch (caughtError) {
       setError(
@@ -134,20 +170,53 @@ export default function EmployeeRegisterPage() {
         <h1>ลงทะเบียนพนักงาน</h1>
         <p>กรอกข้อมูลและรอหัวหน้าอนุมัติ ก่อนเข้าใช้งานระบบพนักงาน</p>
 
-        <div className="field">
-          <label htmlFor="registrationCode">รหัสร้าน</label>
+        <div className="field shop-lookup-field" ref={shopLookupRef}>
+          <label htmlFor="shopName">ชื่อร้าน</label>
           <input
-            id="registrationCode"
-            value={form.registrationCode}
+            id="shopName"
+            value={form.shopName}
+            onFocus={() => {
+              if (shopOptions.length > 0) setShowShopOptions(true)
+            }}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                registrationCode: event.target.value,
+                shopName: event.target.value,
+                registrationCode: "",
+                branchId: "",
               }))
             }
-            onBlur={(event) => loadBranches(event.target.value)}
-            placeholder="เช่น DEMO-CAFE"
+            autoComplete="off"
+            placeholder="พิมพ์ชื่อร้านเพื่อค้นหา"
           />
+          {showShopOptions ? (
+            <div className="shop-lookup-list">
+              {shopSearchLoading ? (
+                <button type="button" className="shop-lookup-option" disabled>
+                  กำลังค้นหาร้าน...
+                </button>
+              ) : shopOptions.length ? (
+                shopOptions.map((shop) => (
+                  <button
+                    key={shop.id}
+                    type="button"
+                    className="shop-lookup-option"
+                    onClick={() => selectShop(shop)}
+                  >
+                    <strong>{shop.name}</strong>
+                    <span>{shop.registrationCode}</span>
+                  </button>
+                ))
+              ) : (
+                <button type="button" className="shop-lookup-option" disabled>
+                  ไม่พบชื่อร้านนี้
+                </button>
+              )}
+            </div>
+          ) : null}
+          {form.registrationCode ? (
+            <div className="table-meta">เลือกแล้ว: {form.shopName}</div>
+          ) : null}
         </div>
 
         <div className="field">
@@ -155,17 +224,15 @@ export default function EmployeeRegisterPage() {
           <select
             id="branchId"
             value={form.branchId}
-            disabled={branchLoading || branches.length === 0}
+            disabled={!form.registrationCode || branches.length === 0}
             onChange={(event) =>
               setForm((current) => ({ ...current, branchId: event.target.value }))
             }
           >
             <option value="">
-              {branchLoading
-                ? "กำลังโหลดสาขา..."
-                : branches.length
+              {branches.length
                   ? "เลือกสาขา"
-                  : "กรอกรหัสร้านก่อน แล้วเลือกสาขา"}
+                  : "เลือกชื่อร้านก่อน แล้วเลือกสาขา"}
             </option>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -173,9 +240,6 @@ export default function EmployeeRegisterPage() {
               </option>
             ))}
           </select>
-          {tenantName ? (
-            <div className="table-meta">ร้าน: {tenantName}</div>
-          ) : null}
         </div>
 
         <div className="message message-success">
