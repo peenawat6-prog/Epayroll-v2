@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { markBrowserSessionActive } from "@/lib/browser-session"
+
+const REMEMBERED_EMAIL_KEY = "epayroll-remembered-email"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,6 +13,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY)
+
+    if (rememberedEmail) {
+      setEmail(rememberedEmail)
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -38,6 +48,7 @@ export default function LoginPage() {
     const meRes = await fetch("/api/me")
     const me = await meRes.json()
 
+    window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim().toLowerCase())
     markBrowserSessionActive()
     router.push(me?.role === "EMPLOYEE" ? "/employee" : "/dashboard")
     router.refresh()
