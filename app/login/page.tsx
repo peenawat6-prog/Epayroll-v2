@@ -94,7 +94,7 @@ export default function LoginPage() {
 
         {error ? <div className="message message-error">{error}</div> : null}
 
-        <div className="action-row">
+        <div className="action-row login-action-row">
           <button type="submit" disabled={loading} className="btn btn-primary">
             {loading
               ? t("กำลังตรวจสอบ...", "Checking...")

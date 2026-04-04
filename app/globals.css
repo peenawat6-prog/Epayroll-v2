@@ -455,6 +455,10 @@ textarea {
   color: var(--muted);
 }
 
+.login-action-row {
+  margin-top: 18px;
+}
+
 .language-switcher {
   position: fixed;
   top: 16px;
