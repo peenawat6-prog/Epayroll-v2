@@ -122,32 +122,35 @@ model Tenant {
 }
 
 model EmployeeRegistrationRequest {
-  id              String                     @id @default(cuid())
-  tenantId        String
-  code            String
-  firstName       String
-  lastName        String
-  phone           String?
-  position        String
-  email           String
-  passwordHash    String
-  employeeType    EmployeeType
-  payType         PayType
-  bankName        String?
-  accountName     String?
-  accountNumber   String?
-  promptPayId     String?
-  status          EmployeeRegistrationStatus @default(PENDING)
-  reviewNote      String?
+  id               String                     @id @default(cuid())
+  tenantId         String
+  branchId         String?
+  code             String
+  firstName        String
+  lastName         String
+  phone            String?
+  position         String
+  email            String
+  passwordHash     String
+  employeeType     EmployeeType
+  payType          PayType
+  bankName         String?
+  accountName      String?
+  accountNumber    String?
+  promptPayId      String?
+  status           EmployeeRegistrationStatus @default(PENDING)
+  reviewNote       String?
   reviewedByUserId String?
-  reviewedAt      DateTime?
-  createdAt       DateTime                   @default(now())
+  reviewedAt       DateTime?
+  createdAt        DateTime                   @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, code])
   @@index([tenantId, email])
+  @@index([branchId])
 }
 
 model User {
@@ -172,8 +175,9 @@ model Branch {
   longitude           Float?
   allowedRadiusMeters Int?
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
-  employees Employee[]
+  tenant                Tenant                        @relation(fields: [tenantId], references: [id])
+  employees             Employee[]
+  employeeRegistrations EmployeeRegistrationRequest[]
 
   @@index([tenantId])
 }

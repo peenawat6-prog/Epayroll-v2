@@ -15,6 +15,7 @@ import {
 
 type EmployeeCreateBody = {
   code?: unknown
+  branchId?: unknown
   firstName?: unknown
   lastName?: unknown
   phone?: unknown
@@ -50,6 +51,12 @@ export async function GET(req: Request) {
         ...(includeInactive ? {} : { active: true }),
       },
       include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         bank: true,
       },
       orderBy: [{ active: "desc" }, { code: "asc" }],
@@ -74,6 +81,7 @@ export async function POST(req: Request) {
     const firstName = asTrimmedString(body.firstName, "firstName")
     const lastName = asTrimmedString(body.lastName, "lastName")
     const phone = asOptionalTrimmedString(body.phone)
+    const branchId = asOptionalTrimmedString(body.branchId)
     const position = asTrimmedString(body.position, "position")
     const employeeType = asEmployeeType(body.employeeType)
     const payType = asPayType(body.payType)
@@ -89,6 +97,25 @@ export async function POST(req: Request) {
     const promptPayId = asOptionalTrimmedString(body.promptPayId)
 
     const shouldCreateBankAccount = Boolean(bankName && accountName && accountNumber)
+
+    if (branchId) {
+      const branch = await prisma.branch.findFirst({
+        where: {
+          id: branchId,
+          tenantId: access.user.tenantId,
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      if (!branch) {
+        return jsonResponse(
+          { error: "ไม่พบสาขาที่เลือก", code: "BRANCH_NOT_FOUND" },
+          404,
+        )
+      }
+    }
 
     const existing = await prisma.employee.findUnique({
       where: {
@@ -109,6 +136,7 @@ export async function POST(req: Request) {
     const employee = await prisma.employee.create({
       data: {
         tenantId: access.user.tenantId,
+        branchId,
         code,
         firstName,
         lastName,
@@ -136,6 +164,12 @@ export async function POST(req: Request) {
       },
       include: {
         bank: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     })
 
@@ -148,6 +182,7 @@ export async function POST(req: Request) {
       metadata: {
         code: employee.code,
         payType: employee.payType,
+        branchId: employee.branchId,
         hasBank: shouldCreateBankAccount,
       },
     })

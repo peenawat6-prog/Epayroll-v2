@@ -14,6 +14,7 @@ import {
 } from "@/lib/validators"
 
 type EmployeeUpdateBody = {
+  branchId?: unknown
   firstName?: unknown
   lastName?: unknown
   phone?: unknown
@@ -39,6 +40,12 @@ async function getScopedEmployee(employeeId: string, tenantId: string) {
       tenantId,
     },
     include: {
+      branch: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       bank: true,
     },
   })
@@ -62,6 +69,10 @@ export async function PATCH(
     const body = await readJsonBody<EmployeeUpdateBody>(req)
     const active =
       typeof body.active === "boolean" ? body.active : employee.active
+    const branchId =
+      body.branchId === undefined
+        ? employee.branchId
+        : asOptionalTrimmedString(body.branchId)
     const bankName =
       body.bankName === undefined
         ? employee.bank?.bankName ?? null
@@ -98,6 +109,22 @@ export async function PATCH(
       }
     }
 
+    if (branchId) {
+      const branch = await prisma.branch.findFirst({
+        where: {
+          id: branchId,
+          tenantId: access.user.tenantId,
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      if (!branch) {
+        throw new AppError("ไม่พบสาขาที่เลือก", 404, "BRANCH_NOT_FOUND")
+      }
+    }
+
     const updated = await prisma.employee.update({
       where: { id },
       data: {
@@ -109,6 +136,7 @@ export async function PATCH(
           body.lastName === undefined
             ? employee.lastName
             : asTrimmedString(body.lastName, "lastName"),
+        branchId,
         phone:
           body.phone === undefined
             ? employee.phone
@@ -172,6 +200,12 @@ export async function PATCH(
             : undefined,
       },
       include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         bank: true,
       },
     })
@@ -185,6 +219,7 @@ export async function PATCH(
       metadata: {
         active: updated.active,
         payType: updated.payType,
+        branchId: updated.branchId,
         hasBank: shouldKeepBankAccount,
       },
     })

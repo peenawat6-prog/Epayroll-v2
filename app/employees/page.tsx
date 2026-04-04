@@ -7,6 +7,11 @@ import LogoutButton from '@/app/components/logout-button'
 
 type EmployeeRow = {
   id: string
+  branchId: string | null
+  branch: {
+    id: string
+    name: string
+  } | null
   code: string
   firstName: string
   lastName: string
@@ -34,6 +39,10 @@ type CurrentUser = {
 type RegistrationRequest = {
   id: string
   code: string
+  branch: {
+    id: string
+    name: string
+  } | null
   firstName: string
   lastName: string
   phone: string | null
@@ -51,12 +60,19 @@ type RegistrationRequest = {
   createdAt: string
 }
 
+type BranchOption = {
+  id: string
+  name: string
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
+  const [branches, setBranches] = useState<BranchOption[]>([])
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({
+    branchId: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -103,6 +119,13 @@ export default function EmployeesPage() {
       .catch(() => setRegistrationRequests([]))
   }
 
+  const fetchBranches = () => {
+    fetch('/api/branches')
+      .then((res) => res.json())
+      .then((data) => setBranches(data.items ?? []))
+      .catch(() => setBranches([]))
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -114,6 +137,7 @@ export default function EmployeesPage() {
       .then((data) => {
         if (!mounted) return
         setUser(data)
+        fetchBranches()
         fetchEmployees()
         setLoading(false)
       })
@@ -135,6 +159,7 @@ export default function EmployeesPage() {
   const resetForm = () => {
     setEditId(null)
     setForm({
+      branchId: '',
       firstName: '',
       lastName: '',
       phone: '',
@@ -157,6 +182,7 @@ export default function EmployeesPage() {
   const handleEditClick = (emp: EmployeeRow) => {
     setEditId(emp.id)
     setForm({
+      branchId: emp.branchId ?? '',
       firstName: emp.firstName,
       lastName: emp.lastName,
       phone: emp.phone ?? '',
@@ -217,6 +243,7 @@ export default function EmployeesPage() {
     }
 
     const body: any = {
+      branchId: form.branchId || null,
       firstName: form.firstName,
       lastName: form.lastName,
       phone: form.phone,
@@ -348,6 +375,20 @@ export default function EmployeesPage() {
                   <input value="ระบบจะรันให้อัตโนมัติ" disabled />
                 </div>
               ) : null}
+              <div className="field">
+                <label>สาขา</label>
+                <select
+                  value={form.branchId}
+                  onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+                >
+                  <option value="">ไม่ระบุสาขา</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="field">
                 <label>ชื่อจริง</label>
                 <input
@@ -528,6 +569,10 @@ export default function EmployeesPage() {
                       <strong>{request.email}</strong>
                     </div>
                     <div className="record-line">
+                      <span>สาขา</span>
+                      <strong>{request.branch?.name ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
                       <span>ตำแหน่ง</span>
                       <strong>{request.position}</strong>
                     </div>
@@ -603,6 +648,7 @@ export default function EmployeesPage() {
                 <th>รหัส</th>
                 <th>ชื่อ</th>
                 <th>ตำแหน่ง</th>
+                <th>สาขา</th>
                 <th>รูปแบบจ่าย</th>
                 <th>อัตราค่าจ้าง</th>
                 <th>ข้อมูลรับเงิน</th>
@@ -616,6 +662,7 @@ export default function EmployeesPage() {
                   <td>{emp.code}</td>
                   <td>{emp.firstName} {emp.lastName}</td>
                   <td>{emp.position}</td>
+                  <td>{emp.branch?.name ?? '-'}</td>
                   <td>{emp.payType}</td>
                   <td>
                     {emp.payType === 'MONTHLY' ? `${emp.baseSalary ?? 0} บาท/เดือน` : null}
@@ -668,6 +715,7 @@ export default function EmployeesPage() {
               <div className="record-card-body">
                 <div className="record-line"><span>รหัส</span><strong>{emp.code}</strong></div>
                 <div className="record-line"><span>ตำแหน่ง</span><strong>{emp.position}</strong></div>
+                <div className="record-line"><span>สาขา</span><strong>{emp.branch?.name ?? '-'}</strong></div>
                 <div className="record-line"><span>รูปแบบจ่าย</span><strong>{emp.payType}</strong></div>
                 <div className="record-line">
                   <span>บัญชีรับเงิน</span>

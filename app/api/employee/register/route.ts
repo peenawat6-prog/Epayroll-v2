@@ -12,6 +12,7 @@ import {
 
 type RegisterBody = {
   registrationCode?: unknown
+  branchId?: unknown
   firstName?: unknown
   lastName?: unknown
   phone?: unknown
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
 
     const registration = await submitEmployeeRegistrationRequest({
       registrationCode: asTrimmedString(body.registrationCode, "registrationCode"),
+      branchId: asOptionalTrimmedString(body.branchId),
       firstName: asTrimmedString(body.firstName, "firstName"),
       lastName: asTrimmedString(body.lastName, "lastName"),
       phone: asOptionalTrimmedString(body.phone),

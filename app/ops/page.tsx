@@ -59,6 +59,15 @@ type LeafletStatic = {
   marker: (center: [number, number]) => LeafletMarkerInstance
 }
 
+type BranchItem = {
+  id: string
+  name: string
+  latitude: number | null
+  longitude: number | null
+  allowedRadiusMeters: number | null
+  employeeCount: number
+}
+
 declare global {
   interface Window {
     L?: LeafletStatic
@@ -142,6 +151,8 @@ function loadLeaflet() {
 export default function OpsPage() {
   const router = useRouter()
   const [summary, setSummary] = useState<OpsSummary | null>(null)
+  const [branches, setBranches] = useState<BranchItem[]>([])
+  const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -153,6 +164,12 @@ export default function OpsPage() {
     latitude: '',
     longitude: '',
     allowedRadiusMeters: '150',
+  })
+  const [branchForm, setBranchForm] = useState({
+    name: '',
+    latitude: '',
+    longitude: '',
+    allowedRadiusMeters: '',
   })
   const [mapStatus, setMapStatus] = useState('กำลังโหลดแผนที่...')
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
@@ -179,6 +196,27 @@ export default function OpsPage() {
     setLoading(false)
   }
 
+  const loadBranches = async () => {
+    const res = await fetch('/api/branches')
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'โหลดข้อมูลสาขาไม่สำเร็จ')
+    }
+
+    setBranches(data.items ?? [])
+  }
+
+  const resetBranchForm = () => {
+    setEditingBranchId(null)
+    setBranchForm({
+      name: '',
+      latitude: '',
+      longitude: '',
+      allowedRadiusMeters: '',
+    })
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -194,7 +232,7 @@ export default function OpsPage() {
           throw new Error('forbidden')
         }
 
-        return loadSummary()
+        return Promise.all([loadSummary(), loadBranches()])
       })
       .then(() => {
         if (!mounted) return
@@ -331,6 +369,56 @@ export default function OpsPage() {
 
       await loadSummary()
       setMessage('บันทึกการตั้งค่าร้านเรียบร้อยแล้ว')
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleEditBranch = (branch: BranchItem) => {
+    setEditingBranchId(branch.id)
+    setBranchForm({
+      name: branch.name,
+      latitude: branch.latitude?.toString() ?? '',
+      longitude: branch.longitude?.toString() ?? '',
+      allowedRadiusMeters: branch.allowedRadiusMeters?.toString() ?? '',
+    })
+    setMessage('')
+    setError('')
+  }
+
+  const handleSaveBranch = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const res = await fetch(
+        editingBranchId ? `/api/branches/${editingBranchId}` : '/api/branches',
+        {
+          method: editingBranchId ? 'PATCH' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: branchForm.name,
+            latitude: branchForm.latitude || null,
+            longitude: branchForm.longitude || null,
+            allowedRadiusMeters: branchForm.allowedRadiusMeters || null,
+          }),
+        },
+      )
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'บันทึกสาขาไม่สำเร็จ')
+      }
+
+      await loadBranches()
+      resetBranchForm()
+      setMessage(editingBranchId ? 'แก้ไขข้อมูลสาขาแล้ว' : 'เพิ่มสาขาใหม่แล้ว')
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'เกิดข้อผิดพลาด')
     } finally {
@@ -516,6 +604,138 @@ export default function OpsPage() {
                 </button>
               </div>
             </form>
+          </section>
+
+          <section className="panel">
+            <h2 className="panel-title">จัดการสาขาในร้านนี้</h2>
+            <p className="panel-subtitle">
+              ถ้าสาขามีพิกัดของตัวเอง ระบบจะใช้พิกัดสาขานั้นตรวจ GPS ตอนพนักงานเช็กอินก่อน
+            </p>
+
+            <form onSubmit={handleSaveBranch}>
+              <div className="form-grid" style={{ marginTop: 16 }}>
+                <div className="field">
+                  <label>ชื่อสาขา</label>
+                  <input
+                    value={branchForm.name}
+                    onChange={(event) =>
+                      setBranchForm((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="เช่น สาขาสยาม"
+                  />
+                </div>
+                <div className="field">
+                  <label>ละติจูดสาขา</label>
+                  <input
+                    inputMode="decimal"
+                    value={branchForm.latitude}
+                    onChange={(event) =>
+                      setBranchForm((current) => ({
+                        ...current,
+                        latitude: event.target.value,
+                      }))
+                    }
+                    placeholder="ไม่กรอก = ใช้พิกัดร้านหลัก"
+                  />
+                </div>
+                <div className="field">
+                  <label>ลองจิจูดสาขา</label>
+                  <input
+                    inputMode="decimal"
+                    value={branchForm.longitude}
+                    onChange={(event) =>
+                      setBranchForm((current) => ({
+                        ...current,
+                        longitude: event.target.value,
+                      }))
+                    }
+                    placeholder="ไม่กรอก = ใช้พิกัดร้านหลัก"
+                  />
+                </div>
+                <div className="field">
+                  <label>รัศมีเช็กอินของสาขา (เมตร)</label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="5000"
+                    value={branchForm.allowedRadiusMeters}
+                    onChange={(event) =>
+                      setBranchForm((current) => ({
+                        ...current,
+                        allowedRadiusMeters: event.target.value,
+                      }))
+                    }
+                    placeholder="ไม่กรอก = ใช้รัศมีร้านหลัก"
+                  />
+                </div>
+              </div>
+              <div className="action-row" style={{ marginTop: 16 }}>
+                <button className="btn btn-primary" type="submit" disabled={saving}>
+                  {editingBranchId
+                    ? saving
+                      ? 'กำลังบันทึก...'
+                      : 'บันทึกการแก้ไขสาขา'
+                    : saving
+                      ? 'กำลังเพิ่ม...'
+                      : 'เพิ่มสาขา'}
+                </button>
+                {editingBranchId ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={resetBranchForm}
+                  >
+                    ยกเลิกแก้ไขสาขา
+                  </button>
+                ) : null}
+              </div>
+            </form>
+
+            {branches.length === 0 ? (
+              <div className="empty-state">ยังไม่มีสาขา</div>
+            ) : (
+              <div className="mobile-card-list" style={{ marginTop: 16 }}>
+                {branches.map((branch) => (
+                  <article key={branch.id} className="record-card">
+                    <div className="record-card-head">
+                      <strong>{branch.name}</strong>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleEditBranch(branch)}
+                      >
+                        แก้ไขสาขา
+                      </button>
+                    </div>
+                    <div className="record-card-body">
+                      <div className="record-line">
+                        <span>พนักงานในสาขา</span>
+                        <strong>{branch.employeeCount} คน</strong>
+                      </div>
+                      <div className="record-line">
+                        <span>พิกัดสาขา</span>
+                        <strong>
+                          {branch.latitude !== null && branch.longitude !== null
+                            ? `${branch.latitude}, ${branch.longitude}`
+                            : 'ใช้พิกัดร้านหลัก'}
+                        </strong>
+                      </div>
+                      <div className="record-line">
+                        <span>รัศมีเช็กอิน</span>
+                        <strong>
+                          {branch.allowedRadiusMeters
+                            ? `${branch.allowedRadiusMeters} เมตร`
+                            : 'ใช้รัศมีร้านหลัก'}
+                        </strong>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="panel">

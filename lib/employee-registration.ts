@@ -7,6 +7,7 @@ import { createAuditLog } from "@/lib/audit"
 
 export async function submitEmployeeRegistrationRequest(params: {
   registrationCode: string
+  branchId: string | null
   firstName: string
   lastName: string
   phone: string | null
@@ -32,6 +33,22 @@ export async function submitEmployeeRegistrationRequest(params: {
 
   if (!tenant) {
     throw new AppError("รหัสร้านไม่ถูกต้อง", 404, "TENANT_NOT_FOUND")
+  }
+
+  if (params.branchId) {
+    const branch = await prisma.branch.findFirst({
+      where: {
+        id: params.branchId,
+        tenantId: tenant.id,
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (!branch) {
+      throw new AppError("ไม่พบสาขาที่เลือก", 404, "BRANCH_NOT_FOUND")
+    }
   }
 
   const code = await generateNextEmployeeCode(tenant.id)
@@ -90,6 +107,7 @@ export async function submitEmployeeRegistrationRequest(params: {
   const registration = await prisma.employeeRegistrationRequest.create({
     data: {
       tenantId: tenant.id,
+      branchId: params.branchId,
       code,
       firstName: params.firstName,
       lastName: params.lastName,
@@ -109,6 +127,12 @@ export async function submitEmployeeRegistrationRequest(params: {
       code: true,
       firstName: true,
       lastName: true,
+      branch: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       position: true,
       email: true,
       bankName: true,
@@ -147,6 +171,12 @@ export async function listEmployeeRegistrationRequests(tenantId: string) {
       code: true,
       firstName: true,
       lastName: true,
+      branch: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       phone: true,
       position: true,
       email: true,
@@ -281,6 +311,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
     const employee = await tx.employee.create({
       data: {
         tenantId: params.tenantId,
+        branchId: request.branchId,
         userId: user.id,
         code: request.code,
         firstName: request.firstName,
@@ -333,6 +364,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
           code: approved.code,
           email: approved.email,
           employeeId: employee.id,
+          branchId: request.branchId,
         },
       },
     })

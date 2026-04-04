@@ -3,10 +3,16 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+type PublicBranch = {
+  id: string
+  name: string
+}
+
 export default function EmployeeRegisterPage() {
   const router = useRouter()
   const [form, setForm] = useState({
     registrationCode: "",
+    branchId: "",
     firstName: "",
     lastName: "",
     phone: "",
@@ -22,7 +28,54 @@ export default function EmployeeRegisterPage() {
   })
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
+  const [tenantName, setTenantName] = useState("")
+  const [branches, setBranches] = useState<PublicBranch[]>([])
+  const [branchLoading, setBranchLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const loadBranches = async (registrationCode: string) => {
+    const normalizedCode = registrationCode.trim()
+
+    if (!normalizedCode) {
+      setTenantName("")
+      setBranches([])
+      setForm((current) => ({ ...current, branchId: "" }))
+      return
+    }
+
+    setBranchLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch(
+        `/api/public/branches?registrationCode=${encodeURIComponent(normalizedCode)}`,
+      )
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "โหลดสาขาไม่สำเร็จ")
+      }
+
+      setTenantName(data.tenantName ?? "")
+      setBranches(data.branches ?? [])
+      setForm((current) => ({
+        ...current,
+        branchId:
+          data.branches?.some((branch: PublicBranch) => branch.id === current.branchId)
+            ? current.branchId
+            : "",
+      }))
+    } catch (caughtError) {
+      setTenantName("")
+      setBranches([])
+      setForm((current) => ({ ...current, branchId: "" }))
+      setError(
+        caughtError instanceof Error ? caughtError.message : "โหลดสาขาไม่สำเร็จ",
+      )
+    } finally {
+      setBranchLoading(false)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -47,6 +100,7 @@ export default function EmployeeRegisterPage() {
       setMessage("ส่งคำขอลงทะเบียนแล้ว กรุณารอหัวหน้าอนุมัติ")
       setForm({
         registrationCode: "",
+        branchId: "",
         firstName: "",
         lastName: "",
         phone: "",
@@ -60,6 +114,8 @@ export default function EmployeeRegisterPage() {
         accountNumber: "",
         promptPayId: "",
       })
+      setTenantName("")
+      setBranches([])
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -89,8 +145,37 @@ export default function EmployeeRegisterPage() {
                 registrationCode: event.target.value,
               }))
             }
+            onBlur={(event) => loadBranches(event.target.value)}
             placeholder="เช่น DEMO-CAFE"
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="branchId">สาขาที่สมัคร</label>
+          <select
+            id="branchId"
+            value={form.branchId}
+            disabled={branchLoading || branches.length === 0}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, branchId: event.target.value }))
+            }
+          >
+            <option value="">
+              {branchLoading
+                ? "กำลังโหลดสาขา..."
+                : branches.length
+                  ? "เลือกสาขา"
+                  : "กรอกรหัสร้านก่อน แล้วเลือกสาขา"}
+            </option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+          {tenantName ? (
+            <div className="table-meta">ร้าน: {tenantName}</div>
+          ) : null}
         </div>
 
         <div className="message message-success">
