@@ -136,7 +136,7 @@ export default function PayrollPage() {
       setSummary(data.items ?? [])
       setStatusMessage(
         action === 'lock'
-          ? 'บันทึกและปิดงวดเงินเดือนเรียบร้อยแล้ว'
+          ? 'ยืนยันสรุปเงินเดือนเรียบร้อยแล้ว'
           : action === 'unlock'
             ? 'เปิดงวดเงินเดือนกลับมาแก้ไขได้แล้ว'
             : 'บันทึกสรุปเงินเดือนเรียบร้อยแล้ว',
@@ -261,7 +261,10 @@ export default function PayrollPage() {
         <div>
           <div className="badge-row">
             <div className="badge">ดูยอดรวมพนักงานทุกคนในหน้าเดียว</div>
-            <div className="badge">สถานะงวด: {periodInfo?.locked ? 'ปิดงวดแล้ว' : 'ยังแก้ไขได้'}</div>
+            <div className="badge">
+              สถานะงวด:{' '}
+              {periodInfo?.locked ? 'ยืนยันสรุปเงินเดือนแล้ว' : 'ยังแก้ไขได้'}
+            </div>
           </div>
           <h1 className="hero-title">สรุปเงินเดือน</h1>
           <p className="hero-subtitle">ดูยอดจ่ายสุทธิพร้อมข้อมูลบัญชีรับเงิน เหมาะกับการตรวจยอดและโอนเงินผ่านมือถือ</p>
@@ -287,7 +290,9 @@ export default function PayrollPage() {
             <div className="badge">วันจ่ายเงินเดือน: วันที่ {periodInfo.payday}</div>
             {periodInfo.locked &&
             Date.now() > new Date(periodInfo.periodEnd).getTime() ? (
-              <div className="badge">งวดนี้จบแล้ว ไม่เปิดให้แก้ย้อนหลัง</div>
+              <div className="badge">
+                งวดนี้ยืนยันสรุปเงินเดือนแล้ว ไม่เปิดให้แก้ย้อนหลัง
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -333,7 +338,7 @@ export default function PayrollPage() {
             onClick={() => persistPayroll('lock')}
             disabled={saving || Boolean(periodInfo?.locked)}
           >
-            {saving ? 'กำลังปิดงวด...' : 'บันทึกและปิดงวด'}
+            {saving ? 'กำลังยืนยัน...' : 'ยืนยันสรุปเงินเดือน'}
           </button>
           {canUnlockCurrentPeriod ? (
             <button
@@ -347,7 +352,8 @@ export default function PayrollPage() {
         </div>
         {periodInfo?.lockedAt ? (
           <div className="message message-success">
-            งวดนี้ถูกปิดเมื่อ {formatThaiDateTime24h(periodInfo.lockedAt)}
+            งวดนี้ยืนยันสรุปเงินเดือนเมื่อ{' '}
+            {formatThaiDateTime24h(periodInfo.lockedAt)}
           </div>
         ) : null}
         {csvReady ? <div className="message message-success">ดาวน์โหลดรายการโอนเรียบร้อยแล้ว</div> : null}

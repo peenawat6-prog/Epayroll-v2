@@ -564,7 +564,7 @@ export async function updatePayrollPaymentStatus(params: {
 
   if (period.status !== "LOCKED") {
     throw new AppError(
-      "กรุณาปิดงวดเงินเดือนก่อนอัปเดตสถานะการโอน",
+      "กรุณายืนยันสรุปเงินเดือนก่อนอัปเดตสถานะการโอน",
       409,
       "PAYROLL_PERIOD_NOT_LOCKED",
     )
