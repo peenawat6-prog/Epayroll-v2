@@ -69,7 +69,7 @@ export default function LoginPage() {
   return (
     <div className="login-shell">
       <form onSubmit={handleSubmit} className="panel login-card">
-        <div className="badge">Cafe SaaS</div>
+        <div className="badge">Epayroll.ltd</div>
         <h1>{t("เข้าสู่ระบบ", "Sign in")}</h1>
 
         <div className="field">
