@@ -497,6 +497,12 @@ export default function OpsPage() {
           >
             {t('คำขอแก้เวลา', 'Attendance corrections')}
           </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => window.open('/api/manual/user-manual', '_blank')}
+          >
+            {t('ดาวน์โหลดคู่มือ PDF', 'Download PDF manual')}
+          </button>
           <LogoutButton />
         </div>
       </section>
