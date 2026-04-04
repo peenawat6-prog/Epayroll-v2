@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
+import { useLanguage } from '@/lib/language'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -38,19 +39,6 @@ type StaffRequestItem = {
   lastWorkDate: string | null
 }
 
-const KIND_LABELS = {
-  LEAVE: 'ขอลางาน',
-  OVERTIME: 'ขออนุมัติ OT',
-  EARLY_CHECKOUT: 'ขอกลับก่อนเวลา',
-  RESIGNATION: 'ยื่นลาออก',
-} as const
-
-const STATUS_LABELS = {
-  PENDING: 'รอตรวจ',
-  APPROVED: 'อนุมัติแล้ว',
-  REJECTED: 'ไม่อนุมัติ',
-} as const
-
 function formatDate(value: string | null) {
   return formatThaiDate(value)
 }
@@ -59,24 +47,25 @@ function formatDateTime(value: string | null) {
   return formatThaiDateTime24h(value)
 }
 
-function getDetailText(item: StaffRequestItem) {
+function getDetailText(item: StaffRequestItem, t: (th: string, en: string) => string) {
   if (item.kind === 'LEAVE') {
-    return `ลา ${formatDate(item.startDate)} ถึง ${formatDate(item.endDate)}`
+    return `${t('ลา', 'Leave from')} ${formatDate(item.startDate)} ${t('ถึง', 'to')} ${formatDate(item.endDate)}`
   }
 
   if (item.kind === 'OVERTIME') {
-    return `วันที่ ${formatDate(item.workDate)} / ${((item.overtimeMinutes ?? 0) / 60).toFixed(2)} ชม.`
+    return `${t('วันที่', 'Date')} ${formatDate(item.workDate)} / ${((item.overtimeMinutes ?? 0) / 60).toFixed(2)} ${t('ชม.', 'hrs')}`
   }
 
   if (item.kind === 'EARLY_CHECKOUT') {
-    return `ขอกลับก่อนเวลา วันที่ ${formatDate(item.workDate)}`
+    return `${t('ขอกลับก่อนเวลา วันที่', 'Leave early on')} ${formatDate(item.workDate)}`
   }
 
-  return `ทำงานวันสุดท้าย ${formatDate(item.lastWorkDate)}`
+  return `${t('ทำงานวันสุดท้าย', 'Last work date')} ${formatDate(item.lastWorkDate)}`
 }
 
 export default function StaffRequestsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [requests, setRequests] = useState<StaffRequestItem[]>([])
@@ -110,13 +99,25 @@ export default function StaffRequestsPage() {
 
   const canReview =
     user?.role === 'OWNER' || user?.role === 'ADMIN' || user?.role === 'HR'
+  const kindLabels = {
+    LEAVE: t('ขอลางาน', 'Leave request'),
+    OVERTIME: t('ขออนุมัติ OT', 'OT request'),
+    EARLY_CHECKOUT: t('ขอกลับก่อนเวลา', 'Early checkout request'),
+    RESIGNATION: t('ยื่นลาออก', 'Resignation request'),
+  } as const
+
+  const statusLabels = {
+    PENDING: t('รอตรวจ', 'Pending'),
+    APPROVED: t('อนุมัติแล้ว', 'Approved'),
+    REJECTED: t('ไม่อนุมัติ', 'Rejected'),
+  } as const
 
   const loadRequests = async () => {
     const res = await fetch('/api/staff-requests')
     const data = await res.json()
 
     if (!res.ok) {
-      throw new Error(data.error || 'โหลดคำขอไม่สำเร็จ')
+      throw new Error(data.error || t('โหลดคำขอไม่สำเร็จ', 'Failed to load requests'))
     }
 
     setRequests(data)
@@ -134,12 +135,16 @@ export default function StaffRequestsPage() {
       }),
       fetch('/api/employees').then(async (res) => {
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'โหลดรายชื่อพนักงานไม่สำเร็จ')
+        if (!res.ok) {
+          throw new Error(
+            data.error || t('โหลดรายชื่อพนักงานไม่สำเร็จ', 'Failed to load employees'),
+          )
+        }
         return data
       }),
       fetch('/api/staff-requests').then(async (res) => {
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'โหลดคำขอไม่สำเร็จ')
+        if (!res.ok) throw new Error(data.error || t('โหลดคำขอไม่สำเร็จ', 'Failed to load requests'))
         return data
       }),
     ])
@@ -189,14 +194,16 @@ export default function StaffRequestsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'ส่งคำขอไม่สำเร็จ')
+        throw new Error(data.error || t('ส่งคำขอไม่สำเร็จ', 'Failed to submit request'))
       }
 
       onDone()
       await loadRequests()
       setMessage(successText)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'ส่งคำขอไม่สำเร็จ')
+      setErrorMessage(
+        error instanceof Error ? error.message : t('ส่งคำขอไม่สำเร็จ', 'Failed to submit request'),
+      )
     } finally {
       setSaving(false)
     }
@@ -226,13 +233,19 @@ export default function StaffRequestsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'ตรวจคำขอไม่สำเร็จ')
+        throw new Error(data.error || t('ตรวจคำขอไม่สำเร็จ', 'Failed to review request'))
       }
 
       await loadRequests()
-      setMessage(status === 'APPROVED' ? 'อนุมัติคำขอเรียบร้อยแล้ว' : 'บันทึกการไม่อนุมัติเรียบร้อยแล้ว')
+      setMessage(
+        status === 'APPROVED'
+          ? t('อนุมัติคำขอเรียบร้อยแล้ว', 'Request approved')
+          : t('บันทึกการไม่อนุมัติเรียบร้อยแล้ว', 'Request rejection saved'),
+      )
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'ตรวจคำขอไม่สำเร็จ')
+      setErrorMessage(
+        error instanceof Error ? error.message : t('ตรวจคำขอไม่สำเร็จ', 'Failed to review request'),
+      )
     } finally {
       setSaving(false)
     }
@@ -247,25 +260,32 @@ export default function StaffRequestsPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">เมนูคำขอพนักงาน</div>
-            <div className="badge">สิทธิ์: {user?.role}</div>
+            <div className="badge">{t('เมนูคำขอพนักงาน', 'Staff request menu')}</div>
+            <div className="badge">{t('สิทธิ์', 'Role')}: {user?.role}</div>
             {requests.filter((item) => item.status === 'PENDING').length ? (
               <div className="badge">
-                รอตรวจ {requests.filter((item) => item.status === 'PENDING').length} คำขอ
+                {t('รอตรวจ', 'Pending')}{' '}
+                {requests.filter((item) => item.status === 'PENDING').length}{' '}
+                {t('คำขอ', 'requests')}
               </div>
             ) : null}
           </div>
-          <h1 className="hero-title">ขอลางาน / ขอ OT / ยื่นลาออก</h1>
+          <h1 className="hero-title">
+            {t('ขอลางาน / ขอ OT / ยื่นลาออก', 'Leave / OT / resignation requests')}
+          </h1>
           <p className="hero-subtitle">
-            ส่งคำขอล่วงหน้า และให้หัวหน้าตรวจอนุมัติได้จากหน้าเดียว รวมถึงการขอกลับก่อนเวลา
+            {t(
+              'ส่งคำขอล่วงหน้า และให้หัวหน้าตรวจอนุมัติได้จากหน้าเดียว รวมถึงการขอกลับก่อนเวลา',
+              'Submit advance requests and let managers approve in one place, including early checkout.',
+            )}
           </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
-            กลับหน้าแรก
+            {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
           <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
-            กลับหน้าลงเวลา
+            {t('กลับหน้าลงเวลา', 'Back to attendance')}
           </button>
           <LogoutButton />
         </div>
@@ -278,17 +298,17 @@ export default function StaffRequestsPage() {
 
       <section className="grid stats">
         <article className="panel">
-          <h2 className="panel-title">ขอลางาน</h2>
+          <h2 className="panel-title">{t('ขอลางาน', 'Leave request')}</h2>
           <div className="form-grid" style={{ marginTop: 16 }}>
             <div className="field">
-              <label>พนักงาน</label>
+              <label>{t('พนักงาน', 'Employee')}</label>
               <select
                 value={leaveForm.employeeId}
                 onChange={(e) =>
                   setLeaveForm({ ...leaveForm, employeeId: e.target.value })
                 }
               >
-                <option value="">เลือกพนักงาน</option>
+                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
                 {employees.filter((item) => item.active).map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.code} - {item.firstName} {item.lastName}
@@ -297,7 +317,7 @@ export default function StaffRequestsPage() {
               </select>
             </div>
             <div className="field">
-              <label>วันที่เริ่มลา</label>
+              <label>{t('วันที่เริ่มลา', 'Leave start date')}</label>
               <input
                 type="date"
                 value={leaveForm.startDate}
@@ -307,7 +327,7 @@ export default function StaffRequestsPage() {
               />
             </div>
             <div className="field">
-              <label>วันที่สิ้นสุด</label>
+              <label>{t('วันที่สิ้นสุด', 'Leave end date')}</label>
               <input
                 type="date"
                 value={leaveForm.endDate}
@@ -318,7 +338,7 @@ export default function StaffRequestsPage() {
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>
-            <label>เหตุผลการลา</label>
+            <label>{t('เหตุผลการลา', 'Leave reason')}</label>
             <textarea
               rows={3}
               value={leaveForm.reason}
@@ -341,27 +361,27 @@ export default function StaffRequestsPage() {
                       endDate: '',
                       reason: '',
                     }),
-                  'ส่งคำขอลางานเรียบร้อยแล้ว',
+                  t('ส่งคำขอลางานเรียบร้อยแล้ว', 'Leave request submitted'),
                 )
               }
             >
-              ส่งคำขอลางาน
+              {t('ส่งคำขอลางาน', 'Submit leave request')}
             </button>
           </div>
         </article>
 
         <article className="panel">
-          <h2 className="panel-title">ขออนุมัติ OT</h2>
+          <h2 className="panel-title">{t('ขออนุมัติ OT', 'OT request')}</h2>
           <div className="form-grid" style={{ marginTop: 16 }}>
             <div className="field">
-              <label>พนักงาน</label>
+              <label>{t('พนักงาน', 'Employee')}</label>
               <select
                 value={overtimeForm.employeeId}
                 onChange={(e) =>
                   setOvertimeForm({ ...overtimeForm, employeeId: e.target.value })
                 }
               >
-                <option value="">เลือกพนักงาน</option>
+                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
                 {employees.filter((item) => item.active).map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.code} - {item.firstName} {item.lastName}
@@ -370,7 +390,7 @@ export default function StaffRequestsPage() {
               </select>
             </div>
             <div className="field">
-              <label>วันที่ทำ OT</label>
+              <label>{t('วันที่ทำ OT', 'OT date')}</label>
               <input
                 type="date"
                 value={overtimeForm.workDate}
@@ -380,7 +400,7 @@ export default function StaffRequestsPage() {
               />
             </div>
             <div className="field">
-              <label>จำนวนชั่วโมง</label>
+              <label>{t('จำนวนชั่วโมง', 'Hours')}</label>
               <input
                 type="number"
                 min="0"
@@ -396,7 +416,7 @@ export default function StaffRequestsPage() {
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>
-            <label>เหตุผลขอ OT</label>
+            <label>{t('เหตุผลขอ OT', 'OT reason')}</label>
             <textarea
               rows={3}
               value={overtimeForm.reason}
@@ -419,20 +439,20 @@ export default function StaffRequestsPage() {
                       overtimeHours: '',
                       reason: '',
                     }),
-                  'ส่งคำขอ OT เรียบร้อยแล้ว',
+                  t('ส่งคำขอ OT เรียบร้อยแล้ว', 'OT request submitted'),
                 )
               }
             >
-              ส่งคำขอ OT
+              {t('ส่งคำขอ OT', 'Submit OT request')}
             </button>
           </div>
         </article>
 
         <article className="panel">
-          <h2 className="panel-title">ยื่นลาออก</h2>
+          <h2 className="panel-title">{t('ยื่นลาออก', 'Resignation request')}</h2>
           <div className="form-grid" style={{ marginTop: 16 }}>
             <div className="field">
-              <label>พนักงาน</label>
+              <label>{t('พนักงาน', 'Employee')}</label>
               <select
                 value={resignationForm.employeeId}
                 onChange={(e) =>
@@ -442,7 +462,7 @@ export default function StaffRequestsPage() {
                   })
                 }
               >
-                <option value="">เลือกพนักงาน</option>
+                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
                 {employees.filter((item) => item.active).map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.code} - {item.firstName} {item.lastName}
@@ -451,7 +471,7 @@ export default function StaffRequestsPage() {
               </select>
             </div>
             <div className="field">
-              <label>วันทำงานวันสุดท้าย</label>
+              <label>{t('วันทำงานวันสุดท้าย', 'Last work date')}</label>
               <input
                 type="date"
                 value={resignationForm.lastWorkDate}
@@ -465,7 +485,7 @@ export default function StaffRequestsPage() {
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>
-            <label>เหตุผลลาออก</label>
+            <label>{t('เหตุผลลาออก', 'Resignation reason')}</label>
             <textarea
               rows={3}
               value={resignationForm.reason}
@@ -487,20 +507,20 @@ export default function StaffRequestsPage() {
                       lastWorkDate: '',
                       reason: '',
                     }),
-                  'ส่งคำขอลาออกเรียบร้อยแล้ว',
+                  t('ส่งคำขอลาออกเรียบร้อยแล้ว', 'Resignation request submitted'),
                 )
               }
             >
-              ส่งคำขอลาออก
+              {t('ส่งคำขอลาออก', 'Submit resignation')}
             </button>
           </div>
         </article>
 
         <article className="panel">
-          <h2 className="panel-title">ขอกลับก่อนเวลา</h2>
+          <h2 className="panel-title">{t('ขอกลับก่อนเวลา', 'Early checkout request')}</h2>
           <div className="form-grid" style={{ marginTop: 16 }}>
             <div className="field">
-              <label>พนักงาน</label>
+              <label>{t('พนักงาน', 'Employee')}</label>
               <select
                 value={earlyCheckoutForm.employeeId}
                 onChange={(e) =>
@@ -510,7 +530,7 @@ export default function StaffRequestsPage() {
                   })
                 }
               >
-                <option value="">เลือกพนักงาน</option>
+                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
                 {employees.filter((item) => item.active).map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.code} - {item.firstName} {item.lastName}
@@ -519,7 +539,7 @@ export default function StaffRequestsPage() {
               </select>
             </div>
             <div className="field">
-              <label>วันที่ต้องการกลับก่อน</label>
+              <label>{t('วันที่ต้องการกลับก่อน', 'Early checkout date')}</label>
               <input
                 type="date"
                 value={earlyCheckoutForm.workDate}
@@ -533,7 +553,7 @@ export default function StaffRequestsPage() {
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>
-            <label>เหตุผลกลับก่อนเวลา</label>
+            <label>{t('เหตุผลกลับก่อนเวลา', 'Reason')}</label>
             <textarea
               rows={3}
               value={earlyCheckoutForm.reason}
@@ -558,20 +578,20 @@ export default function StaffRequestsPage() {
                       workDate: '',
                       reason: '',
                     }),
-                  'ส่งคำขอกลับก่อนเวลาเรียบร้อยแล้ว',
+                  t('ส่งคำขอกลับก่อนเวลาเรียบร้อยแล้ว', 'Early checkout request submitted'),
                 )
               }
             >
-              ส่งคำขอกลับก่อนเวลา
+              {t('ส่งคำขอกลับก่อนเวลา', 'Submit early checkout')}
             </button>
           </div>
         </article>
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">รายการคำขอล่าสุด</h2>
+        <h2 className="panel-title">{t('รายการคำขอล่าสุด', 'Latest requests')}</h2>
         {requests.length === 0 ? (
-          <div className="empty-state">ยังไม่มีคำขอพนักงาน</div>
+          <div className="empty-state">{t('ยังไม่มีคำขอพนักงาน', 'No requests yet')}</div>
         ) : (
           <div style={{ marginTop: 16 }}>
             {requests.map((item) => (
@@ -592,29 +612,29 @@ export default function StaffRequestsPage() {
                           : 'warning'
                     }`}
                   >
-                    {STATUS_LABELS[item.status]}
+                    {statusLabels[item.status]}
                   </span>
                 </div>
 
                 <div className="record-card-body">
                   <div className="record-line">
-                    <span>ประเภทคำขอ</span>
-                    <strong>{KIND_LABELS[item.kind]}</strong>
+                    <span>{t('ประเภทคำขอ', 'Request type')}</span>
+                    <strong>{kindLabels[item.kind]}</strong>
                   </div>
                   <div className="record-line">
-                    <span>รายละเอียด</span>
-                    <strong>{getDetailText(item)}</strong>
+                    <span>{t('รายละเอียด', 'Details')}</span>
+                    <strong>{getDetailText(item, t)}</strong>
                   </div>
                   <div className="record-line">
-                    <span>วันที่ส่ง</span>
+                    <span>{t('วันที่ส่ง', 'Submitted at')}</span>
                     <strong>{formatDateTime(item.createdAt)}</strong>
                   </div>
                   <div className="record-line">
-                    <span>เหตุผล</span>
+                    <span>{t('เหตุผล', 'Reason')}</span>
                     <strong>{item.reason || '-'}</strong>
                   </div>
                   <div className="record-line">
-                    <span>หมายเหตุผู้ตรวจ</span>
+                    <span>{t('หมายเหตุผู้ตรวจ', 'Reviewer note')}</span>
                     <strong>{item.reviewNote || '-'}</strong>
                   </div>
                 </div>
@@ -622,7 +642,7 @@ export default function StaffRequestsPage() {
                 {canReview && item.status === 'PENDING' ? (
                   <div style={{ marginTop: 14 }}>
                     <div className="field">
-                      <label>หมายเหตุผู้ตรวจ</label>
+                      <label>{t('หมายเหตุผู้ตรวจ', 'Reviewer note')}</label>
                       <textarea
                         rows={2}
                         value={reviewNotes[item.id] ?? ''}
@@ -640,14 +660,14 @@ export default function StaffRequestsPage() {
                         disabled={saving}
                         onClick={() => reviewRequest(item.id, item.kind, 'APPROVED')}
                       >
-                        อนุมัติ
+                        {t('อนุมัติ', 'Approve')}
                       </button>
                       <button
                         className="btn btn-danger"
                         disabled={saving}
                         onClick={() => reviewRequest(item.id, item.kind, 'REJECTED')}
                       >
-                        ไม่อนุมัติ
+                        {t('ไม่อนุมัติ', 'Reject')}
                       </button>
                     </div>
                   </div>

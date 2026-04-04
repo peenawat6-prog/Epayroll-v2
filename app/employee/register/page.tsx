@@ -2,12 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-
-const WORK_SHIFT_LABELS = {
-  MORNING: "กะเช้า",
-  AFTERNOON: "กะบ่าย",
-  NIGHT: "กะดึก",
-} as const
+import { useLanguage } from "@/lib/language"
 
 type PublicBranch = {
   id: string
@@ -23,6 +18,7 @@ type ShopOption = {
 
 export default function EmployeeRegisterPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [form, setForm] = useState({
     shopName: "",
     registrationCode: "",
@@ -49,6 +45,11 @@ export default function EmployeeRegisterPage() {
   const [branches, setBranches] = useState<PublicBranch[]>([])
   const [loading, setLoading] = useState(false)
   const shopLookupRef = useRef<HTMLDivElement | null>(null)
+  const workShiftLabels = {
+    MORNING: t("กะเช้า", "Morning shift"),
+    AFTERNOON: t("กะบ่าย", "Afternoon shift"),
+    NIGHT: t("กะดึก", "Night shift"),
+  } as const
 
   useEffect(() => {
     const normalizedName = form.shopName.trim()
@@ -75,7 +76,7 @@ export default function EmployeeRegisterPage() {
         const data = await res.json()
 
         if (!res.ok) {
-          throw new Error(data.error || "ค้นหาร้านไม่สำเร็จ")
+          throw new Error(data.error || t("ค้นหาร้านไม่สำเร็จ", "Shop search failed"))
         }
 
         setShopOptions(data.items ?? [])
@@ -135,10 +136,15 @@ export default function EmployeeRegisterPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "ส่งคำขอลงทะเบียนไม่สำเร็จ")
+        throw new Error(data.error || t("ส่งคำขอลงทะเบียนไม่สำเร็จ", "Registration request failed"))
       }
 
-      setMessage("ส่งคำขอลงทะเบียนแล้ว กรุณารอหัวหน้าอนุมัติ")
+      setMessage(
+        t(
+          "ส่งคำขอลงทะเบียนแล้ว กรุณารอหัวหน้าอนุมัติ",
+          "Registration request sent. Please wait for approval.",
+        ),
+      )
       setForm({
         shopName: "",
         registrationCode: "",
@@ -164,7 +170,7 @@ export default function EmployeeRegisterPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "ส่งคำขอลงทะเบียนไม่สำเร็จ",
+          : t("ส่งคำขอลงทะเบียนไม่สำเร็จ", "Registration request failed"),
       )
     } finally {
       setLoading(false)
@@ -174,12 +180,17 @@ export default function EmployeeRegisterPage() {
   return (
     <div className="login-shell">
       <form onSubmit={handleSubmit} className="panel login-card">
-        <div className="badge">สมัครบัญชีพนักงาน</div>
-        <h1>ลงทะเบียนพนักงาน</h1>
-        <p>กรอกข้อมูลและรอหัวหน้าอนุมัติ ก่อนเข้าใช้งานระบบพนักงาน</p>
+        <div className="badge">{t("สมัครบัญชีพนักงาน", "Employee account signup")}</div>
+        <h1>{t("ลงทะเบียนพนักงาน", "Employee registration")}</h1>
+        <p>
+          {t(
+            "กรอกข้อมูลและรอหัวหน้าอนุมัติ ก่อนเข้าใช้งานระบบพนักงาน",
+            "Fill in your details and wait for approval before logging in.",
+          )}
+        </p>
 
         <div className="field shop-lookup-field" ref={shopLookupRef}>
-          <label htmlFor="shopName">ชื่อร้าน</label>
+          <label htmlFor="shopName">{t("ชื่อร้าน", "Shop name")}</label>
           <input
             id="shopName"
             value={form.shopName}
@@ -195,13 +206,13 @@ export default function EmployeeRegisterPage() {
               }))
             }
             autoComplete="off"
-            placeholder="พิมพ์ชื่อร้านเพื่อค้นหา"
+            placeholder={t("พิมพ์ชื่อร้านเพื่อค้นหา", "Type shop name to search")}
           />
           {showShopOptions ? (
             <div className="shop-lookup-list">
               {shopSearchLoading ? (
                 <button type="button" className="shop-lookup-option" disabled>
-                  กำลังค้นหาร้าน...
+                  {t("กำลังค้นหาร้าน...", "Searching shops...")}
                 </button>
               ) : shopOptions.length ? (
                 shopOptions.map((shop) => (
@@ -217,18 +228,20 @@ export default function EmployeeRegisterPage() {
                 ))
               ) : (
                 <button type="button" className="shop-lookup-option" disabled>
-                  ไม่พบชื่อร้านนี้
+                  {t("ไม่พบชื่อร้านนี้", "No matching shop found")}
                 </button>
               )}
             </div>
           ) : null}
           {form.registrationCode ? (
-            <div className="table-meta">เลือกแล้ว: {form.shopName}</div>
+            <div className="table-meta">
+              {t("เลือกแล้ว", "Selected")}: {form.shopName}
+            </div>
           ) : null}
         </div>
 
         <div className="field">
-          <label htmlFor="branchId">สาขาที่สมัคร</label>
+          <label htmlFor="branchId">{t("สาขาที่สมัคร", "Branch")}</label>
           <select
             id="branchId"
             value={form.branchId}
@@ -239,8 +252,11 @@ export default function EmployeeRegisterPage() {
           >
             <option value="">
               {branches.length
-                  ? "เลือกสาขา"
-                  : "เลือกชื่อร้านก่อน แล้วเลือกสาขา"}
+                ? t("เลือกสาขา", "Select branch")
+                : t(
+                    "เลือกชื่อร้านก่อน แล้วเลือกสาขา",
+                    "Select a shop first, then choose a branch",
+                  )}
             </option>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -251,12 +267,15 @@ export default function EmployeeRegisterPage() {
         </div>
 
         <div className="message message-success">
-          ระบบจะออกรหัสพนักงานให้อัตโนมัติหลังส่งคำขอลงทะเบียน
+          {t(
+            "ระบบจะออกรหัสพนักงานให้อัตโนมัติหลังส่งคำขอลงทะเบียน",
+            "Employee code will be generated automatically after submission.",
+          )}
         </div>
 
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="firstName">ชื่อจริง</label>
+            <label htmlFor="firstName">{t("ชื่อจริง", "First name")}</label>
             <input
               id="firstName"
               value={form.firstName}
@@ -269,7 +288,7 @@ export default function EmployeeRegisterPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="lastName">นามสกุล</label>
+            <label htmlFor="lastName">{t("นามสกุล", "Last name")}</label>
             <input
               id="lastName"
               value={form.lastName}
@@ -284,7 +303,7 @@ export default function EmployeeRegisterPage() {
         </div>
 
         <div className="field">
-          <label htmlFor="phone">เบอร์โทร</label>
+          <label htmlFor="phone">{t("เบอร์โทร", "Phone")}</label>
           <input
             id="phone"
             value={form.phone}
@@ -295,7 +314,7 @@ export default function EmployeeRegisterPage() {
         </div>
 
         <div className="field">
-          <label htmlFor="position">ตำแหน่งงาน</label>
+          <label htmlFor="position">{t("ตำแหน่งงาน", "Position")}</label>
           <input
             id="position"
             value={form.position}
@@ -305,13 +324,13 @@ export default function EmployeeRegisterPage() {
                 position: event.target.value,
               }))
             }
-            placeholder="เช่น Barista"
+            placeholder={t("เช่น Barista", "e.g. Barista")}
           />
         </div>
 
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="employeeType">ประเภทพนักงาน</label>
+            <label htmlFor="employeeType">{t("ประเภทพนักงาน", "Employee type")}</label>
             <select
               id="employeeType"
               value={form.employeeType}
@@ -327,7 +346,7 @@ export default function EmployeeRegisterPage() {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="payType">รูปแบบจ่ายเงิน</label>
+            <label htmlFor="payType">{t("รูปแบบจ่ายเงิน", "Pay type")}</label>
             <select
               id="payType"
               value={form.payType}
@@ -338,15 +357,15 @@ export default function EmployeeRegisterPage() {
                 }))
               }
             >
-              <option value="MONTHLY">รายเดือน</option>
-              <option value="DAILY">รายวัน</option>
-              <option value="HOURLY">รายชั่วโมง</option>
+              <option value="MONTHLY">{t("รายเดือน", "Monthly")}</option>
+              <option value="DAILY">{t("รายวัน", "Daily")}</option>
+              <option value="HOURLY">{t("รายชั่วโมง", "Hourly")}</option>
             </select>
           </div>
         </div>
 
         <div className="field">
-          <label htmlFor="workShift">กะการทำงานประจำ</label>
+          <label htmlFor="workShift">{t("กะการทำงานประจำ", "Regular shift")}</label>
           <select
             id="workShift"
             value={form.workShift}
@@ -357,14 +376,14 @@ export default function EmployeeRegisterPage() {
               }))
             }
           >
-            <option value="MORNING">{WORK_SHIFT_LABELS.MORNING}</option>
-            <option value="AFTERNOON">{WORK_SHIFT_LABELS.AFTERNOON}</option>
-            <option value="NIGHT">{WORK_SHIFT_LABELS.NIGHT}</option>
+            <option value="MORNING">{workShiftLabels.MORNING}</option>
+            <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
+            <option value="NIGHT">{workShiftLabels.NIGHT}</option>
           </select>
         </div>
 
         <div className="field">
-          <label htmlFor="email">อีเมลสำหรับล็อกอิน</label>
+          <label htmlFor="email">{t("อีเมลสำหรับล็อกอิน", "Login email")}</label>
           <input
             id="email"
             type="email"
@@ -372,12 +391,12 @@ export default function EmployeeRegisterPage() {
             onChange={(event) =>
               setForm((current) => ({ ...current, email: event.target.value }))
             }
-            placeholder="employee@example.com"
+            placeholder={t("employee@example.com", "employee@example.com")}
           />
         </div>
 
         <div className="field">
-          <label htmlFor="password">ตั้งรหัสผ่าน</label>
+          <label htmlFor="password">{t("ตั้งรหัสผ่าน", "Password")}</label>
           <input
             id="password"
             type="password"
@@ -388,13 +407,13 @@ export default function EmployeeRegisterPage() {
                 password: event.target.value,
               }))
             }
-            placeholder="อย่างน้อย 6 ตัวอักษร"
+            placeholder={t("อย่างน้อย 6 ตัวอักษร", "At least 6 characters")}
           />
         </div>
 
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="bankName">ธนาคารที่รับเงิน</label>
+            <label htmlFor="bankName">{t("ธนาคารที่รับเงิน", "Bank")}</label>
             <input
               id="bankName"
               value={form.bankName}
@@ -404,11 +423,11 @@ export default function EmployeeRegisterPage() {
                   bankName: event.target.value,
                 }))
               }
-              placeholder="เช่น SCB, KBank, Krungthai"
+              placeholder={t("เช่น SCB, KBank, Krungthai", "e.g. SCB, KBank, Krungthai")}
             />
           </div>
           <div className="field">
-            <label htmlFor="accountName">ชื่อบัญชีรับเงิน</label>
+            <label htmlFor="accountName">{t("ชื่อบัญชีรับเงิน", "Account name")}</label>
             <input
               id="accountName"
               value={form.accountName}
@@ -418,14 +437,14 @@ export default function EmployeeRegisterPage() {
                   accountName: event.target.value,
                 }))
               }
-              placeholder="ชื่อตามสมุดบัญชี"
+              placeholder={t("ชื่อตามสมุดบัญชี", "Account holder name")}
             />
           </div>
         </div>
 
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="accountNumber">เลขบัญชีธนาคาร</label>
+            <label htmlFor="accountNumber">{t("เลขบัญชีธนาคาร", "Account number")}</label>
             <input
               id="accountNumber"
               value={form.accountNumber}
@@ -435,11 +454,11 @@ export default function EmployeeRegisterPage() {
                   accountNumber: event.target.value,
                 }))
               }
-              placeholder="กรอกเลขบัญชี"
+              placeholder={t("กรอกเลขบัญชี", "Enter account number")}
             />
           </div>
           <div className="field">
-            <label htmlFor="promptPayId">พร้อมเพย์</label>
+            <label htmlFor="promptPayId">{t("พร้อมเพย์", "PromptPay")}</label>
             <input
               id="promptPayId"
               value={form.promptPayId}
@@ -449,7 +468,7 @@ export default function EmployeeRegisterPage() {
                   promptPayId: event.target.value,
                 }))
               }
-              placeholder="เบอร์โทรหรือเลขบัตร"
+              placeholder={t("เบอร์โทรหรือเลขบัตร", "Phone number or ID number")}
             />
           </div>
         </div>
@@ -459,14 +478,16 @@ export default function EmployeeRegisterPage() {
 
         <div className="action-row">
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "กำลังส่ง..." : "ส่งคำขอลงทะเบียน"}
+            {loading
+              ? t("กำลังส่ง...", "Sending...")
+              : t("ส่งคำขอลงทะเบียน", "Submit registration")}
           </button>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => router.push("/login")}
           >
-            กลับหน้าเข้าสู่ระบบ
+            {t("กลับหน้าเข้าสู่ระบบ", "Back to login")}
           </button>
         </div>
       </form>

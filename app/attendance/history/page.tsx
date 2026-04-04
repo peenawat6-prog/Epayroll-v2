@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDate, formatThaiTime24h } from '@/lib/display-time'
+import { useLanguage } from '@/lib/language'
 
 type AttendanceRecord = {
   id: string
@@ -23,18 +24,22 @@ type AttendanceRecord = {
 function CheckInPhotoThumb({
   photoUrl,
   alt,
+  missingLabel,
+  openTitle,
 }: {
   photoUrl: string | null
   alt: string
+  missingLabel: string
+  openTitle: string
 }) {
   const [broken, setBroken] = useState(false)
 
   if (!photoUrl || broken) {
-    return <span className="table-meta">ไม่มีรูป / ไฟล์หาย</span>
+    return <span className="table-meta">{missingLabel}</span>
   }
 
   return (
-    <a href={photoUrl} target="_blank" rel="noreferrer" title="เปิดรูปเข้างาน">
+    <a href={photoUrl} target="_blank" rel="noreferrer" title={openTitle}>
       <img
         src={photoUrl}
         alt={alt}
@@ -47,6 +52,7 @@ function CheckInPhotoThumb({
 
 export default function AttendanceHistoryPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -80,24 +86,29 @@ export default function AttendanceHistoryPage() {
     <div className="page">
       <section className="hero">
         <div>
-          <div className="badge-row">
-            <div className="badge">ย้อนหลังล่าสุด 90 รายการ</div>
+            <div className="badge-row">
+            <div className="badge">{t('ย้อนหลังล่าสุด 90 รายการ', 'Latest 90 records')}</div>
           </div>
-          <h1 className="hero-title">ประวัติการลงเวลา</h1>
-          <p className="hero-subtitle">สำหรับเจ้าของร้าน ฝ่ายบุคคล และการตรวจสอบย้อนหลัง</p>
+          <h1 className="hero-title">{t('ประวัติการลงเวลา', 'Attendance history')}</h1>
+          <p className="hero-subtitle">
+            {t(
+              'สำหรับเจ้าของร้าน ฝ่ายบุคคล และการตรวจสอบย้อนหลัง',
+              'For owners, HR, and historical checks.',
+            )}
+          </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
-            กลับ Dashboard
+            {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
           <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
-            กลับหน้าลงเวลา
+            {t('กลับหน้าลงเวลา', 'Back to attendance')}
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => router.push('/attendance/corrections')}
           >
-            ขอแก้ไขเวลา
+            {t('ขอแก้ไขเวลา', 'Request time correction')}
           </button>
           <LogoutButton />
         </div>
@@ -105,19 +116,19 @@ export default function AttendanceHistoryPage() {
 
       <section className="panel">
         {records.length === 0 ? (
-          <div className="empty-state">ไม่มีบันทึกการลงเวลา</div>
+          <div className="empty-state">{t('ไม่มีบันทึกการลงเวลา', 'No attendance records')}</div>
         ) : (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>รหัสพนักงาน</th>
-                  <th>ชื่อพนักงาน</th>
-                  <th>วันที่</th>
-                  <th>รูปเข้างาน</th>
-                  <th>เวลาเข้า</th>
-                  <th>เวลาออก</th>
-                  <th>สถานะ</th>
+                  <th>{t('รหัสพนักงาน', 'Employee code')}</th>
+                  <th>{t('ชื่อพนักงาน', 'Employee name')}</th>
+                  <th>{t('วันที่', 'Date')}</th>
+                  <th>{t('รูปเข้างาน', 'Check-in photo')}</th>
+                  <th>{t('เวลาเข้า', 'Check-in')}</th>
+                  <th>{t('เวลาออก', 'Check-out')}</th>
+                  <th>{t('สถานะ', 'Status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,7 +140,9 @@ export default function AttendanceHistoryPage() {
                     <td>
                       <CheckInPhotoThumb
                         photoUrl={r.checkInPhotoUrl}
-                        alt={`รูปเข้างานของ ${r.employee.firstName} ${r.employee.lastName}`}
+                        alt={`${t('รูปเข้างานของ', 'Check-in photo of')} ${r.employee.firstName} ${r.employee.lastName}`}
+                        missingLabel={t('ไม่มีรูป / ไฟล์หาย', 'No photo / missing file')}
+                        openTitle={t('เปิดรูปเข้างาน', 'Open check-in photo')}
                       />
                     </td>
                     <td>{formatThaiTime24h(r.checkIn)}</td>

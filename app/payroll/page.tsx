@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
+import { useLanguage } from '@/lib/language'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -45,6 +46,7 @@ type PayrollResponse = {
 
 export default function PayrollPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [summary, setSummary] = useState<PayrollSummaryItem[]>([])
   const [userRole, setUserRole] = useState('')
   const [loading, setLoading] = useState(true)
@@ -73,7 +75,7 @@ export default function PayrollPage() {
       .then(async (res) => {
         const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error || 'โหลด payroll ไม่สำเร็จ')
+        throw new Error(data.error || t('โหลด payroll ไม่สำเร็จ', 'Failed to load payroll'))
       }
       return data as PayrollResponse
       })
@@ -129,23 +131,23 @@ export default function PayrollPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'บันทึก payroll ไม่สำเร็จ')
+        throw new Error(data.error || t('บันทึก payroll ไม่สำเร็จ', 'Failed to save payroll'))
       }
 
       setPeriodInfo(data)
       setSummary(data.items ?? [])
       setStatusMessage(
         action === 'lock'
-          ? 'ยืนยันสรุปเงินเดือนเรียบร้อยแล้ว'
+          ? t('ยืนยันสรุปเงินเดือนเรียบร้อยแล้ว', 'Payroll summary confirmed')
           : action === 'unlock'
-            ? 'เปิดงวดเงินเดือนกลับมาแก้ไขได้แล้ว'
-            : 'บันทึกสรุปเงินเดือนเรียบร้อยแล้ว',
+            ? t('เปิดงวดเงินเดือนกลับมาแก้ไขได้แล้ว', 'Payroll period reopened')
+            : t('บันทึกสรุปเงินเดือนเรียบร้อยแล้ว', 'Payroll summary saved'),
       )
       if (action === 'unlock') {
         setUnlockReason('')
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด')
+      setErrorMessage(error instanceof Error ? error.message : t('เกิดข้อผิดพลาด', 'Something went wrong'))
     } finally {
       setSaving(false)
     }
@@ -175,20 +177,22 @@ export default function PayrollPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'อัปเดตสถานะการโอนไม่สำเร็จ')
+        throw new Error(data.error || t('อัปเดตสถานะการโอนไม่สำเร็จ', 'Failed to update payment status'))
       }
 
       await loadPayroll()
       setStatusMessage(
         paymentStatus === 'PAID'
-          ? 'อัปเดตสถานะเป็นโอนแล้วเรียบร้อย'
+          ? t('อัปเดตสถานะเป็นโอนแล้วเรียบร้อย', 'Marked as paid')
           : paymentStatus === 'FAILED'
-            ? 'บันทึกสถานะโอนไม่สำเร็จเรียบร้อย'
-            : 'เปลี่ยนสถานะกลับเป็นรอโอนเรียบร้อย',
+            ? t('บันทึกสถานะโอนไม่สำเร็จเรียบร้อย', 'Marked as failed')
+            : t('เปลี่ยนสถานะกลับเป็นรอโอนเรียบร้อย', 'Moved back to pending'),
       )
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'อัปเดตสถานะการโอนไม่สำเร็จ',
+        error instanceof Error
+          ? error.message
+          : t('อัปเดตสถานะการโอนไม่สำเร็จ', 'Failed to update payment status'),
       )
     } finally {
       setPaymentSavingId('')
@@ -260,21 +264,28 @@ export default function PayrollPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">ดูยอดรวมพนักงานทุกคนในหน้าเดียว</div>
+            <div className="badge">{t('ดูยอดรวมพนักงานทุกคนในหน้าเดียว', 'Review all employees in one page')}</div>
             <div className="badge">
-              สถานะงวด:{' '}
-              {periodInfo?.locked ? 'ยืนยันสรุปเงินเดือนแล้ว' : 'ยังแก้ไขได้'}
+              {t('สถานะงวด', 'Period status')}:{' '}
+              {periodInfo?.locked
+                ? t('ยืนยันสรุปเงินเดือนแล้ว', 'Payroll confirmed')
+                : t('ยังแก้ไขได้', 'Editable')}
             </div>
           </div>
-          <h1 className="hero-title">สรุปเงินเดือน</h1>
-          <p className="hero-subtitle">ดูยอดจ่ายสุทธิพร้อมข้อมูลบัญชีรับเงิน เหมาะกับการตรวจยอดและโอนเงินผ่านมือถือ</p>
+          <h1 className="hero-title">{t('สรุปเงินเดือน', 'Payroll summary')}</h1>
+          <p className="hero-subtitle">
+            {t(
+              'ดูยอดจ่ายสุทธิพร้อมข้อมูลบัญชีรับเงิน เหมาะกับการตรวจยอดและโอนเงินผ่านมือถือ',
+              'Check net pay and bank info for transfer review on mobile.',
+            )}
+          </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
-            กลับหน้าแรก
+            {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
           <button className="btn btn-primary" onClick={exportCsv}>
-            ดาวน์โหลดรายการโอน
+            {t('ดาวน์โหลดรายการโอน', 'Download transfer list')}
           </button>
           <LogoutButton />
         </div>
@@ -284,21 +295,24 @@ export default function PayrollPage() {
         {periodInfo ? (
           <div className="badge-row" style={{ marginBottom: 16 }}>
             <div className="badge">
-              รอบเงินเดือน: {formatThaiDate(periodInfo.periodStart)} -{' '}
+              {t('รอบเงินเดือน', 'Payroll period')}: {formatThaiDate(periodInfo.periodStart)} -{' '}
               {formatThaiDate(periodInfo.periodEnd)}
             </div>
-            <div className="badge">วันจ่ายเงินเดือน: วันที่ {periodInfo.payday}</div>
+            <div className="badge">{t('วันจ่ายเงินเดือน', 'Payday')}: {periodInfo.payday}</div>
             {periodInfo.locked &&
             Date.now() > new Date(periodInfo.periodEnd).getTime() ? (
               <div className="badge">
-                งวดนี้ยืนยันสรุปเงินเดือนแล้ว ไม่เปิดให้แก้ย้อนหลัง
+                {t(
+                  'งวดนี้ยืนยันสรุปเงินเดือนแล้ว ไม่เปิดให้แก้ย้อนหลัง',
+                  'This period is confirmed and cannot be reopened retroactively.',
+                )}
               </div>
             ) : null}
           </div>
         ) : null}
         <div className="form-grid">
           <div className="field">
-            <label>เดือน</label>
+            <label>{t('เดือน', 'Month')}</label>
             <select value={month} onChange={(e) => setMonth(e.target.value)}>
               {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
                 <option key={value} value={value}>
@@ -308,37 +322,37 @@ export default function PayrollPage() {
             </select>
           </div>
           <div className="field">
-            <label>ปี</label>
+            <label>{t('ปี', 'Year')}</label>
             <input value={year} onChange={(e) => setYear(e.target.value)} />
           </div>
           {canUnlockCurrentPeriod ? (
             <div className="field">
-              <label>เหตุผลที่ต้องเปิดงวดกลับมาแก้</label>
+              <label>{t('เหตุผลที่ต้องเปิดงวดกลับมาแก้', 'Reason to reopen period')}</label>
               <input
                 value={unlockReason}
                 onChange={(e) => setUnlockReason(e.target.value)}
-                placeholder="เช่น พบรายการลงเวลาผิด"
+                placeholder={t('เช่น พบรายการลงเวลาผิด', 'e.g. Found incorrect attendance')}
               />
             </div>
           ) : null}
         </div>
         <div className="action-row" style={{ marginTop: 16 }}>
           <button className="btn btn-secondary" onClick={loadPayroll}>
-            โหลดข้อมูลใหม่
+            {t('โหลดข้อมูลใหม่', 'Reload')}
           </button>
           <button
             className="btn btn-primary"
             onClick={() => persistPayroll('save')}
             disabled={saving || Boolean(periodInfo?.locked)}
           >
-            {saving ? 'กำลังบันทึก...' : 'บันทึกยอด'}
+            {saving ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกยอด', 'Save')}
           </button>
           <button
             className="btn btn-danger"
             onClick={() => persistPayroll('lock')}
             disabled={saving || Boolean(periodInfo?.locked)}
           >
-            {saving ? 'กำลังยืนยัน...' : 'ยืนยันสรุปเงินเดือน'}
+            {saving ? t('กำลังยืนยัน...', 'Confirming...') : t('ยืนยันสรุปเงินเดือน', 'Confirm payroll')}
           </button>
           {canUnlockCurrentPeriod ? (
             <button
@@ -346,40 +360,44 @@ export default function PayrollPage() {
               onClick={() => persistPayroll('unlock')}
               disabled={saving || !unlockReason.trim()}
             >
-              {saving ? 'กำลังเปิดงวด...' : 'เปิดงวดกลับมาแก้'}
+              {saving ? t('กำลังเปิดงวด...', 'Reopening...') : t('เปิดงวดกลับมาแก้', 'Reopen period')}
             </button>
           ) : null}
         </div>
         {periodInfo?.lockedAt ? (
           <div className="message message-success">
-            งวดนี้ยืนยันสรุปเงินเดือนเมื่อ{' '}
+            {t('งวดนี้ยืนยันสรุปเงินเดือนเมื่อ', 'Payroll confirmed at')}{' '}
             {formatThaiDateTime24h(periodInfo.lockedAt)}
           </div>
         ) : null}
-        {csvReady ? <div className="message message-success">ดาวน์โหลดรายการโอนเรียบร้อยแล้ว</div> : null}
+        {csvReady ? (
+          <div className="message message-success">
+            {t('ดาวน์โหลดรายการโอนเรียบร้อยแล้ว', 'Transfer list downloaded')}
+          </div>
+        ) : null}
         {statusMessage ? <div className="message message-success">{statusMessage}</div> : null}
         {errorMessage ? <div className="message message-error">{errorMessage}</div> : null}
       </section>
 
       <section className="panel">
         {loading ? (
-          <div className="empty-state">กำลังคำนวณสรุปเงินเดือน...</div>
+          <div className="empty-state">{t('กำลังคำนวณสรุปเงินเดือน...', 'Calculating payroll summary...')}</div>
         ) : (
           <>
             <div className="table-wrap desktop-only">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>รหัส</th>
-                  <th>ชื่อ</th>
-                  <th>ประเภทจ่าย</th>
-                  <th>วัน/ชั่วโมงทำงาน</th>
-                  <th>ล่วงเวลา</th>
-                  <th>ขาดงาน</th>
-                  <th>เข้าสาย (นาที)</th>
-                  <th>ค่าจ้าง</th>
-                  <th>ข้อมูลรับเงิน</th>
-                  <th>สถานะโอน</th>
+                  <th>{t('รหัส', 'Code')}</th>
+                  <th>{t('ชื่อ', 'Name')}</th>
+                  <th>{t('ประเภทจ่าย', 'Pay type')}</th>
+                  <th>{t('วัน/ชั่วโมงทำงาน', 'Days / hours')}</th>
+                  <th>{t('ล่วงเวลา', 'OT')}</th>
+                  <th>{t('ขาดงาน', 'Absent')}</th>
+                  <th>{t('เข้าสาย (นาที)', 'Late (min)')}</th>
+                  <th>{t('ค่าจ้าง', 'Pay')}</th>
+                  <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
+                  <th>{t('สถานะโอน', 'Payment status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -389,24 +407,24 @@ export default function PayrollPage() {
                     <td>{item.employeeName}</td>
                     <td>{item.payType}</td>
                     <td>
-                      <div>{item.presentDays} วัน</div>
-                      <div className="table-meta">{item.workedHours.toFixed(2)} ชั่วโมง</div>
+                      <div>{item.presentDays} {t('วัน', 'days')}</div>
+                      <div className="table-meta">{item.workedHours.toFixed(2)} {t('ชั่วโมง', 'hrs')}</div>
                     </td>
                     <td>
-                      <div>{item.overtimeHours.toFixed(2)} ชั่วโมง</div>
-                      <div className="table-meta">{item.overtimePay.toFixed(2)} บาท</div>
+                      <div>{item.overtimeHours.toFixed(2)} {t('ชั่วโมง', 'hrs')}</div>
+                      <div className="table-meta">{item.overtimePay.toFixed(2)} {t('บาท', 'THB')}</div>
                     </td>
                     <td>{item.absentDays}</td>
                     <td>{item.lateMinutes}</td>
                     <td>
-                      <div>ฐาน {item.basePay.toFixed(2)}</div>
-                      <div className="table-meta">หัก {item.deduction.toFixed(2)}</div>
-                      <div className="table-meta"><strong>สุทธิ {item.netPay.toFixed(2)}</strong></div>
+                      <div>{t('ฐาน', 'Base')} {item.basePay.toFixed(2)}</div>
+                      <div className="table-meta">{t('หัก', 'Deduct')} {item.deduction.toFixed(2)}</div>
+                      <div className="table-meta"><strong>{t('สุทธิ', 'Net')} {item.netPay.toFixed(2)}</strong></div>
                     </td>
                     <td>
-                      <div>{item.bankName ?? 'ยังไม่ได้กรอก'}</div>
+                      <div>{item.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</div>
                       <div className="table-meta">{item.accountNumber ?? '-'}</div>
-                      <div className="table-meta">พร้อมเพย์: {item.promptPayId ?? '-'}</div>
+                      <div className="table-meta">{t('พร้อมเพย์', 'PromptPay')}: {item.promptPayId ?? '-'}</div>
                     </td>
                     <td>
                       <span
@@ -418,11 +436,11 @@ export default function PayrollPage() {
                               : 'warning'
                         }`}
                       >
-                        {item.paymentStatus === 'PAID'
-                          ? 'จ่ายแล้ว'
+                          {item.paymentStatus === 'PAID'
+                          ? t('จ่ายแล้ว', 'Paid')
                           : item.paymentStatus === 'FAILED'
-                            ? 'จ่ายไม่สำเร็จ'
-                          : 'รอโอน'}
+                            ? t('จ่ายไม่สำเร็จ', 'Failed')
+                          : t('รอโอน', 'Pending')}
                       </span>
                       <div className="action-row" style={{ marginTop: 10 }}>
                         <button
@@ -436,7 +454,7 @@ export default function PayrollPage() {
                             updatePaymentStatus(item.employeeId, 'PAID')
                           }
                         >
-                          โอนแล้ว
+                          {t('โอนแล้ว', 'Paid')}
                         </button>
                         <button
                           type="button"
@@ -449,7 +467,7 @@ export default function PayrollPage() {
                             updatePaymentStatus(item.employeeId, 'FAILED')
                           }
                         >
-                          โอนไม่สำเร็จ
+                          {t('โอนไม่สำเร็จ', 'Mark failed')}
                         </button>
                         <button
                           type="button"
@@ -462,7 +480,7 @@ export default function PayrollPage() {
                             updatePaymentStatus(item.employeeId, 'PENDING')
                           }
                         >
-                          กลับไปรอโอน
+                          {t('กลับไปรอโอน', 'Back to pending')}
                         </button>
                       </div>
                     </td>
@@ -487,23 +505,23 @@ export default function PayrollPage() {
                       }`}
                     >
                       {item.paymentStatus === 'PAID'
-                        ? 'จ่ายแล้ว'
+                        ? t('จ่ายแล้ว', 'Paid')
                         : item.paymentStatus === 'FAILED'
-                          ? 'จ่ายไม่สำเร็จ'
-                          : 'รอโอน'}
+                          ? t('จ่ายไม่สำเร็จ', 'Failed')
+                          : t('รอโอน', 'Pending')}
                     </span>
                   </div>
                   <div className="record-card-body">
-                    <div className="record-line"><span>รหัส</span><strong>{item.employeeCode}</strong></div>
-                    <div className="record-line"><span>ประเภทจ่าย</span><strong>{item.payType}</strong></div>
-                    <div className="record-line"><span>มาทำงาน</span><strong>{item.presentDays} วัน</strong></div>
-                    <div className="record-line"><span>ชั่วโมงรวม</span><strong>{item.workedHours.toFixed(2)}</strong></div>
-                    <div className="record-line"><span>ล่วงเวลา</span><strong>{item.overtimeHours.toFixed(2)} ชม.</strong></div>
-                    <div className="record-line"><span>หักเงิน</span><strong>{item.deduction.toFixed(2)} บาท</strong></div>
-                    <div className="record-line"><span>ยอดสุทธิ</span><strong>{item.netPay.toFixed(2)} บาท</strong></div>
-                    <div className="record-line"><span>ธนาคาร</span><strong>{item.bankName ?? 'ยังไม่ได้กรอก'}</strong></div>
-                    <div className="record-line"><span>เลขบัญชี</span><strong>{item.accountNumber ?? '-'}</strong></div>
-                    <div className="record-line"><span>พร้อมเพย์</span><strong>{item.promptPayId ?? '-'}</strong></div>
+                    <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{item.employeeCode}</strong></div>
+                    <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{item.payType}</strong></div>
+                    <div className="record-line"><span>{t('มาทำงาน', 'Worked')}</span><strong>{item.presentDays} {t('วัน', 'days')}</strong></div>
+                    <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
+                    <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
+                    <div className="record-line"><span>{t('หักเงิน', 'Deduction')}</span><strong>{item.deduction.toFixed(2)} {t('บาท', 'THB')}</strong></div>
+                    <div className="record-line"><span>{t('ยอดสุทธิ', 'Net pay')}</span><strong>{item.netPay.toFixed(2)} {t('บาท', 'THB')}</strong></div>
+                    <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{item.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
+                    <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{item.accountNumber ?? '-'}</strong></div>
+                    <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{item.promptPayId ?? '-'}</strong></div>
                   </div>
                   <div className="action-row" style={{ marginTop: 14 }}>
                     <button
@@ -514,7 +532,7 @@ export default function PayrollPage() {
                       }
                       onClick={() => updatePaymentStatus(item.employeeId, 'PAID')}
                     >
-                      โอนแล้ว
+                      {t('โอนแล้ว', 'Paid')}
                     </button>
                     <button
                       type="button"
@@ -524,7 +542,7 @@ export default function PayrollPage() {
                       }
                       onClick={() => updatePaymentStatus(item.employeeId, 'FAILED')}
                     >
-                      โอนไม่สำเร็จ
+                      {t('โอนไม่สำเร็จ', 'Mark failed')}
                     </button>
                     <button
                       type="button"
@@ -534,7 +552,7 @@ export default function PayrollPage() {
                       }
                       onClick={() => updatePaymentStatus(item.employeeId, 'PENDING')}
                     >
-                      กลับไปรอโอน
+                      {t('กลับไปรอโอน', 'Back to pending')}
                     </button>
                   </div>
                 </article>

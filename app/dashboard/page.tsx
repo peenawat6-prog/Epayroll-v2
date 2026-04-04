@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import LogoutButton from '@/app/components/logout-button'
+import { useLanguage } from '@/lib/language'
 import type { UserRole } from '@prisma/client'
 
 type CurrentUser = {
@@ -27,15 +28,6 @@ type Summary = {
     expiresAt: string | null
     daysRemaining: number | null
   }
-}
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  DEV: 'ผู้ดูแลระบบ Dev',
-  OWNER: 'เจ้าของร้าน',
-  ADMIN: 'ผู้จัดการร้าน',
-  HR: 'ฝ่ายบุคคล',
-  FINANCE: 'ฝ่ายการเงิน',
-  EMPLOYEE: 'พนักงาน',
 }
 
 function canOpenEmployees(role: UserRole) {
@@ -68,6 +60,7 @@ function canOpenOps(role: UserRole) {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { t, language } = useLanguage()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -103,6 +96,15 @@ export default function DashboardPage() {
     }
   }, [router])
 
+  const roleLabels: Record<UserRole, string> = {
+    DEV: t('ผู้ดูแลระบบ Dev', 'Dev admin'),
+    OWNER: t('เจ้าของร้าน', 'Owner'),
+    ADMIN: t('ผู้จัดการร้าน', 'Manager'),
+    HR: t('ฝ่ายบุคคล', 'HR'),
+    FINANCE: t('ฝ่ายการเงิน', 'Finance'),
+    EMPLOYEE: t('พนักงาน', 'Employee'),
+  }
+
   if (loading) {
     return <div className="page">Loading...</div>
   }
@@ -116,24 +118,31 @@ export default function DashboardPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">สิทธิ์: {ROLE_LABELS[user.role]}</div>
-            <div className="badge">รหัสร้าน: {user.tenantId}</div>
+            <div className="badge">
+              {t('สิทธิ์', 'Role')}: {roleLabels[user.role]}
+            </div>
+            <div className="badge">
+              {t('รหัสร้าน', 'Shop ID')}: {user.tenantId}
+            </div>
           </div>
-          <h1 className="hero-title">หน้าแรกของร้าน</h1>
+          <h1 className="hero-title">{t('หน้าแรกของร้าน', 'Shop dashboard')}</h1>
           <p className="hero-subtitle">
-            ดูภาพรวมพนักงาน การลงเวลา และงานที่ต้องจัดการในแต่ละวันได้จากหน้านี้
+            {t(
+              'ดูภาพรวมพนักงาน การลงเวลา และงานที่ต้องจัดการในแต่ละวันได้จากหน้านี้',
+              'Track staff, attendance, and daily actions from this dashboard.',
+            )}
           </p>
         </div>
 
         <div className="action-row">
           {canOpenEmployees(user.role) ? (
             <button className="btn btn-secondary" onClick={() => router.push('/employees')}>
-              สรุปข้อมูลพนักงาน
+              {t('สรุปข้อมูลพนักงาน', 'Employee summary')}
             </button>
           ) : null}
           {canOpenAttendance(user.role) ? (
             <button className="btn btn-secondary" onClick={() => router.push('/attendance')}>
-              ลงเวลาเข้าออก
+              {t('ลงเวลาเข้าออก', 'Clock in/out')}
             </button>
           ) : null}
           {canOpenAttendanceReport(user.role) ? (
@@ -141,7 +150,7 @@ export default function DashboardPage() {
               className="btn btn-secondary"
               onClick={() => router.push('/attendance/history')}
             >
-              รายงานการลงเวลา
+              {t('รายงานการลงเวลา', 'Attendance report')}
             </button>
           ) : null}
           {canOpenAttendanceCorrections(user.role) ? (
@@ -149,7 +158,7 @@ export default function DashboardPage() {
               className="btn btn-secondary"
               onClick={() => router.push('/attendance/corrections')}
             >
-              แก้ไขการลงเวลา
+              {t('แก้ไขการลงเวลา', 'Fix attendance')}
               {summary?.pendingAttendanceCorrections ? (
                 <span className="notification-badge">
                   {summary.pendingAttendanceCorrections}
@@ -159,7 +168,7 @@ export default function DashboardPage() {
           ) : null}
           {canOpenStaffRequests(user.role) ? (
             <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
-              คำขอพนักงาน
+              {t('คำขอพนักงาน', 'Staff requests')}
               {summary?.pendingTotalRequests ? (
                 <span className="notification-badge">
                   {summary.pendingTotalRequests}
@@ -169,12 +178,12 @@ export default function DashboardPage() {
           ) : null}
           {canOpenPayroll(user.role) ? (
             <button className="btn btn-primary" onClick={() => router.push('/payroll')}>
-              สรุปเงินเดือน
+              {t('สรุปเงินเดือน', 'Payroll summary')}
             </button>
           ) : null}
           {canOpenOps(user.role) ? (
             <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
-              ตั้งค่าร้าน
+              {t('ตั้งค่าร้าน', 'Shop settings')}
             </button>
           ) : null}
           <LogoutButton />
@@ -182,55 +191,59 @@ export default function DashboardPage() {
       </section>
 
       {!summary ? (
-        <div className="panel">กำลังโหลดข้อมูล dashboard...</div>
+        <div className="panel">{t('กำลังโหลดข้อมูล dashboard...', 'Loading dashboard data...')}</div>
       ) : (
         <>
           <section className="grid stats">
             <article className="stat-card">
-              <p className="stat-label">พนักงานที่ใช้งานอยู่</p>
+              <p className="stat-label">{t('พนักงานที่ใช้งานอยู่', 'Active employees')}</p>
               <p className="stat-value">{summary.totalEmployees}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">เข้างานแล้ววันนี้</p>
+              <p className="stat-label">{t('เข้างานแล้ววันนี้', 'Checked in today')}</p>
               <p className="stat-value">{summary.checkedInToday}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">ออกงานแล้ววันนี้</p>
+              <p className="stat-label">{t('ออกงานแล้ววันนี้', 'Checked out today')}</p>
               <p className="stat-value">{summary.checkedOutToday}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">ยังไม่มีการลงเวลา</p>
+              <p className="stat-label">{t('ยังไม่มีการลงเวลา', 'Not checked in yet')}</p>
               <p className="stat-value">{summary.absentToday}</p>
             </article>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">สถานะ Subscription</h2>
+            <h2 className="panel-title">{t('สถานะ Subscription', 'Subscription status')}</h2>
             <p className="panel-subtitle">
-              แพ็กเกจ {summary.subscription.plan} / สถานะ {summary.subscription.status}
+              {t('แพ็กเกจ', 'Plan')} {summary.subscription.plan} /{' '}
+              {t('สถานะ', 'Status')} {summary.subscription.status}
             </p>
             <div className="badge-row" style={{ marginTop: 14 }}>
               <div className="badge">
-                วันคงเหลือ: {summary.subscription.daysRemaining ?? 'ไม่ได้กำหนด'}
+                {t('วันคงเหลือ', 'Days left')}:{' '}
+                {summary.subscription.daysRemaining ?? t('ไม่ได้กำหนด', 'Not set')}
               </div>
               <div className="badge">
-                หมดอายุ:{' '}
+                {t('หมดอายุ', 'Expires')}:{' '}
                 {summary.subscription.expiresAt
-                  ? new Date(summary.subscription.expiresAt).toLocaleDateString('th-TH')
-                  : 'ไม่ได้กำหนด'}
+                  ? new Date(summary.subscription.expiresAt).toLocaleDateString(
+                      language === 'th' ? 'th-TH' : 'en-US',
+                    )
+                  : t('ไม่ได้กำหนด', 'Not set')}
               </div>
             </div>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">เมนูที่ใช้บ่อย</h2>
+            <h2 className="panel-title">{t('เมนูที่ใช้บ่อย', 'Quick actions')}</h2>
             <div className="action-row" style={{ marginTop: 14 }}>
               {canOpenAttendanceCorrections(user.role) ? (
                 <button
                   className="btn btn-secondary"
                   onClick={() => router.push('/attendance/corrections')}
                 >
-                  แก้ไขการลงเวลา
+                  {t('แก้ไขการลงเวลา', 'Fix attendance')}
                   {summary.pendingAttendanceCorrections ? (
                     <span className="notification-badge">
                       {summary.pendingAttendanceCorrections}
@@ -240,7 +253,7 @@ export default function DashboardPage() {
               ) : null}
               {canOpenStaffRequests(user.role) ? (
                 <button className="btn btn-secondary" onClick={() => router.push('/requests')}>
-                  ดูคำขอลา/OT/ลาออก
+                  {t('ดูคำขอลา/OT/ลาออก', 'Leave / OT / resignation requests')}
                   {summary.pendingStaffRequests ? (
                     <span className="notification-badge">
                       {summary.pendingStaffRequests}
@@ -250,7 +263,7 @@ export default function DashboardPage() {
               ) : null}
               {canOpenOps(user.role) ? (
                 <button className="btn btn-secondary" onClick={() => router.push('/ops')}>
-                  ตั้งค่าร้าน
+                  {t('ตั้งค่าร้าน', 'Shop settings')}
                 </button>
               ) : null}
             </div>

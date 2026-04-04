@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiTime24h } from "@/lib/display-time"
-
-const WORK_SHIFT_LABELS = {
-  MORNING: "กะเช้า",
-  AFTERNOON: "กะบ่าย",
-  NIGHT: "กะดึก",
-} as const
+import { useLanguage } from "@/lib/language"
 
 type EmployeeProfile = {
   id: string
@@ -79,13 +74,14 @@ function getCurrentPosition() {
 
 export default function EmployeePage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [employee, setEmployee] = useState<EmployeeProfile | null>(null)
   const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(
     null,
   )
   const [photoDataUrl, setPhotoDataUrl] = useState("")
   const [photoName, setPhotoName] = useState("")
-  const [locationLabel, setLocationLabel] = useState("ยังไม่ได้อ่านตำแหน่ง")
+  const [locationLabel, setLocationLabel] = useState("")
   const [message, setMessage] = useState("")
   const [statusMessage, setStatusMessage] = useState("")
   const [pageLoading, setPageLoading] = useState(true)
@@ -103,6 +99,11 @@ export default function EmployeePage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const workShiftLabels = {
+    MORNING: t("กะเช้า", "Morning shift"),
+    AFTERNOON: t("กะบ่าย", "Afternoon shift"),
+    NIGHT: t("กะดึก", "Night shift"),
+  } as const
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -126,7 +127,7 @@ export default function EmployeePage() {
     const data = await res.json()
 
     if (!res.ok) {
-      throw new Error(data.error || "โหลดข้อมูลพนักงานไม่สำเร็จ")
+      throw new Error(data.error || t("โหลดข้อมูลพนักงานไม่สำเร็จ", "Failed to load employee profile"))
     }
 
     setEmployee(data.employee)
@@ -165,7 +166,7 @@ export default function EmployeePage() {
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraSupported(false)
-      setMessage("อุปกรณ์นี้เปิดกล้องจากหน้าเว็บไม่ได้")
+      setMessage(t("อุปกรณ์นี้เปิดกล้องจากหน้าเว็บไม่ได้", "This device cannot open the camera from this page"))
       return
     }
 
@@ -196,8 +197,8 @@ export default function EmployeePage() {
       setCameraOpening(false)
       setMessage(
         error instanceof Error
-          ? `เปิดกล้องไม่สำเร็จ: ${error.message}`
-          : "เปิดกล้องไม่สำเร็จ",
+          ? `${t("เปิดกล้องไม่สำเร็จ", "Cannot open camera")}: ${error.message}`
+          : t("เปิดกล้องไม่สำเร็จ", "Cannot open camera"),
       )
     }
   }
@@ -209,7 +210,7 @@ export default function EmployeePage() {
     const canvas = canvasRef.current
 
     if (!video || !canvas || !cameraReady) {
-      setMessage("กรุณาเปิดกล้องก่อนถ่ายรูป")
+      setMessage(t("กรุณาเปิดกล้องก่อนถ่ายรูป", "Please open the camera first"))
       return
     }
 
@@ -223,7 +224,7 @@ export default function EmployeePage() {
     const context = canvas.getContext("2d")
 
     if (!context) {
-      setMessage("ถ่ายรูปไม่สำเร็จ กรุณาลองใหม่")
+      setMessage(t("ถ่ายรูปไม่สำเร็จ กรุณาลองใหม่", "Capture failed, please try again"))
       return
     }
 
@@ -232,7 +233,7 @@ export default function EmployeePage() {
     setPhotoName(
       `camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.jpg`,
     )
-    setStatusMessage("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย")
+    setStatusMessage(t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย", "Photo captured. You can now clock in."))
     stopCamera()
   }
 
@@ -240,7 +241,7 @@ export default function EmployeePage() {
     clearMessages()
 
     if (!photoDataUrl) {
-      setMessage("กรุณาถ่ายรูปก่อนบันทึกเข้างาน")
+      setMessage(t("กรุณาถ่ายรูปก่อนบันทึกเข้างาน", "Please take a photo before clocking in"))
       return
     }
 
@@ -249,7 +250,7 @@ export default function EmployeePage() {
     try {
       const location = await getCurrentPosition()
       setLocationLabel(
-        `ละติจูด ${location.latitude.toFixed(5)} / ลองจิจูด ${location.longitude.toFixed(5)}`,
+        `${t("ละติจูด", "Lat")} ${location.latitude.toFixed(5)} / ${t("ลองจิจูด", "Lng")} ${location.longitude.toFixed(5)}`,
       )
 
       const res = await fetch("/api/employee/check-in", {
@@ -266,15 +267,19 @@ export default function EmployeePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "บันทึกเข้างานไม่สำเร็จ")
+        throw new Error(data.error || t("บันทึกเข้างานไม่สำเร็จ", "Clock-in failed"))
       }
 
-      setStatusMessage("บันทึกเข้างานเรียบร้อยแล้ว")
+      setStatusMessage(t("บันทึกเข้างานเรียบร้อยแล้ว", "Clock-in saved"))
       setPhotoDataUrl("")
       setPhotoName("")
       await loadProfile()
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "บันทึกเข้างานไม่สำเร็จ")
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t("บันทึกเข้างานไม่สำเร็จ", "Clock-in failed"),
+      )
     } finally {
       setLoading(false)
     }
@@ -291,14 +296,16 @@ export default function EmployeePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "บันทึกออกงานไม่สำเร็จ")
+        throw new Error(data.error || t("บันทึกออกงานไม่สำเร็จ", "Clock-out failed"))
       }
 
-      setStatusMessage("บันทึกออกงานเรียบร้อยแล้ว")
+      setStatusMessage(t("บันทึกออกงานเรียบร้อยแล้ว", "Clock-out saved"))
       await loadProfile()
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "บันทึกออกงานไม่สำเร็จ",
+        error instanceof Error
+          ? error.message
+          : t("บันทึกออกงานไม่สำเร็จ", "Clock-out failed"),
       )
     } finally {
       setLoading(false)
@@ -321,16 +328,22 @@ export default function EmployeePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "บันทึกข้อมูลบัญชีรับเงินไม่สำเร็จ")
+        throw new Error(
+          data.error ||
+            t("บันทึกข้อมูลบัญชีรับเงินไม่สำเร็จ", "Failed to save payment account info"),
+        )
       }
 
       setEmployee(data.employee)
-      setStatusMessage(data.message || "บันทึกข้อมูลบัญชีรับเงินเรียบร้อยแล้ว")
+      setStatusMessage(
+        data.message ||
+          t("บันทึกข้อมูลบัญชีรับเงินเรียบร้อยแล้ว", "Payment account info saved"),
+      )
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : "บันทึกข้อมูลบัญชีรับเงินไม่สำเร็จ",
+          : t("บันทึกข้อมูลบัญชีรับเงินไม่สำเร็จ", "Failed to save payment account info"),
       )
     } finally {
       setBankSaving(false)
@@ -346,21 +359,24 @@ export default function EmployeePage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">โหมดพนักงานหน้าร้าน</div>
+            <div className="badge">{t("โหมดพนักงานหน้าร้าน", "Employee mode")}</div>
             <div className="badge">
               {employee
                 ? `${employee.code} ${employee.firstName} ${employee.lastName}`
-                : "ไม่พบข้อมูลพนักงาน"}
+                : t("ไม่พบข้อมูลพนักงาน", "Employee data not found")}
             </div>
           </div>
-          <h1 className="hero-title">ลงเวลาและดูสถานะของฉัน</h1>
+          <h1 className="hero-title">{t("ลงเวลาและดูสถานะของฉัน", "My attendance")}</h1>
           <p className="hero-subtitle">
-            ใช้สำหรับบันทึกเข้างาน/ออกงานและส่งคำขอของตัวเอง
+            {t(
+              "ใช้สำหรับบันทึกเข้างาน/ออกงานและส่งคำขอของตัวเอง",
+              "Clock in/out and submit your own requests here.",
+            )}
           </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push("/requests")}>
-            ขอลา/OT/ลาออก
+            {t("ขอลา/OT/ลาออก", "Leave / OT / resign")}
           </button>
           <LogoutButton />
         </div>
@@ -368,21 +384,23 @@ export default function EmployeePage() {
 
       <section className="grid stats">
         <article className="stat-card">
-          <p className="stat-label">ตำแหน่ง</p>
+          <p className="stat-label">{t("ตำแหน่ง", "Position")}</p>
           <p className="stat-value">{employee?.position ?? "-"}</p>
         </article>
         <article className="stat-card">
-          <p className="stat-label">กะทำงาน</p>
+          <p className="stat-label">{t("กะทำงาน", "Shift")}</p>
           <p className="stat-value">
-            {employee?.workShift ? WORK_SHIFT_LABELS[employee.workShift] : "-"}
+            {employee?.workShift ? workShiftLabels[employee.workShift] : "-"}
           </p>
         </article>
         <article className="stat-card">
-          <p className="stat-label">สถานะวันนี้</p>
-          <p className="stat-value">{todayAttendance?.status ?? "ยังไม่ได้ลงเวลา"}</p>
+          <p className="stat-label">{t("สถานะวันนี้", "Today status")}</p>
+          <p className="stat-value">
+            {todayAttendance?.status ?? t("ยังไม่ได้ลงเวลา", "Not checked in yet")}
+          </p>
         </article>
         <article className="stat-card">
-          <p className="stat-label">เข้างาน</p>
+          <p className="stat-label">{t("เข้างาน", "Check-in")}</p>
           <p className="stat-value">
             {todayAttendance?.checkIn
               ? formatThaiTime24h(todayAttendance.checkIn)
@@ -390,7 +408,7 @@ export default function EmployeePage() {
           </p>
         </article>
         <article className="stat-card">
-          <p className="stat-label">ออกงาน</p>
+          <p className="stat-label">{t("ออกงาน", "Check-out")}</p>
           <p className="stat-value">
             {todayAttendance?.checkOut
               ? formatThaiTime24h(todayAttendance.checkOut)
@@ -400,15 +418,18 @@ export default function EmployeePage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">ข้อมูลบัญชีรับเงินของฉัน</h2>
+        <h2 className="panel-title">{t("ข้อมูลบัญชีรับเงินของฉัน", "My payment account")}</h2>
         <p className="panel-subtitle">
-          กรอกข้อมูลบัญชีให้ครบ เพื่อให้ร้านใช้โอนเงินเดือนได้ถูกต้อง
+          {t(
+            "กรอกข้อมูลบัญชีให้ครบ เพื่อให้ร้านใช้โอนเงินเดือนได้ถูกต้อง",
+            "Fill in your account info so the shop can transfer salary correctly.",
+          )}
         </p>
 
         <form onSubmit={handleSaveBank}>
           <div className="form-grid" style={{ marginTop: 16 }}>
             <div className="field">
-              <label htmlFor="employee-bank-name">ธนาคารที่รับเงิน</label>
+              <label htmlFor="employee-bank-name">{t("ธนาคารที่รับเงิน", "Bank")}</label>
               <input
                 id="employee-bank-name"
                 value={bankForm.bankName}
@@ -418,11 +439,11 @@ export default function EmployeePage() {
                     bankName: event.target.value,
                   }))
                 }
-                placeholder="เช่น SCB, KBank, Krungthai"
+                placeholder={t("เช่น SCB, KBank, Krungthai", "e.g. SCB, KBank, Krungthai")}
               />
             </div>
             <div className="field">
-              <label htmlFor="employee-account-name">ชื่อบัญชีรับเงิน</label>
+              <label htmlFor="employee-account-name">{t("ชื่อบัญชีรับเงิน", "Account name")}</label>
               <input
                 id="employee-account-name"
                 value={bankForm.accountName}
@@ -432,11 +453,11 @@ export default function EmployeePage() {
                     accountName: event.target.value,
                   }))
                 }
-                placeholder="ชื่อตามสมุดบัญชี"
+                placeholder={t("ชื่อตามสมุดบัญชี", "Account holder name")}
               />
             </div>
             <div className="field">
-              <label htmlFor="employee-account-number">เลขบัญชีธนาคาร</label>
+              <label htmlFor="employee-account-number">{t("เลขบัญชีธนาคาร", "Account number")}</label>
               <input
                 id="employee-account-number"
                 value={bankForm.accountNumber}
@@ -446,11 +467,11 @@ export default function EmployeePage() {
                     accountNumber: event.target.value,
                   }))
                 }
-                placeholder="กรอกเลขบัญชี"
+                placeholder={t("กรอกเลขบัญชี", "Enter account number")}
               />
             </div>
             <div className="field">
-              <label htmlFor="employee-promptpay-id">พร้อมเพย์</label>
+              <label htmlFor="employee-promptpay-id">{t("พร้อมเพย์", "PromptPay")}</label>
               <input
                 id="employee-promptpay-id"
                 value={bankForm.promptPayId}
@@ -460,24 +481,26 @@ export default function EmployeePage() {
                     promptPayId: event.target.value,
                   }))
                 }
-                placeholder="เบอร์โทรหรือเลขบัตร"
+                placeholder={t("เบอร์โทรหรือเลขบัตร", "Phone number or ID number")}
               />
             </div>
           </div>
 
           <div className="action-row" style={{ marginTop: 16 }}>
             <button type="submit" className="btn btn-primary" disabled={bankSaving}>
-              {bankSaving ? "กำลังบันทึก..." : "บันทึกบัญชีรับเงิน"}
+              {bankSaving ? t("กำลังบันทึก...", "Saving...") : t("บันทึกบัญชีรับเงิน", "Save payment account")}
             </button>
           </div>
         </form>
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">บันทึกเข้างานด้วยรูปถ่ายและตำแหน่ง</h2>
+        <h2 className="panel-title">
+          {t("บันทึกเข้างานด้วยรูปถ่ายและตำแหน่ง", "Clock in with photo and GPS")}
+        </h2>
 
         <div className="field" style={{ marginTop: 14 }}>
-          <label>ถ่ายรูปหน้าพนักงาน</label>
+          <label>{t("ถ่ายรูปหน้าพนักงาน", "Take employee photo")}</label>
           <div className="camera-box">
             <video
               ref={videoRef}
@@ -491,7 +514,7 @@ export default function EmployeePage() {
             {!cameraReady && photoDataUrl ? (
               <img
                 src={photoDataUrl}
-                alt="รูปที่ถ่ายไว้"
+                alt={t("รูปที่ถ่ายไว้", "Captured photo")}
                 className="camera-preview"
               />
             ) : null}
@@ -499,14 +522,17 @@ export default function EmployeePage() {
             {!cameraReady && !photoDataUrl && todayAttendance?.checkInPhotoUrl ? (
               <img
                 src={todayAttendance.checkInPhotoUrl}
-                alt="รูปเข้างานวันนี้"
+                alt={t("รูปเข้างานวันนี้", "Today check-in photo")}
                 className="camera-preview"
               />
             ) : null}
 
             {!cameraReady && !photoDataUrl && !todayAttendance?.checkInPhotoUrl ? (
               <div className="camera-placeholder">
-                ยังไม่มีรูปถ่ายวันนี้ กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างาน
+                {t(
+                  "ยังไม่มีรูปถ่ายวันนี้ กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างาน",
+                  'No photo yet today. Tap "Open camera" before clock-in.',
+                )}
               </div>
             ) : null}
           </div>
@@ -521,10 +547,10 @@ export default function EmployeePage() {
               disabled={loading || cameraOpening || Boolean(todayAttendance?.checkIn)}
             >
               {cameraOpening
-                ? "กำลังเปิดกล้อง..."
+                ? t("กำลังเปิดกล้อง...", "Opening camera...")
                 : cameraReady
-                  ? "เปิดกล้องใหม่"
-                  : "เปิดกล้อง"}
+                  ? t("เปิดกล้องใหม่", "Restart camera")
+                  : t("เปิดกล้อง", "Open camera")}
             </button>
             <button
               type="button"
@@ -532,7 +558,7 @@ export default function EmployeePage() {
               onClick={capturePhoto}
               disabled={loading || !cameraReady || Boolean(todayAttendance?.checkIn)}
             >
-              ถ่ายรูป
+              {t("ถ่ายรูป", "Take photo")}
             </button>
             {cameraReady ? (
               <button
@@ -541,17 +567,28 @@ export default function EmployeePage() {
                 onClick={stopCamera}
                 disabled={loading}
               >
-                ปิดกล้อง
+                {t("ปิดกล้อง", "Close camera")}
               </button>
             ) : null}
           </div>
 
           {!cameraSupported ? (
-            <div className="table-meta">อุปกรณ์นี้ไม่รองรับการเปิดกล้องจากหน้าเว็บ</div>
+            <div className="table-meta">
+              {t(
+                "อุปกรณ์นี้ไม่รองรับการเปิดกล้องจากหน้าเว็บ",
+                "This device cannot open the camera from this page",
+              )}
+            </div>
           ) : null}
 
-          {photoName ? <div className="table-meta">รูปล่าสุด: {photoName}</div> : null}
-          <div className="table-meta">ตำแหน่ง GPS: {locationLabel}</div>
+          {photoName ? (
+            <div className="table-meta">
+              {t("รูปล่าสุด", "Latest photo")}: {photoName}
+            </div>
+          ) : null}
+          <div className="table-meta">
+            {t("ตำแหน่ง GPS", "GPS location")}: {locationLabel || t("ยังไม่ได้อ่านตำแหน่ง", "Location not loaded yet")}
+          </div>
         </div>
 
         <div className="action-row" style={{ marginTop: 18 }}>
@@ -560,14 +597,14 @@ export default function EmployeePage() {
             onClick={handleCheckIn}
             disabled={loading || Boolean(todayAttendance?.checkIn)}
           >
-            {loading ? "กำลังบันทึก..." : "บันทึกเข้างาน"}
+            {loading ? t("กำลังบันทึก...", "Saving...") : t("บันทึกเข้างาน", "Clock in")}
           </button>
           <button
             className="btn btn-secondary"
             onClick={handleCheckOut}
             disabled={loading || !todayAttendance?.checkIn || Boolean(todayAttendance?.checkOut)}
           >
-            {loading ? "กำลังบันทึก..." : "บันทึกออกงาน"}
+            {loading ? t("กำลังบันทึก...", "Saving...") : t("บันทึกออกงาน", "Clock out")}
           </button>
         </div>
 

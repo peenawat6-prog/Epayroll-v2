@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDateTime24h } from '@/lib/display-time'
+import { useLanguage } from '@/lib/language'
 
 type OpsSummary = {
   app: string
@@ -156,6 +157,7 @@ function loadLeaflet() {
 
 export default function OpsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [summary, setSummary] = useState<OpsSummary | null>(null)
   const [branches, setBranches] = useState<BranchItem[]>([])
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
@@ -181,16 +183,18 @@ export default function OpsPage() {
     longitude: '',
     allowedRadiusMeters: '',
   })
-  const [mapStatus, setMapStatus] = useState('กำลังโหลดแผนที่...')
+  const [mapStatus, setMapStatus] = useState('')
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<LeafletInstance | null>(null)
   const markerRef = useRef<LeafletMarkerInstance | null>(null)
+  const currentMapStatus =
+    mapStatus || t('กำลังโหลดแผนที่...', 'Loading map...')
 
   const loadSummary = async () => {
     const res = await fetch('/api/ops/summary')
     const data = await res.json()
     if (!res.ok) {
-      throw new Error(data.error || 'โหลดข้อมูล ops ไม่สำเร็จ')
+      throw new Error(data.error || t('โหลดข้อมูล ops ไม่สำเร็จ', 'Failed to load ops summary'))
     }
 
     const summaryData = data as OpsSummary
@@ -227,7 +231,7 @@ export default function OpsPage() {
     const data = await res.json()
 
     if (!res.ok) {
-      throw new Error(data.error || 'โหลดข้อมูลสาขาไม่สำเร็จ')
+      throw new Error(data.error || t('โหลดข้อมูลสาขาไม่สำเร็จ', 'Failed to load branches'))
     }
 
     setBranches(data.items ?? [])
@@ -327,18 +331,18 @@ export default function OpsPage() {
             longitude: String(nextLongitude),
           }))
           setMapStatus(
-            `เลือกพิกัดแล้ว: ${nextLatitude.toFixed(6)}, ${nextLongitude.toFixed(6)}`,
+            `${t('เลือกพิกัดแล้ว', 'Selected location')}: ${nextLatitude.toFixed(6)}, ${nextLongitude.toFixed(6)}`,
           )
         })
 
         mapInstanceRef.current = map
-        setMapStatus('คลิกบนแผนที่เพื่อเลือกพิกัดร้าน')
+        setMapStatus(t('คลิกบนแผนที่เพื่อเลือกพิกัดร้าน', 'Click the map to choose shop location'))
       })
       .catch((caughtError) => {
         setMapStatus(
           caughtError instanceof Error
             ? caughtError.message
-            : 'โหลดแผนที่ไม่สำเร็จ',
+            : t('โหลดแผนที่ไม่สำเร็จ', 'Failed to load map'),
         )
       })
 
@@ -394,13 +398,13 @@ export default function OpsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'บันทึกการตั้งค่าไม่สำเร็จ')
+        throw new Error(data.error || t('บันทึกการตั้งค่าไม่สำเร็จ', 'Failed to save settings'))
       }
 
       await loadSummary()
-      setMessage('บันทึกการตั้งค่าร้านเรียบร้อยแล้ว')
+      setMessage(t('บันทึกการตั้งค่าร้านเรียบร้อยแล้ว', 'Shop settings saved'))
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'เกิดข้อผิดพลาด')
+      setError(caughtError instanceof Error ? caughtError.message : t('เกิดข้อผิดพลาด', 'Something went wrong'))
     } finally {
       setSaving(false)
     }
@@ -443,14 +447,18 @@ export default function OpsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'บันทึกสาขาไม่สำเร็จ')
+        throw new Error(data.error || t('บันทึกสาขาไม่สำเร็จ', 'Failed to save branch'))
       }
 
       await loadBranches()
       resetBranchForm()
-      setMessage(editingBranchId ? 'แก้ไขข้อมูลสาขาแล้ว' : 'เพิ่มสาขาใหม่แล้ว')
+      setMessage(
+        editingBranchId
+          ? t('แก้ไขข้อมูลสาขาแล้ว', 'Branch updated')
+          : t('เพิ่มสาขาใหม่แล้ว', 'Branch added'),
+      )
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'เกิดข้อผิดพลาด')
+      setError(caughtError instanceof Error ? caughtError.message : t('เกิดข้อผิดพลาด', 'Something went wrong'))
     } finally {
       setSaving(false)
     }
@@ -465,26 +473,29 @@ export default function OpsPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">ศูนย์ดูแลระบบร้าน</div>
-            <div className="badge">เฉพาะเจ้าของร้านและแอดมิน</div>
+            <div className="badge">{t('ศูนย์ดูแลระบบร้าน', 'Ops center')}</div>
+            <div className="badge">{t('เฉพาะเจ้าของร้านและแอดมิน', 'Owner/Admin only')}</div>
           </div>
-          <h1 className="hero-title">ตั้งค่าร้านและตรวจสุขภาพระบบ</h1>
+          <h1 className="hero-title">{t('ตั้งค่าร้านและตรวจสุขภาพระบบ', 'Shop settings and system health')}</h1>
           <p className="hero-subtitle">
-            ใช้ตั้งค่ารอบเงินเดือนและพิกัดร้านสำหรับการลงเวลาแบบถ่ายรูปและตรวจตำแหน่ง
+            {t(
+              'ใช้ตั้งค่ารอบเงินเดือนและพิกัดร้านสำหรับการลงเวลาแบบถ่ายรูปและตรวจตำแหน่ง',
+              'Configure payday, shift times, and shop location for photo/GPS attendance.',
+            )}
           </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
-            กลับหน้าแรก
+            {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
           <button className="btn btn-secondary" onClick={() => router.push('/audit')}>
-            ดูประวัติการใช้งาน
+            {t('ดูประวัติการใช้งาน', 'View audit log')}
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => router.push('/attendance/corrections')}
           >
-            คำขอแก้เวลา
+            {t('คำขอแก้เวลา', 'Attendance corrections')}
           </button>
           <LogoutButton />
         </div>
@@ -497,52 +508,55 @@ export default function OpsPage() {
         <>
           <section className="grid stats">
             <article className="stat-card">
-              <p className="stat-label">สถานะแอป</p>
+              <p className="stat-label">{t('สถานะแอป', 'App status')}</p>
               <p className="stat-value">{summary.app}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">สถานะฐานข้อมูล</p>
+              <p className="stat-label">{t('สถานะฐานข้อมูล', 'Database status')}</p>
               <p className="stat-value">{summary.database}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">พนักงาน active</p>
+              <p className="stat-label">{t('พนักงาน active', 'Active employees')}</p>
               <p className="stat-value">{summary.activeEmployees}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">ลงเวลาแล้ววันนี้</p>
+              <p className="stat-label">{t('ลงเวลาแล้ววันนี้', 'Checked in today')}</p>
               <p className="stat-value">{summary.checkedInToday}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">คำขอแก้เวลา pending</p>
+              <p className="stat-label">{t('คำขอแก้เวลา pending', 'Pending corrections')}</p>
               <p className="stat-value">{summary.pendingCorrections}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">Open shift ที่ยังไม่ปิด</p>
+              <p className="stat-label">{t('Open shift ที่ยังไม่ปิด', 'Open shifts')}</p>
               <p className="stat-value">{summary.openAttendanceShifts}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">งวด payroll ที่ lock</p>
+              <p className="stat-label">{t('งวด payroll ที่ lock', 'Locked payroll periods')}</p>
               <p className="stat-value">{summary.lockedPayrollPeriods}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">Audit 24 ชม. ล่าสุด</p>
+              <p className="stat-label">{t('Audit 24 ชม. ล่าสุด', 'Audit events in last 24h')}</p>
               <p className="stat-value">{summary.auditEventsLast24h}</p>
             </article>
             <article className="stat-card">
-              <p className="stat-label">ไฟล์รูปเข้างานที่หาย</p>
+              <p className="stat-label">{t('ไฟล์รูปเข้างานที่หาย', 'Missing check-in photos')}</p>
               <p className="stat-value">{summary.photoStorage.missingPhotoFiles}</p>
             </article>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">ตั้งค่าร้านสำหรับใช้งานจริง</h2>
+            <h2 className="panel-title">{t('ตั้งค่าร้านสำหรับใช้งานจริง', 'Production shop settings')}</h2>
             <p className="panel-subtitle">
-              ถ้ายังไม่ตั้งค่าพิกัดร้าน พนักงานจะยังเช็กอินด้วย GPS ไม่ได้
+              {t(
+                'ถ้ายังไม่ตั้งค่าพิกัดร้าน พนักงานจะยังเช็กอินด้วย GPS ไม่ได้',
+                'If shop coordinates are not set, GPS check-in will not work.',
+              )}
             </p>
             <form onSubmit={handleSaveSettings}>
               <div className="form-grid" style={{ marginTop: 16 }}>
                 <div className="field">
-                  <label>วันจ่ายเงินเดือนของร้าน</label>
+                  <label>{t('วันจ่ายเงินเดือนของร้าน', 'Shop payday')}</label>
                   <input
                     type="number"
                     min="1"
@@ -554,7 +568,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะเช้า - เวลาเข้างาน</label>
+                  <label>{t('กะเช้า - เวลาเข้างาน', 'Morning shift - start time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -570,7 +584,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะเช้า - เวลาเลิกงาน</label>
+                  <label>{t('กะเช้า - เวลาเลิกงาน', 'Morning shift - end time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -586,7 +600,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะบ่าย - เวลาเข้างาน</label>
+                  <label>{t('กะบ่าย - เวลาเข้างาน', 'Afternoon shift - start time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -602,7 +616,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะบ่าย - เวลาเลิกงาน</label>
+                  <label>{t('กะบ่าย - เวลาเลิกงาน', 'Afternoon shift - end time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -618,7 +632,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะดึก - เวลาเข้างาน</label>
+                  <label>{t('กะดึก - เวลาเข้างาน', 'Night shift - start time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -634,7 +648,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>กะดึก - เวลาเลิกงาน</label>
+                  <label>{t('กะดึก - เวลาเลิกงาน', 'Night shift - end time')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -650,7 +664,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>ละติจูดร้าน</label>
+                  <label>{t('ละติจูดร้าน', 'Shop latitude')}</label>
                   <input
                     inputMode="decimal"
                     value={form.latitude}
@@ -661,7 +675,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>ลองจิจูดร้าน</label>
+                  <label>{t('ลองจิจูดร้าน', 'Shop longitude')}</label>
                   <input
                     inputMode="decimal"
                     value={form.longitude}
@@ -672,7 +686,7 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>รัศมีที่อนุญาตให้ลงเวลา (เมตร)</label>
+                  <label>{t('รัศมีที่อนุญาตให้ลงเวลา (เมตร)', 'Allowed check-in radius (m)')}</label>
                   <input
                     type="number"
                     min="10"
@@ -688,28 +702,31 @@ export default function OpsPage() {
                 </div>
               </div>
               <div className="field" style={{ marginTop: 16 }}>
-                <label>จิ้มพิกัดร้านจากแผนที่</label>
+                <label>{t('จิ้มพิกัดร้านจากแผนที่', 'Pick shop location on map')}</label>
                 <div ref={mapContainerRef} className="map-picker" />
-                <div className="table-meta">{mapStatus}</div>
+                <div className="table-meta">{currentMapStatus}</div>
               </div>
               <div className="action-row" style={{ marginTop: 16 }}>
                 <button className="btn btn-primary" type="submit" disabled={saving}>
-                  {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
+                  {saving ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกการตั้งค่า', 'Save settings')}
                 </button>
               </div>
             </form>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">จัดการสาขาในร้านนี้</h2>
+            <h2 className="panel-title">{t('จัดการสาขาในร้านนี้', 'Manage branches')}</h2>
             <p className="panel-subtitle">
-              ถ้าสาขามีพิกัดของตัวเอง ระบบจะใช้พิกัดสาขานั้นตรวจ GPS ตอนพนักงานเช็กอินก่อน
+              {t(
+                'ถ้าสาขามีพิกัดของตัวเอง ระบบจะใช้พิกัดสาขานั้นตรวจ GPS ตอนพนักงานเช็กอินก่อน',
+                'If a branch has its own coordinates, those are used first for GPS check-in.',
+              )}
             </p>
 
             <form onSubmit={handleSaveBranch}>
               <div className="form-grid" style={{ marginTop: 16 }}>
                 <div className="field">
-                  <label>ชื่อสาขา</label>
+                  <label>{t('ชื่อสาขา', 'Branch name')}</label>
                   <input
                     value={branchForm.name}
                     onChange={(event) =>
@@ -718,11 +735,11 @@ export default function OpsPage() {
                         name: event.target.value,
                       }))
                     }
-                    placeholder="เช่น สาขาสยาม"
+                    placeholder={t('เช่น สาขาสยาม', 'e.g. Siam branch')}
                   />
                 </div>
                 <div className="field">
-                  <label>ละติจูดสาขา</label>
+                  <label>{t('ละติจูดสาขา', 'Branch latitude')}</label>
                   <input
                     inputMode="decimal"
                     value={branchForm.latitude}
@@ -732,11 +749,11 @@ export default function OpsPage() {
                         latitude: event.target.value,
                       }))
                     }
-                    placeholder="ไม่กรอก = ใช้พิกัดร้านหลัก"
+                    placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
                   />
                 </div>
                 <div className="field">
-                  <label>ลองจิจูดสาขา</label>
+                  <label>{t('ลองจิจูดสาขา', 'Branch longitude')}</label>
                   <input
                     inputMode="decimal"
                     value={branchForm.longitude}
@@ -746,11 +763,11 @@ export default function OpsPage() {
                         longitude: event.target.value,
                       }))
                     }
-                    placeholder="ไม่กรอก = ใช้พิกัดร้านหลัก"
+                    placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
                   />
                 </div>
                 <div className="field">
-                  <label>รัศมีเช็กอินของสาขา (เมตร)</label>
+                  <label>{t('รัศมีเช็กอินของสาขา (เมตร)', 'Branch check-in radius (m)')}</label>
                   <input
                     type="number"
                     min="10"
@@ -762,19 +779,19 @@ export default function OpsPage() {
                         allowedRadiusMeters: event.target.value,
                       }))
                     }
-                    placeholder="ไม่กรอก = ใช้รัศมีร้านหลัก"
+                    placeholder={t('ไม่กรอก = ใช้รัศมีร้านหลัก', 'Leave empty to use main shop radius')}
                   />
                 </div>
               </div>
               <div className="action-row" style={{ marginTop: 16 }}>
                 <button className="btn btn-primary" type="submit" disabled={saving}>
                   {editingBranchId
-                    ? saving
-                      ? 'กำลังบันทึก...'
-                      : 'บันทึกการแก้ไขสาขา'
+                      ? saving
+                      ? t('กำลังบันทึก...', 'Saving...')
+                      : t('บันทึกการแก้ไขสาขา', 'Save branch changes')
                     : saving
-                      ? 'กำลังเพิ่ม...'
-                      : 'เพิ่มสาขา'}
+                      ? t('กำลังเพิ่ม...', 'Adding...')
+                      : t('เพิ่มสาขา', 'Add branch')}
                 </button>
                 {editingBranchId ? (
                   <button
@@ -782,14 +799,14 @@ export default function OpsPage() {
                     className="btn btn-secondary"
                     onClick={resetBranchForm}
                   >
-                    ยกเลิกแก้ไขสาขา
+                    {t('ยกเลิกแก้ไขสาขา', 'Cancel edit')}
                   </button>
                 ) : null}
               </div>
             </form>
 
             {branches.length === 0 ? (
-              <div className="empty-state">ยังไม่มีสาขา</div>
+              <div className="empty-state">{t('ยังไม่มีสาขา', 'No branches yet')}</div>
             ) : (
               <div className="mobile-card-list" style={{ marginTop: 16 }}>
                 {branches.map((branch) => (
@@ -801,28 +818,28 @@ export default function OpsPage() {
                         className="btn btn-secondary"
                         onClick={() => handleEditBranch(branch)}
                       >
-                        แก้ไขสาขา
+                        {t('แก้ไขสาขา', 'Edit branch')}
                       </button>
                     </div>
                     <div className="record-card-body">
                       <div className="record-line">
-                        <span>พนักงานในสาขา</span>
-                        <strong>{branch.employeeCount} คน</strong>
+                        <span>{t('พนักงานในสาขา', 'Employees in branch')}</span>
+                        <strong>{branch.employeeCount} {t('คน', 'people')}</strong>
                       </div>
                       <div className="record-line">
-                        <span>พิกัดสาขา</span>
+                        <span>{t('พิกัดสาขา', 'Branch coordinates')}</span>
                         <strong>
                           {branch.latitude !== null && branch.longitude !== null
                             ? `${branch.latitude}, ${branch.longitude}`
-                            : 'ใช้พิกัดร้านหลัก'}
+                            : t('ใช้พิกัดร้านหลัก', 'Use main shop location')}
                         </strong>
                       </div>
                       <div className="record-line">
-                        <span>รัศมีเช็กอิน</span>
+                        <span>{t('รัศมีเช็กอิน', 'Check-in radius')}</span>
                         <strong>
                           {branch.allowedRadiusMeters
-                            ? `${branch.allowedRadiusMeters} เมตร`
-                            : 'ใช้รัศมีร้านหลัก'}
+                            ? `${branch.allowedRadiusMeters} ${t('เมตร', 'm')}`
+                            : t('ใช้รัศมีร้านหลัก', 'Use main shop radius')}
                         </strong>
                       </div>
                     </div>
@@ -833,58 +850,58 @@ export default function OpsPage() {
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">สถานะระบบ</h2>
+            <h2 className="panel-title">{t('สถานะระบบ', 'System status')}</h2>
             <div className="badge-row" style={{ marginTop: 14 }}>
-              <div className="badge">สภาพแวดล้อม: {summary.nodeEnv}</div>
-              <div className="badge">เวอร์ชัน: {summary.version}</div>
+              <div className="badge">{t('สภาพแวดล้อม', 'Environment')}: {summary.nodeEnv}</div>
+              <div className="badge">{t('เวอร์ชัน', 'Version')}: {summary.version}</div>
               <div className="badge">
-                ตรวจล่าสุด: {formatThaiDateTime24h(summary.timestamp)}
+                {t('ตรวจล่าสุด', 'Last checked')}: {formatThaiDateTime24h(summary.timestamp)}
               </div>
               <div className="badge">
-                รหัสร้านสำหรับสมัครพนักงาน: {summary.settings.registrationCode}
+                {t('รหัสร้านสำหรับสมัครพนักงาน', 'Shop code for employee signup')}: {summary.settings.registrationCode}
               </div>
               <div className="badge">
-                ตรวจรูปเข้างาน: {summary.photoStorage.checkedPhotoRecords} รายการ
+                {t('ตรวจรูปเข้างาน', 'Photo records checked')}: {summary.photoStorage.checkedPhotoRecords} {t('รายการ', 'records')}
               </div>
               <div className="badge">
-                ที่เก็บรูป: {summary.photoStorage.storageRoot}
+                {t('ที่เก็บรูป', 'Photo storage')}: {summary.photoStorage.storageRoot}
               </div>
             </div>
           </section>
 
           <section className="panel">
-            <h2 className="panel-title">ข้อมูลแพ็กเกจ</h2>
+            <h2 className="panel-title">{t('ข้อมูลแพ็กเกจ', 'Subscription plan')}</h2>
             <p className="panel-subtitle">
-              แพ็กเกจ {summary.subscription.plan} / สถานะ {summary.subscription.status}
+              {t('แพ็กเกจ', 'Plan')} {summary.subscription.plan} / {t('สถานะ', 'Status')} {summary.subscription.status}
             </p>
             <div className="badge-row" style={{ marginTop: 14 }}>
               <div className="badge">
-                วันคงเหลือ: {summary.subscription.daysRemaining ?? 'ไม่ได้กำหนด'}
+                {t('วันคงเหลือ', 'Days left')}: {summary.subscription.daysRemaining ?? t('ไม่ได้กำหนด', 'Not set')}
               </div>
               <div className="badge">
-                หมดอายุ:{' '}
+                {t('หมดอายุ', 'Expires')}:{' '}
                 {summary.subscription.expiresAt
                   ? new Date(summary.subscription.expiresAt).toLocaleDateString('th-TH')
-                  : 'ไม่ได้กำหนด'}
+                  : t('ไม่ได้กำหนด', 'Not set')}
               </div>
-              <div className="badge">วันจ่ายเงินเดือน: วันที่ {summary.settings.payrollPayday}</div>
+              <div className="badge">{t('วันจ่ายเงินเดือน', 'Payday')}: {summary.settings.payrollPayday}</div>
               <div className="badge">
-                กะเช้า: {formatClock(summary.settings.morningShiftStartMinutes)}-
+                {t('กะเช้า', 'Morning shift')}: {formatClock(summary.settings.morningShiftStartMinutes)}-
                 {formatClock(summary.settings.morningShiftEndMinutes)}
               </div>
               <div className="badge">
-                กะบ่าย: {formatClock(summary.settings.afternoonShiftStartMinutes)}-
+                {t('กะบ่าย', 'Afternoon shift')}: {formatClock(summary.settings.afternoonShiftStartMinutes)}-
                 {formatClock(summary.settings.afternoonShiftEndMinutes)}
               </div>
               <div className="badge">
-                กะดึก: {formatClock(summary.settings.nightShiftStartMinutes)}-
+                {t('กะดึก', 'Night shift')}: {formatClock(summary.settings.nightShiftStartMinutes)}-
                 {formatClock(summary.settings.nightShiftEndMinutes)}
               </div>
               <div className="badge">
-                พิกัดร้าน:{' '}
+                {t('พิกัดร้าน', 'Shop location')}:{' '}
                 {summary.settings.latitude !== null && summary.settings.longitude !== null
                   ? `${summary.settings.latitude}, ${summary.settings.longitude}`
-                  : 'ยังไม่ได้ตั้งค่า'}
+                  : t('ยังไม่ได้ตั้งค่า', 'Not set')}
               </div>
             </div>
           </section>

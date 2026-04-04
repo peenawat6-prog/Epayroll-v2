@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
-
-const WORK_SHIFT_LABELS = {
-  MORNING: 'กะเช้า',
-  AFTERNOON: 'กะบ่าย',
-  NIGHT: 'กะดึก',
-} as const
+import { useLanguage } from '@/lib/language'
 
 type EmployeeRow = {
   id: string
@@ -74,6 +69,7 @@ type BranchOption = {
 }
 
 export default function EmployeesPage() {
+  const { t } = useLanguage()
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [branches, setBranches] = useState<BranchOption[]>([])
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
@@ -109,6 +105,11 @@ export default function EmployeesPage() {
     user?.role === 'OWNER' ||
     user?.role === 'ADMIN' ||
     user?.role === 'HR'
+  const workShiftLabels = {
+    MORNING: t('กะเช้า', 'Morning shift'),
+    AFTERNOON: t('กะบ่าย', 'Afternoon shift'),
+    NIGHT: t('กะดึก', 'Night shift'),
+  } as const
 
   const fetchEmployees = () => {
     fetch('/api/employees?includeInactive=true')
@@ -220,18 +221,23 @@ export default function EmployeesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    const confirmDelete = confirm('ยืนยันการลบพนักงาน? การลบนี้จะเป็นการระงับใช้งานเท่านั้น')
+    const confirmDelete = confirm(
+      t(
+        'ยืนยันการลบพนักงาน? การลบนี้จะเป็นการระงับใช้งานเท่านั้น',
+        'Confirm removing this employee? This will only deactivate the account.',
+      ),
+    )
     if (!confirmDelete) return
 
     const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' })
     const data = await res.json()
 
     if (!res.ok) {
-      setError(data.error || 'ลบพนักงานไม่สำเร็จ')
+      setError(data.error || t('ลบพนักงานไม่สำเร็จ', 'Failed to deactivate employee'))
       return
     }
 
-    setMessage('พนักงานถูกระงับใช้งานแล้ว')
+    setMessage(t('พนักงานถูกระงับใช้งานแล้ว', 'Employee deactivated'))
     fetchEmployees()
     resetForm()
   }
@@ -242,7 +248,7 @@ export default function EmployeesPage() {
     setError('')
 
     if (!form.firstName || !form.lastName || !form.position) {
-      setError('กรุณากรอกข้อมูลให้ครบทุกช่อง')
+      setError(t('กรุณากรอกข้อมูลให้ครบทุกช่อง', 'Please fill in all required fields'))
       return
     }
 
@@ -285,14 +291,14 @@ export default function EmployeesPage() {
     const data = await res.json()
 
     if (!res.ok) {
-      setError(data.error || 'บันทึกข้อมูลไม่สำเร็จ')
+      setError(data.error || t('บันทึกข้อมูลไม่สำเร็จ', 'Failed to save employee'))
       return
     }
 
     if (editId) {
-      setMessage('แก้ไขพนักงานสำเร็จ')
+      setMessage(t('แก้ไขพนักงานสำเร็จ', 'Employee updated'))
     } else {
-      setMessage('เพิ่มพนักงานสำเร็จ')
+      setMessage(t('เพิ่มพนักงานสำเร็จ', 'Employee added'))
     }
 
     fetchEmployees()
@@ -310,7 +316,7 @@ export default function EmployeesPage() {
 
     try {
       if (decision === 'REJECTED' && !reviewNote.trim()) {
-        throw new Error('กรุณากรอกหมายเหตุเมื่อไม่อนุมัติ')
+        throw new Error(t('กรุณากรอกหมายเหตุเมื่อไม่อนุมัติ', 'Please add a note when rejecting'))
       }
 
       const res = await fetch(`/api/employee-registrations/${requestId}`, {
@@ -326,14 +332,20 @@ export default function EmployeesPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ')
+        throw new Error(data.error || t('ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ', 'Failed to review registration request'))
       }
 
       setReviewNote('')
       setMessage(
         decision === 'APPROVED'
-          ? 'อนุมัติคำขอลงทะเบียนแล้ว พนักงานสามารถล็อกอินได้'
-          : 'ไม่อนุมัติคำขอลงทะเบียนเรียบร้อยแล้ว',
+          ? t(
+              'อนุมัติคำขอลงทะเบียนแล้ว พนักงานสามารถล็อกอินได้',
+              'Registration approved. Employee can now log in.',
+            )
+          : t(
+              'ไม่อนุมัติคำขอลงทะเบียนเรียบร้อยแล้ว',
+              'Registration request rejected.',
+            ),
       )
       fetchEmployees()
       fetchRegistrationRequests()
@@ -341,7 +353,7 @@ export default function EmployeesPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : 'ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ',
+          : t('ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ', 'Failed to review registration request'),
       )
     } finally {
       setReviewingId(null)
@@ -355,22 +367,30 @@ export default function EmployeesPage() {
       <section className="hero">
         <div>
           <div className="badge-row">
-            <div className="badge">พนักงานทั้งหมด {employees.length} รายการ</div>
-            <div className="badge">สิทธิ์ {user?.role}</div>
+            <div className="badge">
+              {t('พนักงานทั้งหมด', 'Total employees')} {employees.length}{' '}
+              {t('รายการ', 'records')}
+            </div>
+            <div className="badge">{t('สิทธิ์', 'Role')} {user?.role}</div>
             {registrationRequests.filter((item) => item.status === 'PENDING').length ? (
               <div className="badge">
-                รออนุมัติ{' '}
+                {t('รออนุมัติ', 'Pending approval')}{' '}
                 {registrationRequests.filter((item) => item.status === 'PENDING').length}{' '}
-                คำขอ
+                {t('คำขอ', 'requests')}
               </div>
             ) : null}
           </div>
-          <h1 className="hero-title">จัดการพนักงาน</h1>
-          <p className="hero-subtitle">เพิ่มข้อมูลพนักงานและบัญชีรับเงินให้พร้อมใช้ในงานจริงทั้งหน้าร้านและงานโอนเงิน</p>
+          <h1 className="hero-title">{t('จัดการพนักงาน', 'Manage employees')}</h1>
+          <p className="hero-subtitle">
+            {t(
+              'เพิ่มข้อมูลพนักงานและบัญชีรับเงินให้พร้อมใช้ในงานจริงทั้งหน้าร้านและงานโอนเงิน',
+              'Manage employee profiles and payment accounts for daily operations and salary transfers.',
+            )}
+          </p>
         </div>
         <div className="action-row">
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
-            กลับหน้าแรก
+            {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
           <LogoutButton />
         </div>
@@ -378,22 +398,24 @@ export default function EmployeesPage() {
 
       {canManage ? (
         <section ref={employeeFormPanelRef} className="panel">
-          <h2 className="panel-title">{editId ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่'}</h2>
+          <h2 className="panel-title">
+            {editId ? t('แก้ไขข้อมูลพนักงาน', 'Edit employee') : t('เพิ่มพนักงานใหม่', 'Add employee')}
+          </h2>
           <form onSubmit={handleSubmit}>
             <div className="form-grid" style={{ marginTop: 16 }}>
               {!editId ? (
                 <div className="field">
-                  <label>รหัสพนักงาน</label>
-                  <input value="ระบบจะรันให้อัตโนมัติ" disabled />
+                  <label>{t('รหัสพนักงาน', 'Employee code')}</label>
+                  <input value={t('ระบบจะรันให้อัตโนมัติ', 'Generated automatically')} disabled />
                 </div>
               ) : null}
               <div className="field">
-                <label>สาขา</label>
+                <label>{t('สาขา', 'Branch')}</label>
                 <select
                   value={form.branchId}
                   onChange={(e) => setForm({ ...form, branchId: e.target.value })}
                 >
-                  <option value="">ไม่ระบุสาขา</option>
+                  <option value="">{t('ไม่ระบุสาขา', 'No branch')}</option>
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.name}
@@ -402,35 +424,35 @@ export default function EmployeesPage() {
                 </select>
               </div>
               <div className="field">
-                <label>ชื่อจริง</label>
+                <label>{t('ชื่อจริง', 'First name')}</label>
                 <input
                   value={form.firstName}
                   onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>นามสกุล</label>
+                <label>{t('นามสกุล', 'Last name')}</label>
                 <input
                   value={form.lastName}
                   onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>เบอร์โทร</label>
+                <label>{t('เบอร์โทร', 'Phone')}</label>
                 <input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>ตำแหน่ง</label>
+                <label>{t('ตำแหน่ง', 'Position')}</label>
                 <input
                   value={form.position}
                   onChange={(e) => setForm({ ...form, position: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>ประเภทพนักงาน</label>
+                <label>{t('ประเภทพนักงาน', 'Employee type')}</label>
                 <select
                   value={form.employeeType}
                   onChange={(e) => setForm({ ...form, employeeType: e.target.value as 'FULL_TIME' | 'PART_TIME' })}
@@ -440,18 +462,18 @@ export default function EmployeesPage() {
                 </select>
               </div>
               <div className="field">
-                <label>รูปแบบจ่ายเงิน</label>
+                <label>{t('รูปแบบจ่ายเงิน', 'Pay type')}</label>
                 <select
                   value={form.payType}
                   onChange={(e) => setForm({ ...form, payType: e.target.value as 'MONTHLY' | 'DAILY' | 'HOURLY' })}
                 >
-                  <option value="MONTHLY">รายเดือน</option>
-                  <option value="DAILY">รายวัน</option>
-                  <option value="HOURLY">รายชั่วโมง</option>
+                  <option value="MONTHLY">{t('รายเดือน', 'Monthly')}</option>
+                  <option value="DAILY">{t('รายวัน', 'Daily')}</option>
+                  <option value="HOURLY">{t('รายชั่วโมง', 'Hourly')}</option>
                 </select>
               </div>
               <div className="field">
-                <label>กะการทำงานประจำ</label>
+                <label>{t('กะการทำงานประจำ', 'Regular shift')}</label>
                 <select
                   value={form.workShift}
                   onChange={(e) =>
@@ -461,13 +483,13 @@ export default function EmployeesPage() {
                     })
                   }
                 >
-                  <option value="MORNING">{WORK_SHIFT_LABELS.MORNING}</option>
-                  <option value="AFTERNOON">{WORK_SHIFT_LABELS.AFTERNOON}</option>
-                  <option value="NIGHT">{WORK_SHIFT_LABELS.NIGHT}</option>
+                  <option value="MORNING">{workShiftLabels.MORNING}</option>
+                  <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
+                  <option value="NIGHT">{workShiftLabels.NIGHT}</option>
                 </select>
               </div>
               <div className="field">
-                <label>เงินเดือนฐาน</label>
+                <label>{t('เงินเดือนฐาน', 'Base salary')}</label>
                 <input
                   type="number"
                   value={form.baseSalary}
@@ -475,7 +497,7 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="field">
-                <label>ค่าแรงรายวัน</label>
+                <label>{t('ค่าแรงรายวัน', 'Daily rate')}</label>
                 <input
                   type="number"
                   value={form.dailyRate}
@@ -483,7 +505,7 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="field">
-                <label>ค่าแรงรายชั่วโมง</label>
+                <label>{t('ค่าแรงรายชั่วโมง', 'Hourly rate')}</label>
                 <input
                   type="number"
                   value={form.hourlyRate}
@@ -491,7 +513,7 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="field">
-                <label>วันเริ่มงาน</label>
+                <label>{t('วันเริ่มงาน', 'Start date')}</label>
                 <input
                   type="date"
                   value={form.startDate}
@@ -499,44 +521,44 @@ export default function EmployeesPage() {
                 />
               </div>
               <div className="field">
-                <label>ธนาคาร</label>
+                <label>{t('ธนาคาร', 'Bank')}</label>
                 <input
                   value={form.bankName}
                   onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                  placeholder="เช่น SCB"
+                  placeholder={t('เช่น SCB', 'e.g. SCB')}
                 />
               </div>
               <div className="field">
-                <label>ชื่อบัญชี</label>
+                <label>{t('ชื่อบัญชี', 'Account name')}</label>
                 <input
                   value={form.accountName}
                   onChange={(e) => setForm({ ...form, accountName: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>เลขบัญชี</label>
+                <label>{t('เลขบัญชี', 'Account number')}</label>
                 <input
                   value={form.accountNumber}
                   onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
                 />
               </div>
               <div className="field">
-                <label>พร้อมเพย์</label>
+                <label>{t('พร้อมเพย์', 'PromptPay')}</label>
                 <input
                   value={form.promptPayId}
                   onChange={(e) => setForm({ ...form, promptPayId: e.target.value })}
-                  placeholder="เบอร์โทรหรือเลขบัตร"
+                  placeholder={t('เบอร์โทรหรือเลขบัตร', 'Phone number or ID number')}
                 />
               </div>
             </div>
 
             <div className="action-row" style={{ marginTop: 16 }}>
               <button type="submit" className="btn btn-primary">
-                {editId ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
+                {editId ? t('บันทึกการแก้ไข', 'Save changes') : t('เพิ่มพนักงาน', 'Add employee')}
               </button>
               {editId ? (
                 <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                  ยกเลิก
+                  {t('ยกเลิก', 'Cancel')}
                 </button>
               ) : null}
             </div>
@@ -547,29 +569,40 @@ export default function EmployeesPage() {
         </section>
       ) : (
         <section className="panel">
-          <h2 className="panel-title">สิทธิ์ของคุณเป็นแบบอ่านอย่างเดียว</h2>
-          <p className="panel-subtitle">สามารถดูข้อมูลพนักงานได้ แต่ไม่สามารถเพิ่มหรือแก้ไขได้</p>
+          <h2 className="panel-title">{t('สิทธิ์ของคุณเป็นแบบอ่านอย่างเดียว', 'Read-only access')}</h2>
+          <p className="panel-subtitle">
+            {t(
+              'สามารถดูข้อมูลพนักงานได้ แต่ไม่สามารถเพิ่มหรือแก้ไขได้',
+              'You can view employee data, but cannot add or edit records.',
+            )}
+          </p>
         </section>
       )}
 
       {canManage ? (
         <section className="panel">
-          <h2 className="panel-title">คำขอลงทะเบียนพนักงาน</h2>
+          <h2 className="panel-title">{t('คำขอลงทะเบียนพนักงาน', 'Employee registration requests')}</h2>
           <p className="panel-subtitle">
-            อนุมัติแล้วระบบจะสร้างบัญชีพนักงานและเปิดให้ล็อกอินได้ทันที
+            {t(
+              'อนุมัติแล้วระบบจะสร้างบัญชีพนักงานและเปิดให้ล็อกอินได้ทันที',
+              'Once approved, the employee account is created and login is enabled.',
+            )}
           </p>
 
           <div className="field" style={{ marginTop: 16, maxWidth: 420 }}>
-            <label>หมายเหตุสำหรับการอนุมัติ/ไม่อนุมัติ</label>
+            <label>{t('หมายเหตุสำหรับการอนุมัติ/ไม่อนุมัติ', 'Approval / rejection note')}</label>
             <input
               value={reviewNote}
               onChange={(event) => setReviewNote(event.target.value)}
-              placeholder="ถ้าไม่อนุมัติ ควรกรอกเหตุผลให้พนักงาน"
+              placeholder={t(
+                'ถ้าไม่อนุมัติ ควรกรอกเหตุผลให้พนักงาน',
+                'If rejecting, explain the reason for the employee.',
+              )}
             />
           </div>
 
           {registrationRequests.length === 0 ? (
-            <div className="empty-state">ยังไม่มีคำขอลงทะเบียน</div>
+            <div className="empty-state">{t('ยังไม่มีคำขอลงทะเบียน', 'No registration requests')}</div>
           ) : (
             <div className="mobile-card-list" style={{ marginTop: 16 }}>
               {registrationRequests.map((request) => (
@@ -593,55 +626,55 @@ export default function EmployeesPage() {
 
                   <div className="record-card-body">
                     <div className="record-line">
-                      <span>อีเมล</span>
+                      <span>{t('อีเมล', 'Email')}</span>
                       <strong>{request.email}</strong>
                     </div>
                     <div className="record-line">
-                      <span>สาขา</span>
+                      <span>{t('สาขา', 'Branch')}</span>
                       <strong>{request.branch?.name ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>ตำแหน่ง</span>
+                      <span>{t('ตำแหน่ง', 'Position')}</span>
                       <strong>{request.position}</strong>
                     </div>
                     <div className="record-line">
-                      <span>เบอร์โทร</span>
+                      <span>{t('เบอร์โทร', 'Phone')}</span>
                       <strong>{request.phone ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>ประเภท</span>
+                      <span>{t('ประเภท', 'Type')}</span>
                       <strong>
                         {request.employeeType} / {request.payType}
                       </strong>
                     </div>
                     <div className="record-line">
-                      <span>กะทำงาน</span>
-                      <strong>{WORK_SHIFT_LABELS[request.workShift]}</strong>
+                      <span>{t('กะทำงาน', 'Shift')}</span>
+                      <strong>{workShiftLabels[request.workShift]}</strong>
                     </div>
                     <div className="record-line">
-                      <span>ธนาคาร</span>
+                      <span>{t('ธนาคาร', 'Bank')}</span>
                       <strong>{request.bankName ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>ชื่อบัญชี</span>
+                      <span>{t('ชื่อบัญชี', 'Account name')}</span>
                       <strong>{request.accountName ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>เลขบัญชี</span>
+                      <span>{t('เลขบัญชี', 'Account number')}</span>
                       <strong>{request.accountNumber ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>พร้อมเพย์</span>
+                      <span>{t('พร้อมเพย์', 'PromptPay')}</span>
                       <strong>{request.promptPayId ?? '-'}</strong>
                     </div>
                     <div className="record-line">
-                      <span>ส่งคำขอเมื่อ</span>
+                      <span>{t('ส่งคำขอเมื่อ', 'Submitted at')}</span>
                       <strong>
                         {formatThaiDateTime24h(request.createdAt)}
                       </strong>
                     </div>
                     <div className="record-line">
-                      <span>หมายเหตุ</span>
+                      <span>{t('หมายเหตุ', 'Note')}</span>
                       <strong>{request.reviewNote ?? '-'}</strong>
                     </div>
                   </div>
@@ -653,14 +686,14 @@ export default function EmployeesPage() {
                         disabled={reviewingId === request.id}
                         onClick={() => handleReviewRegistration(request.id, 'APPROVED')}
                       >
-                        อนุมัติให้ใช้งาน
+                        {t('อนุมัติให้ใช้งาน', 'Approve')}
                       </button>
                       <button
                         className="btn btn-danger"
                         disabled={reviewingId === request.id}
                         onClick={() => handleReviewRegistration(request.id, 'REJECTED')}
                       >
-                        ไม่อนุมัติ
+                        {t('ไม่อนุมัติ', 'Reject')}
                       </button>
                     </div>
                   ) : null}
@@ -672,21 +705,21 @@ export default function EmployeesPage() {
       ) : null}
 
       <section className="panel">
-        <h2 className="panel-title">รายชื่อพนักงาน</h2>
+        <h2 className="panel-title">{t('รายชื่อพนักงาน', 'Employee list')}</h2>
         <div className="table-wrap desktop-only">
           <table className="data-table">
             <thead>
               <tr>
-                <th>รหัส</th>
-                <th>ชื่อ</th>
-                <th>ตำแหน่ง</th>
-                <th>สาขา</th>
-                <th>รูปแบบจ่าย</th>
-                <th>กะทำงาน</th>
-                <th>อัตราค่าจ้าง</th>
-                <th>ข้อมูลรับเงิน</th>
-                <th>สถานะ</th>
-                <th>จัดการ</th>
+                <th>{t('รหัส', 'Code')}</th>
+                <th>{t('ชื่อ', 'Name')}</th>
+                <th>{t('ตำแหน่ง', 'Position')}</th>
+                <th>{t('สาขา', 'Branch')}</th>
+                <th>{t('รูปแบบจ่าย', 'Pay type')}</th>
+                <th>{t('กะทำงาน', 'Shift')}</th>
+                <th>{t('อัตราค่าจ้าง', 'Pay rate')}</th>
+                <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
+                <th>{t('สถานะ', 'Status')}</th>
+                <th>{t('จัดการ', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -697,20 +730,26 @@ export default function EmployeesPage() {
                   <td>{emp.position}</td>
                   <td>{emp.branch?.name ?? '-'}</td>
                   <td>{emp.payType}</td>
-                  <td>{WORK_SHIFT_LABELS[emp.workShift]}</td>
+                  <td>{workShiftLabels[emp.workShift]}</td>
                   <td>
-                    {emp.payType === 'MONTHLY' ? `${emp.baseSalary ?? 0} บาท/เดือน` : null}
-                    {emp.payType === 'DAILY' ? `${emp.dailyRate ?? 0} บาท/วัน` : null}
-                    {emp.payType === 'HOURLY' ? `${emp.hourlyRate ?? 0} บาท/ชั่วโมง` : null}
+                    {emp.payType === 'MONTHLY'
+                      ? `${emp.baseSalary ?? 0} ${t('บาท/เดือน', 'THB/month')}`
+                      : null}
+                    {emp.payType === 'DAILY'
+                      ? `${emp.dailyRate ?? 0} ${t('บาท/วัน', 'THB/day')}`
+                      : null}
+                    {emp.payType === 'HOURLY'
+                      ? `${emp.hourlyRate ?? 0} ${t('บาท/ชั่วโมง', 'THB/hour')}`
+                      : null}
                   </td>
                   <td>
-                    <div>{emp.bank?.bankName ?? 'ยังไม่ได้กรอก'}</div>
+                    <div>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</div>
                     <div className="table-meta">{emp.bank?.accountNumber ?? '-'}</div>
-                    <div className="table-meta">พร้อมเพย์: {emp.bank?.promptPayId ?? '-'}</div>
+                    <div className="table-meta">{t('พร้อมเพย์', 'PromptPay')}: {emp.bank?.promptPayId ?? '-'}</div>
                   </td>
                   <td>
                     <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
-                      {emp.active ? 'ใช้งานอยู่' : 'ระงับใช้งาน'}
+                      {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
                     </span>
                   </td>
                   <td>
@@ -718,16 +757,16 @@ export default function EmployeesPage() {
                       {canManage ? (
                         <>
                           <button className="btn btn-secondary" onClick={() => handleEditClick(emp)}>
-                            แก้ไข
+                            {t('แก้ไข', 'Edit')}
                           </button>
                           {emp.active ? (
                             <button className="btn btn-danger" onClick={() => handleDelete(emp.id)}>
-                              ระงับ
+                              {t('ระงับ', 'Disable')}
                             </button>
                           ) : null}
                         </>
                       ) : (
-                        <span className="badge">ดูข้อมูลเท่านั้น</span>
+                        <span className="badge">{t('ดูข้อมูลเท่านั้น', 'View only')}</span>
                       )}
                     </div>
                   </td>
@@ -743,36 +782,36 @@ export default function EmployeesPage() {
               <div className="record-card-head">
                 <strong>{emp.firstName} {emp.lastName}</strong>
                 <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
-                  {emp.active ? 'ใช้งานอยู่' : 'ระงับใช้งาน'}
+                  {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
                 </span>
               </div>
               <div className="record-card-body">
-                <div className="record-line"><span>รหัส</span><strong>{emp.code}</strong></div>
-                <div className="record-line"><span>ตำแหน่ง</span><strong>{emp.position}</strong></div>
-                <div className="record-line"><span>สาขา</span><strong>{emp.branch?.name ?? '-'}</strong></div>
-                <div className="record-line"><span>รูปแบบจ่าย</span><strong>{emp.payType}</strong></div>
-                <div className="record-line"><span>กะทำงาน</span><strong>{WORK_SHIFT_LABELS[emp.workShift]}</strong></div>
+                <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{emp.code}</strong></div>
+                <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{emp.position}</strong></div>
+                <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{emp.branch?.name ?? '-'}</strong></div>
+                <div className="record-line"><span>{t('รูปแบบจ่าย', 'Pay type')}</span><strong>{emp.payType}</strong></div>
+                <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[emp.workShift]}</strong></div>
                 <div className="record-line">
-                  <span>บัญชีรับเงิน</span>
-                  <strong>{emp.bank?.bankName ?? 'ยังไม่ได้กรอก'}</strong>
+                  <span>{t('บัญชีรับเงิน', 'Payment account')}</span>
+                  <strong>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong>
                 </div>
-                <div className="record-line"><span>เลขบัญชี</span><strong>{emp.bank?.accountNumber ?? '-'}</strong></div>
-                <div className="record-line"><span>พร้อมเพย์</span><strong>{emp.bank?.promptPayId ?? '-'}</strong></div>
+                <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{emp.bank?.accountNumber ?? '-'}</strong></div>
+                <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{emp.bank?.promptPayId ?? '-'}</strong></div>
               </div>
               <div className="action-row" style={{ marginTop: 12 }}>
                 {canManage ? (
                   <>
                     <button className="btn btn-secondary" onClick={() => handleEditClick(emp)}>
-                      แก้ข้อมูล
+                      {t('แก้ข้อมูล', 'Edit')}
                     </button>
                     {emp.active ? (
                       <button className="btn btn-danger" onClick={() => handleDelete(emp.id)}>
-                        ระงับใช้งาน
+                        {t('ระงับใช้งาน', 'Disable')}
                       </button>
                     ) : null}
                   </>
                 ) : (
-                  <span className="badge">ดูข้อมูลเท่านั้น</span>
+                  <span className="badge">{t('ดูข้อมูลเท่านั้น', 'View only')}</span>
                 )}
               </div>
             </article>
