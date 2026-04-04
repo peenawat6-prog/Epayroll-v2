@@ -3,7 +3,7 @@ import { createAuditLog } from "@/lib/audit"
 import { AppError, jsonResponse, readJsonBody } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import { withAuthorizedRoute } from "@/lib/route-guard"
-import { getWorkDate } from "@/lib/attendance"
+import { getShiftWorkDate } from "@/lib/attendance"
 import { asOptionalTrimmedString, asTrimmedString } from "@/lib/validators"
 
 type EmployeeBankUpdateBody = {
@@ -26,7 +26,23 @@ export const GET = withAuthorizedRoute(
       )
     }
 
-    const employee = await prisma.employee.findFirst({
+    const [tenant, employee] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: {
+          id: access.user.tenantId,
+        },
+        select: {
+          workStartMinutes: true,
+          workEndMinutes: true,
+          morningShiftStartMinutes: true,
+          morningShiftEndMinutes: true,
+          afternoonShiftStartMinutes: true,
+          afternoonShiftEndMinutes: true,
+          nightShiftStartMinutes: true,
+          nightShiftEndMinutes: true,
+        },
+      }),
+      prisma.employee.findFirst({
       where: {
         id: access.user.employeeId,
         tenantId: access.user.tenantId,
@@ -37,6 +53,7 @@ export const GET = withAuthorizedRoute(
         firstName: true,
         lastName: true,
         position: true,
+        workShift: true,
         active: true,
         bank: {
           select: {
@@ -47,7 +64,12 @@ export const GET = withAuthorizedRoute(
           },
         },
       },
-    })
+      }),
+    ])
+
+    if (!tenant) {
+      throw new AppError("Tenant not found", 404, "NOT_FOUND")
+    }
 
     if (!employee) {
       throw new AppError("ไม่พบข้อมูลพนักงาน", 404, "NOT_FOUND")
@@ -57,7 +79,7 @@ export const GET = withAuthorizedRoute(
       where: {
         employeeId_workDate: {
           employeeId: employee.id,
-          workDate: getWorkDate(new Date()),
+          workDate: getShiftWorkDate(new Date(), tenant, employee.workShift),
         },
       },
       select: {
@@ -69,6 +91,7 @@ export const GET = withAuthorizedRoute(
         workedMinutes: true,
         lateMinutes: true,
         status: true,
+        workShift: true,
       },
     })
 
@@ -143,6 +166,7 @@ export const PATCH = withAuthorizedRoute(
         firstName: true,
         lastName: true,
         position: true,
+        workShift: true,
         active: true,
         bank: {
           select: {

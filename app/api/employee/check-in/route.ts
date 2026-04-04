@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
-import { getShiftStart, getWorkDate } from "@/lib/attendance"
+import {
+  getShiftStartByWorkShift,
+  getShiftWorkDate,
+} from "@/lib/attendance"
 import {
   buildCheckInPhotoUrl,
   deleteStoredCheckInPhoto,
@@ -40,10 +43,7 @@ export async function POST(req: Request) {
     const latitude = asLatitude(body.latitude)
     const longitude = asLongitude(body.longitude)
     const now = new Date()
-    const workDate = getWorkDate(now)
     const employeeId = access.user.employeeId
-
-    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const [tenant, employee] = await Promise.all([
       prisma.tenant.findUnique({
@@ -52,6 +52,12 @@ export async function POST(req: Request) {
         },
         select: {
           workStartMinutes: true,
+          morningShiftStartMinutes: true,
+          morningShiftEndMinutes: true,
+          afternoonShiftStartMinutes: true,
+          afternoonShiftEndMinutes: true,
+          nightShiftStartMinutes: true,
+          nightShiftEndMinutes: true,
           latitude: true,
           longitude: true,
           allowedRadiusMeters: true,
@@ -83,6 +89,10 @@ export async function POST(req: Request) {
     if (!employee) {
       throw new AppError("ไม่พบข้อมูลพนักงาน", 404, "NOT_FOUND")
     }
+
+    const workDate = getShiftWorkDate(now, tenant, employee.workShift)
+
+    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const locationConfig = getEffectiveLocationConfig({
       tenant,
@@ -119,7 +129,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const shiftStart = getShiftStart(now, tenant.workStartMinutes)
+    const shiftStart = getShiftStartByWorkShift(now, tenant, employee.workShift)
     const lateMinutes = Math.max(0, minutesBetween(shiftStart, now))
     const attendanceId = crypto.randomUUID()
     const checkInPhotoUrl = buildCheckInPhotoUrl(attendanceId)
@@ -141,6 +151,7 @@ export async function POST(req: Request) {
             checkIn: now,
             lateMinutes,
             status: lateMinutes > 0 ? "LATE" : "PRESENT",
+            workShift: employee.workShift,
             checkInPhotoUrl,
             checkInLatitude: latitude,
             checkInLongitude: longitude,
@@ -159,6 +170,7 @@ export async function POST(req: Request) {
               employeeId,
               workDate,
               lateMinutes,
+              workShift: employee.workShift,
               latitude,
               longitude,
               distanceMeters,

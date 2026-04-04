@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
+const WORK_SHIFT_LABELS = {
+  MORNING: "กะเช้า",
+  AFTERNOON: "กะบ่าย",
+  NIGHT: "กะดึก",
+} as const
+
 type PublicBranch = {
   id: string
   name: string
@@ -29,6 +35,7 @@ export default function EmployeeRegisterPage() {
     password: "",
     employeeType: "FULL_TIME",
     payType: "MONTHLY",
+    workShift: "MORNING",
     bankName: "",
     accountName: "",
     accountNumber: "",
@@ -144,6 +151,7 @@ export default function EmployeeRegisterPage() {
         password: "",
         employeeType: "FULL_TIME",
         payType: "MONTHLY",
+        workShift: "MORNING",
         bankName: "",
         accountName: "",
         accountNumber: "",
@@ -335,6 +343,24 @@ export default function EmployeeRegisterPage() {
               <option value="HOURLY">รายชั่วโมง</option>
             </select>
           </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="workShift">กะการทำงานประจำ</label>
+          <select
+            id="workShift"
+            value={form.workShift}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                workShift: event.target.value,
+              }))
+            }
+          >
+            <option value="MORNING">{WORK_SHIFT_LABELS.MORNING}</option>
+            <option value="AFTERNOON">{WORK_SHIFT_LABELS.AFTERNOON}</option>
+            <option value="NIGHT">{WORK_SHIFT_LABELS.NIGHT}</option>
+          </select>
         </div>
 
         <div className="field">

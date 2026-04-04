@@ -27,6 +27,12 @@ type OpsSummary = {
     payrollPayday: number
     workStartMinutes: number
     workEndMinutes: number
+    morningShiftStartMinutes: number
+    morningShiftEndMinutes: number
+    afternoonShiftStartMinutes: number
+    afternoonShiftEndMinutes: number
+    nightShiftStartMinutes: number
+    nightShiftEndMinutes: number
     latitude: number | null
     longitude: number | null
     allowedRadiusMeters: number
@@ -159,8 +165,12 @@ export default function OpsPage() {
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({
     payrollPayday: '31',
-    workStartTime: '09:00',
-    workEndTime: '18:00',
+    morningShiftStartTime: '09:00',
+    morningShiftEndTime: '18:00',
+    afternoonShiftStartTime: '13:00',
+    afternoonShiftEndTime: '22:00',
+    nightShiftStartTime: '22:00',
+    nightShiftEndTime: '06:00',
     latitude: '',
     longitude: '',
     allowedRadiusMeters: '150',
@@ -187,8 +197,24 @@ export default function OpsPage() {
     setSummary(summaryData)
     setForm({
       payrollPayday: String(summaryData.settings.payrollPayday),
-      workStartTime: formatClock(summaryData.settings.workStartMinutes),
-      workEndTime: formatClock(summaryData.settings.workEndMinutes),
+      morningShiftStartTime: formatClock(
+        summaryData.settings.morningShiftStartMinutes,
+      ),
+      morningShiftEndTime: formatClock(
+        summaryData.settings.morningShiftEndMinutes,
+      ),
+      afternoonShiftStartTime: formatClock(
+        summaryData.settings.afternoonShiftStartMinutes,
+      ),
+      afternoonShiftEndTime: formatClock(
+        summaryData.settings.afternoonShiftEndMinutes,
+      ),
+      nightShiftStartTime: formatClock(
+        summaryData.settings.nightShiftStartMinutes,
+      ),
+      nightShiftEndTime: formatClock(
+        summaryData.settings.nightShiftEndMinutes,
+      ),
       latitude: summaryData.settings.latitude?.toString() ?? '',
       longitude: summaryData.settings.longitude?.toString() ?? '',
       allowedRadiusMeters: String(summaryData.settings.allowedRadiusMeters),
@@ -354,8 +380,12 @@ export default function OpsPage() {
         },
         body: JSON.stringify({
           payrollPayday: Number(form.payrollPayday),
-          workStartTime: form.workStartTime,
-          workEndTime: form.workEndTime,
+          morningShiftStartTime: form.morningShiftStartTime,
+          morningShiftEndTime: form.morningShiftEndTime,
+          afternoonShiftStartTime: form.afternoonShiftStartTime,
+          afternoonShiftEndTime: form.afternoonShiftEndTime,
+          nightShiftStartTime: form.nightShiftStartTime,
+          nightShiftEndTime: form.nightShiftEndTime,
           latitude: form.latitude || null,
           longitude: form.longitude || null,
           allowedRadiusMeters: Number(form.allowedRadiusMeters),
@@ -524,33 +554,97 @@ export default function OpsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label>เวลาเข้างานปกติ</label>
+                  <label>กะเช้า - เวลาเข้างาน</label>
                   <input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]{2}:[0-9]{2}"
                     placeholder="09:00"
-                    value={form.workStartTime}
+                    value={form.morningShiftStartTime}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        workStartTime: event.target.value,
+                        morningShiftStartTime: event.target.value,
                       }))
                     }
                   />
                 </div>
                 <div className="field">
-                  <label>เวลาเลิกงานปกติ</label>
+                  <label>กะเช้า - เวลาเลิกงาน</label>
                   <input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]{2}:[0-9]{2}"
                     placeholder="18:00"
-                    value={form.workEndTime}
+                    value={form.morningShiftEndTime}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        workEndTime: event.target.value,
+                        morningShiftEndTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>กะบ่าย - เวลาเข้างาน</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                    placeholder="13:00"
+                    value={form.afternoonShiftStartTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        afternoonShiftStartTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>กะบ่าย - เวลาเลิกงาน</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                    placeholder="22:00"
+                    value={form.afternoonShiftEndTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        afternoonShiftEndTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>กะดึก - เวลาเข้างาน</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                    placeholder="22:00"
+                    value={form.nightShiftStartTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        nightShiftStartTime: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>กะดึก - เวลาเลิกงาน</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{2}:[0-9]{2}"
+                    placeholder="06:00"
+                    value={form.nightShiftEndTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        nightShiftEndTime: event.target.value,
                       }))
                     }
                   />
@@ -775,10 +869,16 @@ export default function OpsPage() {
               </div>
               <div className="badge">วันจ่ายเงินเดือน: วันที่ {summary.settings.payrollPayday}</div>
               <div className="badge">
-                เวลาเข้างาน: {formatClock(summary.settings.workStartMinutes)}
+                กะเช้า: {formatClock(summary.settings.morningShiftStartMinutes)}-
+                {formatClock(summary.settings.morningShiftEndMinutes)}
               </div>
               <div className="badge">
-                เวลาเลิกงาน: {formatClock(summary.settings.workEndMinutes)}
+                กะบ่าย: {formatClock(summary.settings.afternoonShiftStartMinutes)}-
+                {formatClock(summary.settings.afternoonShiftEndMinutes)}
+              </div>
+              <div className="badge">
+                กะดึก: {formatClock(summary.settings.nightShiftStartMinutes)}-
+                {formatClock(summary.settings.nightShiftEndMinutes)}
               </div>
               <div className="badge">
                 พิกัดร้าน:{' '}

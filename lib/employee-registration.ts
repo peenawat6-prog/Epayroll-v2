@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt"
-import type { EmployeeRegistrationStatus } from "@prisma/client"
+import type { EmployeeRegistrationStatus, WorkShift } from "@prisma/client"
 import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
@@ -16,6 +16,7 @@ export async function submitEmployeeRegistrationRequest(params: {
   password: string
   employeeType: "FULL_TIME" | "PART_TIME"
   payType: "MONTHLY" | "DAILY" | "HOURLY"
+  workShift: WorkShift
   bankName: string
   accountName: string
   accountNumber: string
@@ -117,6 +118,7 @@ export async function submitEmployeeRegistrationRequest(params: {
       passwordHash,
       employeeType: params.employeeType,
       payType: params.payType,
+      workShift: params.workShift,
       bankName: params.bankName,
       accountName: params.accountName,
       accountNumber: params.accountNumber,
@@ -135,6 +137,7 @@ export async function submitEmployeeRegistrationRequest(params: {
       },
       position: true,
       email: true,
+      workShift: true,
       bankName: true,
       accountName: true,
       accountNumber: true,
@@ -182,6 +185,7 @@ export async function listEmployeeRegistrationRequests(tenantId: string) {
       email: true,
       employeeType: true,
       payType: true,
+      workShift: true,
       bankName: true,
       accountName: true,
       accountNumber: true,
@@ -320,6 +324,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
         position: request.position,
         employeeType: request.employeeType,
         payType: request.payType,
+        workShift: request.workShift,
         startDate: new Date(),
         active: true,
         ...(request.bankName && request.accountName && request.accountNumber
@@ -365,6 +370,7 @@ export async function reviewEmployeeRegistrationRequest(params: {
           email: approved.email,
           employeeId: employee.id,
           branchId: request.branchId,
+          workShift: request.workShift,
         },
       },
     })

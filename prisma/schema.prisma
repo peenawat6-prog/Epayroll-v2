@@ -86,6 +86,12 @@ enum EmployeeRegistrationStatus {
   REJECTED
 }
 
+enum WorkShift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
 /// =========================
 /// CORE
 /// =========================
@@ -100,6 +106,12 @@ model Tenant {
   payrollPayday         Int                @default(31)
   workStartMinutes      Int                @default(540)
   workEndMinutes        Int                @default(1080)
+  morningShiftStartMinutes Int             @default(540)
+  morningShiftEndMinutes   Int             @default(1080)
+  afternoonShiftStartMinutes Int           @default(780)
+  afternoonShiftEndMinutes   Int           @default(1320)
+  nightShiftStartMinutes   Int             @default(1320)
+  nightShiftEndMinutes     Int             @default(360)
   latitude              Float?
   longitude             Float?
   allowedRadiusMeters   Int                @default(150)
@@ -134,6 +146,7 @@ model EmployeeRegistrationRequest {
   passwordHash     String
   employeeType     EmployeeType
   payType          PayType
+  workShift        WorkShift                  @default(MORNING)
   bankName         String?
   accountName      String?
   accountNumber    String?
@@ -198,6 +211,7 @@ model Employee {
   position     String
   employeeType EmployeeType
   payType      PayType
+  workShift    WorkShift    @default(MORNING)
 
   baseSalary Float?
   dailyRate  Float?
@@ -248,6 +262,7 @@ model Attendance {
   workedMinutes         Int              @default(0)
   lateMinutes           Int              @default(0)
   status                AttendanceStatus
+  workShift             WorkShift        @default(MORNING)
   checkInPhotoUrl       String?
   checkInLatitude       Float?
   checkInLongitude      Float?

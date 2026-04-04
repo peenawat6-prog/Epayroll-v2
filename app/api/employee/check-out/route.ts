@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
 import {
   ensureCheckoutAfterCheckin,
-  getShiftEnd,
-  getWorkDate,
+  getShiftEndByWorkShift,
+  getShiftWorkDate,
 } from "@/lib/attendance"
 import { AppError, handleApiError, jsonResponse } from "@/lib/http"
 import { assertPayrollPeriodOpenForDate } from "@/lib/payroll"
@@ -25,9 +25,6 @@ export async function POST() {
 
     const employeeId = access.user.employeeId
     const now = new Date()
-    const workDate = getWorkDate(now)
-
-    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const [tenant, employee] = await Promise.all([
       prisma.tenant.findUnique({
@@ -36,6 +33,12 @@ export async function POST() {
         },
         select: {
           workEndMinutes: true,
+          morningShiftStartMinutes: true,
+          morningShiftEndMinutes: true,
+          afternoonShiftStartMinutes: true,
+          afternoonShiftEndMinutes: true,
+          nightShiftStartMinutes: true,
+          nightShiftEndMinutes: true,
         },
       }),
       prisma.employee.findFirst({
@@ -54,6 +57,10 @@ export async function POST() {
     if (!employee) {
       throw new AppError("ไม่พบข้อมูลพนักงาน", 404, "NOT_FOUND")
     }
+
+    const workDate = getShiftWorkDate(now, tenant, employee.workShift)
+
+    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const attendance = await prisma.attendance.findFirst({
       where: {
@@ -79,7 +86,7 @@ export async function POST() {
     }
 
     const workedMinutes = ensureCheckoutAfterCheckin(attendance.checkIn, now)
-    const shiftEnd = getShiftEnd(now, tenant.workEndMinutes)
+    const shiftEnd = getShiftEndByWorkShift(now, tenant, employee.workShift)
 
     if (now.getTime() < shiftEnd.getTime()) {
       const earlyCheckoutRequest = await prisma.earlyCheckoutRequest.findFirst({
@@ -120,6 +127,7 @@ export async function POST() {
             employeeId,
             workDate,
             workedMinutes,
+            workShift: employee.workShift,
             isEarlyCheckout: now.getTime() < shiftEnd.getTime(),
           },
         },

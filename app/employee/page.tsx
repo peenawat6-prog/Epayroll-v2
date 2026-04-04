@@ -5,12 +5,19 @@ import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiTime24h } from "@/lib/display-time"
 
+const WORK_SHIFT_LABELS = {
+  MORNING: "กะเช้า",
+  AFTERNOON: "กะบ่าย",
+  NIGHT: "กะดึก",
+} as const
+
 type EmployeeProfile = {
   id: string
   code: string
   firstName: string
   lastName: string
   position: string
+  workShift: "MORNING" | "AFTERNOON" | "NIGHT"
   active: boolean
   bank: {
     bankName: string
@@ -29,6 +36,7 @@ type TodayAttendance = {
   workedMinutes: number
   lateMinutes: number
   status: string
+  workShift: "MORNING" | "AFTERNOON" | "NIGHT"
 }
 
 const MAX_CAPTURE_WIDTH = 720
@@ -362,6 +370,12 @@ export default function EmployeePage() {
         <article className="stat-card">
           <p className="stat-label">ตำแหน่ง</p>
           <p className="stat-value">{employee?.position ?? "-"}</p>
+        </article>
+        <article className="stat-card">
+          <p className="stat-label">กะทำงาน</p>
+          <p className="stat-value">
+            {employee?.workShift ? WORK_SHIFT_LABELS[employee.workShift] : "-"}
+          </p>
         </article>
         <article className="stat-card">
           <p className="stat-label">สถานะวันนี้</p>

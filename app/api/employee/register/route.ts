@@ -8,6 +8,7 @@ import {
   asPassword,
   asPayType,
   asTrimmedString,
+  asWorkShift,
 } from "@/lib/validators"
 
 type RegisterBody = {
@@ -21,6 +22,7 @@ type RegisterBody = {
   password?: unknown
   employeeType?: unknown
   payType?: unknown
+  workShift?: unknown
   bankName?: unknown
   accountName?: unknown
   accountNumber?: unknown
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
       password: asPassword(body.password),
       employeeType: asEmployeeType(body.employeeType),
       payType: asPayType(body.payType),
+      workShift: asWorkShift(body.workShift),
       bankName: asTrimmedString(body.bankName, "bankName"),
       accountName: asTrimmedString(body.accountName, "accountName"),
       accountNumber: asTrimmedString(body.accountNumber, "accountNumber"),

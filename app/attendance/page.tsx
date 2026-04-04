@@ -4,12 +4,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 
+const WORK_SHIFT_LABELS = {
+  MORNING: 'กะเช้า',
+  AFTERNOON: 'กะบ่าย',
+  NIGHT: 'กะดึก',
+} as const
+
 type EmployeeOption = {
   id: string
   code: string
   firstName: string
   lastName: string
   active: boolean
+  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
 }
 
 type BrowserLocation = {
@@ -298,7 +305,8 @@ export default function AttendancePage() {
               .filter((emp) => emp.active)
               .map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.code} - {emp.firstName} {emp.lastName}
+                  {emp.code} - {emp.firstName} {emp.lastName} -{' '}
+                  {WORK_SHIFT_LABELS[emp.workShift]}
                 </option>
             ))}
           </select>

@@ -3,11 +3,13 @@ import type {
   EmployeeType,
   PaymentStatus,
   PayType,
+  WorkShift,
 } from "@prisma/client"
 import { AppError } from "@/lib/http"
 
 const EMPLOYEE_TYPES: EmployeeType[] = ["FULL_TIME", "PART_TIME"]
 const PAY_TYPES: PayType[] = ["MONTHLY", "DAILY", "HOURLY"]
+const WORK_SHIFTS: WorkShift[] = ["MORNING", "AFTERNOON", "NIGHT"]
 const PAYMENT_STATUSES: PaymentStatus[] = ["PENDING", "PAID", "FAILED"]
 const ATTENDANCE_STATUSES: AttendanceStatus[] = [
   "PRESENT",
@@ -152,6 +154,16 @@ export function asPayType(value: unknown): PayType {
 
   if (!PAY_TYPES.includes(normalized)) {
     throw new AppError("Invalid payType", 400, "INVALID_INPUT")
+  }
+
+  return normalized
+}
+
+export function asWorkShift(value: unknown): WorkShift {
+  const normalized = String(value ?? "MORNING") as WorkShift
+
+  if (!WORK_SHIFTS.includes(normalized)) {
+    throw new AppError("Invalid workShift", 400, "INVALID_INPUT")
   }
 
   return normalized

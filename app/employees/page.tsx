@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
 
+const WORK_SHIFT_LABELS = {
+  MORNING: 'กะเช้า',
+  AFTERNOON: 'กะบ่าย',
+  NIGHT: 'กะดึก',
+} as const
+
 type EmployeeRow = {
   id: string
   branchId: string | null
@@ -19,6 +25,7 @@ type EmployeeRow = {
   position: string
   employeeType: 'FULL_TIME' | 'PART_TIME'
   payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
+  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
   baseSalary: number | null
   dailyRate: number | null
   hourlyRate: number | null
@@ -50,6 +57,7 @@ type RegistrationRequest = {
   email: string
   employeeType: 'FULL_TIME' | 'PART_TIME'
   payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
+  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
   bankName: string | null
   accountName: string | null
   accountNumber: string | null
@@ -79,6 +87,7 @@ export default function EmployeesPage() {
     position: '',
     employeeType: 'FULL_TIME',
     payType: 'MONTHLY',
+    workShift: 'MORNING',
     baseSalary: '',
     dailyRate: '',
     hourlyRate: '',
@@ -166,6 +175,7 @@ export default function EmployeesPage() {
       position: '',
       employeeType: 'FULL_TIME',
       payType: 'MONTHLY',
+      workShift: 'MORNING',
       baseSalary: '',
       dailyRate: '',
       hourlyRate: '',
@@ -189,6 +199,7 @@ export default function EmployeesPage() {
       position: emp.position,
       employeeType: emp.employeeType,
       payType: emp.payType,
+      workShift: emp.workShift,
       baseSalary: emp.baseSalary?.toString() ?? '',
       dailyRate: emp.dailyRate?.toString() ?? '',
       hourlyRate: emp.hourlyRate?.toString() ?? '',
@@ -250,6 +261,7 @@ export default function EmployeesPage() {
       position: form.position,
       employeeType: form.employeeType,
       payType: form.payType,
+      workShift: form.workShift,
       baseSalary: form.baseSalary,
       dailyRate: form.dailyRate,
       hourlyRate: form.hourlyRate,
@@ -439,6 +451,22 @@ export default function EmployeesPage() {
                 </select>
               </div>
               <div className="field">
+                <label>กะการทำงานประจำ</label>
+                <select
+                  value={form.workShift}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      workShift: e.target.value as 'MORNING' | 'AFTERNOON' | 'NIGHT',
+                    })
+                  }
+                >
+                  <option value="MORNING">{WORK_SHIFT_LABELS.MORNING}</option>
+                  <option value="AFTERNOON">{WORK_SHIFT_LABELS.AFTERNOON}</option>
+                  <option value="NIGHT">{WORK_SHIFT_LABELS.NIGHT}</option>
+                </select>
+              </div>
+              <div className="field">
                 <label>เงินเดือนฐาน</label>
                 <input
                   type="number"
@@ -587,6 +615,10 @@ export default function EmployeesPage() {
                       </strong>
                     </div>
                     <div className="record-line">
+                      <span>กะทำงาน</span>
+                      <strong>{WORK_SHIFT_LABELS[request.workShift]}</strong>
+                    </div>
+                    <div className="record-line">
                       <span>ธนาคาร</span>
                       <strong>{request.bankName ?? '-'}</strong>
                     </div>
@@ -650,6 +682,7 @@ export default function EmployeesPage() {
                 <th>ตำแหน่ง</th>
                 <th>สาขา</th>
                 <th>รูปแบบจ่าย</th>
+                <th>กะทำงาน</th>
                 <th>อัตราค่าจ้าง</th>
                 <th>ข้อมูลรับเงิน</th>
                 <th>สถานะ</th>
@@ -664,6 +697,7 @@ export default function EmployeesPage() {
                   <td>{emp.position}</td>
                   <td>{emp.branch?.name ?? '-'}</td>
                   <td>{emp.payType}</td>
+                  <td>{WORK_SHIFT_LABELS[emp.workShift]}</td>
                   <td>
                     {emp.payType === 'MONTHLY' ? `${emp.baseSalary ?? 0} บาท/เดือน` : null}
                     {emp.payType === 'DAILY' ? `${emp.dailyRate ?? 0} บาท/วัน` : null}
@@ -717,6 +751,7 @@ export default function EmployeesPage() {
                 <div className="record-line"><span>ตำแหน่ง</span><strong>{emp.position}</strong></div>
                 <div className="record-line"><span>สาขา</span><strong>{emp.branch?.name ?? '-'}</strong></div>
                 <div className="record-line"><span>รูปแบบจ่าย</span><strong>{emp.payType}</strong></div>
+                <div className="record-line"><span>กะทำงาน</span><strong>{WORK_SHIFT_LABELS[emp.workShift]}</strong></div>
                 <div className="record-line">
                   <span>บัญชีรับเงิน</span>
                   <strong>{emp.bank?.bankName ?? 'ยังไม่ได้กรอก'}</strong>

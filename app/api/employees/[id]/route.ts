@@ -11,6 +11,7 @@ import {
   asOptionalTrimmedString,
   asPayType,
   asTrimmedString,
+  asWorkShift,
 } from "@/lib/validators"
 
 type EmployeeUpdateBody = {
@@ -21,6 +22,7 @@ type EmployeeUpdateBody = {
   position?: unknown
   employeeType?: unknown
   payType?: unknown
+  workShift?: unknown
   baseSalary?: unknown
   dailyRate?: unknown
   hourlyRate?: unknown
@@ -153,6 +155,10 @@ export async function PATCH(
           body.payType === undefined
             ? employee.payType
             : asPayType(body.payType),
+        workShift:
+          body.workShift === undefined
+            ? employee.workShift
+            : asWorkShift(body.workShift),
         baseSalary:
           body.baseSalary === undefined
             ? employee.baseSalary
@@ -219,6 +225,7 @@ export async function PATCH(
       metadata: {
         active: updated.active,
         payType: updated.payType,
+        workShift: updated.workShift,
         branchId: updated.branchId,
         hasBank: shouldKeepBankAccount,
       },

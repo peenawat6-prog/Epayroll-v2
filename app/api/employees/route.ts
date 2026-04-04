@@ -11,6 +11,7 @@ import {
   asOptionalTrimmedString,
   asPayType,
   asTrimmedString,
+  asWorkShift,
 } from "@/lib/validators"
 
 type EmployeeCreateBody = {
@@ -22,6 +23,7 @@ type EmployeeCreateBody = {
   position?: unknown
   employeeType?: unknown
   payType?: unknown
+  workShift?: unknown
   baseSalary?: unknown
   dailyRate?: unknown
   hourlyRate?: unknown
@@ -85,6 +87,7 @@ export async function POST(req: Request) {
     const position = asTrimmedString(body.position, "position")
     const employeeType = asEmployeeType(body.employeeType)
     const payType = asPayType(body.payType)
+    const workShift = asWorkShift(body.workShift)
     const baseSalary = asOptionalNumber(body.baseSalary)
     const dailyRate = asOptionalNumber(body.dailyRate)
     const hourlyRate = asOptionalNumber(body.hourlyRate)
@@ -144,6 +147,7 @@ export async function POST(req: Request) {
         position,
         employeeType,
         payType,
+        workShift,
         baseSalary,
         dailyRate,
         hourlyRate,
@@ -182,6 +186,7 @@ export async function POST(req: Request) {
       metadata: {
         code: employee.code,
         payType: employee.payType,
+        workShift: employee.workShift,
         branchId: employee.branchId,
         hasBank: shouldCreateBankAccount,
       },

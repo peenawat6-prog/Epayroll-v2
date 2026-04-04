@@ -15,11 +15,42 @@ import {
 
 type OpsSettingsBody = {
   payrollPayday?: unknown
-  workStartTime?: unknown
-  workEndTime?: unknown
+  morningShiftStartTime?: unknown
+  morningShiftEndTime?: unknown
+  afternoonShiftStartTime?: unknown
+  afternoonShiftEndTime?: unknown
+  nightShiftStartTime?: unknown
+  nightShiftEndTime?: unknown
   latitude?: unknown
   longitude?: unknown
   allowedRadiusMeters?: unknown
+}
+
+function assertShiftRange(
+  startMinutes: number,
+  endMinutes: number,
+  shiftLabel: string,
+  options: { allowCrossMidnight: boolean },
+) {
+  if (options.allowCrossMidnight) {
+    if (startMinutes === endMinutes) {
+      throw new AppError(
+        `${shiftLabel} ต้องมีเวลาเข้าและเวลาออกไม่ซ้ำกัน`,
+        400,
+        "INVALID_INPUT",
+      )
+    }
+
+    return
+  }
+
+  if (endMinutes <= startMinutes) {
+    throw new AppError(
+      `${shiftLabel} เวลาเลิกงานต้องมากกว่าเวลาเข้างาน`,
+      400,
+      "INVALID_INPUT",
+    )
+  }
 }
 
 export const GET = withAuthorizedRoute(
@@ -53,6 +84,12 @@ export const GET = withAuthorizedRoute(
             payrollPayday: true,
             workStartMinutes: true,
             workEndMinutes: true,
+            morningShiftStartMinutes: true,
+            morningShiftEndMinutes: true,
+            afternoonShiftStartMinutes: true,
+            afternoonShiftEndMinutes: true,
+            nightShiftStartMinutes: true,
+            nightShiftEndMinutes: true,
             latitude: true,
             longitude: true,
             allowedRadiusMeters: true,
@@ -132,6 +169,12 @@ export const GET = withAuthorizedRoute(
         payrollPayday: tenant.payrollPayday,
         workStartMinutes: tenant.workStartMinutes,
         workEndMinutes: tenant.workEndMinutes,
+        morningShiftStartMinutes: tenant.morningShiftStartMinutes,
+        morningShiftEndMinutes: tenant.morningShiftEndMinutes,
+        afternoonShiftStartMinutes: tenant.afternoonShiftStartMinutes,
+        afternoonShiftEndMinutes: tenant.afternoonShiftEndMinutes,
+        nightShiftStartMinutes: tenant.nightShiftStartMinutes,
+        nightShiftEndMinutes: tenant.nightShiftEndMinutes,
         latitude: tenant.latitude,
         longitude: tenant.longitude,
         allowedRadiusMeters: tenant.allowedRadiusMeters,
@@ -148,19 +191,52 @@ export const PUT = withAuthorizedRoute(
   async (req, _context, access) => {
     const body = await readJsonBody<OpsSettingsBody>(req)
     const payrollPayday = asPayrollPayday(body.payrollPayday)
-    const workStartMinutes = asClockMinutes(body.workStartTime, "workStartTime")
-    const workEndMinutes = asClockMinutes(body.workEndTime, "workEndTime")
+    const morningShiftStartMinutes = asClockMinutes(
+      body.morningShiftStartTime,
+      "morningShiftStartTime",
+    )
+    const morningShiftEndMinutes = asClockMinutes(
+      body.morningShiftEndTime,
+      "morningShiftEndTime",
+    )
+    const afternoonShiftStartMinutes = asClockMinutes(
+      body.afternoonShiftStartTime,
+      "afternoonShiftStartTime",
+    )
+    const afternoonShiftEndMinutes = asClockMinutes(
+      body.afternoonShiftEndTime,
+      "afternoonShiftEndTime",
+    )
+    const nightShiftStartMinutes = asClockMinutes(
+      body.nightShiftStartTime,
+      "nightShiftStartTime",
+    )
+    const nightShiftEndMinutes = asClockMinutes(
+      body.nightShiftEndTime,
+      "nightShiftEndTime",
+    )
     const latitude = asOptionalLatitude(body.latitude)
     const longitude = asOptionalLongitude(body.longitude)
     const allowedRadiusMeters = asMeterRadius(body.allowedRadiusMeters)
 
-    if (workEndMinutes <= workStartMinutes) {
-      throw new AppError(
-        "เวลาเลิกงานต้องมากกว่าเวลาเข้างาน",
-        400,
-        "INVALID_INPUT",
-      )
-    }
+    assertShiftRange(
+      morningShiftStartMinutes,
+      morningShiftEndMinutes,
+      "กะเช้า",
+      { allowCrossMidnight: false },
+    )
+    assertShiftRange(
+      afternoonShiftStartMinutes,
+      afternoonShiftEndMinutes,
+      "กะบ่าย",
+      { allowCrossMidnight: false },
+    )
+    assertShiftRange(
+      nightShiftStartMinutes,
+      nightShiftEndMinutes,
+      "กะดึก",
+      { allowCrossMidnight: true },
+    )
 
     if ((latitude === null) !== (longitude === null)) {
       throw new AppError(
@@ -176,8 +252,14 @@ export const PUT = withAuthorizedRoute(
       },
       data: {
         payrollPayday,
-        workStartMinutes,
-        workEndMinutes,
+        workStartMinutes: morningShiftStartMinutes,
+        workEndMinutes: morningShiftEndMinutes,
+        morningShiftStartMinutes,
+        morningShiftEndMinutes,
+        afternoonShiftStartMinutes,
+        afternoonShiftEndMinutes,
+        nightShiftStartMinutes,
+        nightShiftEndMinutes,
         latitude,
         longitude,
         allowedRadiusMeters,
@@ -192,8 +274,12 @@ export const PUT = withAuthorizedRoute(
       entityId: updatedTenant.id,
       metadata: {
         payrollPayday,
-        workStartMinutes,
-        workEndMinutes,
+        morningShiftStartMinutes,
+        morningShiftEndMinutes,
+        afternoonShiftStartMinutes,
+        afternoonShiftEndMinutes,
+        nightShiftStartMinutes,
+        nightShiftEndMinutes,
         latitude,
         longitude,
         allowedRadiusMeters,
@@ -207,6 +293,12 @@ export const PUT = withAuthorizedRoute(
         payrollPayday: updatedTenant.payrollPayday,
         workStartMinutes: updatedTenant.workStartMinutes,
         workEndMinutes: updatedTenant.workEndMinutes,
+        morningShiftStartMinutes: updatedTenant.morningShiftStartMinutes,
+        morningShiftEndMinutes: updatedTenant.morningShiftEndMinutes,
+        afternoonShiftStartMinutes: updatedTenant.afternoonShiftStartMinutes,
+        afternoonShiftEndMinutes: updatedTenant.afternoonShiftEndMinutes,
+        nightShiftStartMinutes: updatedTenant.nightShiftStartMinutes,
+        nightShiftEndMinutes: updatedTenant.nightShiftEndMinutes,
         latitude: updatedTenant.latitude,
         longitude: updatedTenant.longitude,
         allowedRadiusMeters: updatedTenant.allowedRadiusMeters,

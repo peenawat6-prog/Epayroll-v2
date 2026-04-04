@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
-import { ensureCheckoutAfterCheckin, getShiftEnd, getWorkDate } from "@/lib/attendance"
+import {
+  ensureCheckoutAfterCheckin,
+  getShiftEndByWorkShift,
+  getShiftWorkDate,
+} from "@/lib/attendance"
 import { AppError, handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
 import { assertPayrollPeriodOpenForDate } from "@/lib/payroll"
 import { ROLE_GROUPS } from "@/lib/role"
@@ -18,9 +22,6 @@ export async function POST(req: Request) {
     const body = await readJsonBody<CheckOutBody>(req)
     const employeeId = asTrimmedString(body.employeeId, "employeeId")
     const now = new Date()
-    const workDate = getWorkDate(now)
-
-    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const [tenant, employee] = await Promise.all([
       prisma.tenant.findUnique({
@@ -29,6 +30,12 @@ export async function POST(req: Request) {
         },
         select: {
           workEndMinutes: true,
+          morningShiftStartMinutes: true,
+          morningShiftEndMinutes: true,
+          afternoonShiftStartMinutes: true,
+          afternoonShiftEndMinutes: true,
+          nightShiftStartMinutes: true,
+          nightShiftEndMinutes: true,
         },
       }),
       prisma.employee.findFirst({
@@ -47,6 +54,10 @@ export async function POST(req: Request) {
     if (!employee) {
       throw new AppError("Employee not found", 404, "NOT_FOUND")
     }
+
+    const workDate = getShiftWorkDate(now, tenant, employee.workShift)
+
+    await assertPayrollPeriodOpenForDate(access.user.tenantId, workDate)
 
     const attendance = await prisma.attendance.findFirst({
       where: {
@@ -72,7 +83,7 @@ export async function POST(req: Request) {
     }
 
     const workedMinutes = ensureCheckoutAfterCheckin(attendance.checkIn, now)
-    const shiftEnd = getShiftEnd(now, tenant.workEndMinutes)
+    const shiftEnd = getShiftEndByWorkShift(now, tenant, employee.workShift)
 
     if (now.getTime() < shiftEnd.getTime()) {
       const earlyCheckoutRequest = await prisma.earlyCheckoutRequest.findFirst({
@@ -113,6 +124,7 @@ export async function POST(req: Request) {
             employeeId,
             workDate,
             workedMinutes,
+            workShift: employee.workShift,
             isEarlyCheckout: now.getTime() < shiftEnd.getTime(),
           },
         },
