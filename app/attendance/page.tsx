@@ -305,25 +305,28 @@ export default function AttendancePage() {
         <div className="field" style={{ marginTop: 14 }}>
           <label>ถ่ายรูปหน้าพนักงานก่อนบันทึก</label>
           <div className="camera-box">
-            {cameraReady ? (
-              <video
-                ref={videoRef}
-                className="camera-preview"
-                playsInline
-                muted
-                autoPlay
-              />
-            ) : photoDataUrl ? (
+            <video
+              ref={videoRef}
+              className="camera-preview"
+              playsInline
+              muted
+              autoPlay
+              style={{ display: cameraReady ? 'block' : 'none' }}
+            />
+
+            {!cameraReady && photoDataUrl ? (
               <img
                 src={photoDataUrl}
                 alt="รูปพนักงานที่ถ่ายไว้"
                 className="camera-preview"
               />
-            ) : (
+            ) : null}
+
+            {!cameraReady && !photoDataUrl ? (
               <div className="camera-placeholder">
                 ยังไม่มีรูปถ่าย กด “เปิดกล้อง” เพื่อถ่ายจากหน้านี้ได้เลย
               </div>
-            )}
+            ) : null}
           </div>
 
           <canvas ref={canvasRef} style={{ display: 'none' }} />

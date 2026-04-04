@@ -467,31 +467,36 @@ export default function EmployeePage() {
         <div className="field" style={{ marginTop: 14 }}>
           <label>ถ่ายรูปหน้าพนักงาน</label>
           <div className="camera-box">
-            {cameraReady ? (
-              <video
-                ref={videoRef}
-                className="camera-preview"
-                playsInline
-                muted
-                autoPlay
-              />
-            ) : photoDataUrl ? (
+            <video
+              ref={videoRef}
+              className="camera-preview"
+              playsInline
+              muted
+              autoPlay
+              style={{ display: cameraReady ? "block" : "none" }}
+            />
+
+            {!cameraReady && photoDataUrl ? (
               <img
                 src={photoDataUrl}
                 alt="รูปที่ถ่ายไว้"
                 className="camera-preview"
               />
-            ) : todayAttendance?.checkInPhotoUrl ? (
+            ) : null}
+
+            {!cameraReady && !photoDataUrl && todayAttendance?.checkInPhotoUrl ? (
               <img
                 src={todayAttendance.checkInPhotoUrl}
                 alt="รูปเข้างานวันนี้"
                 className="camera-preview"
               />
-            ) : (
+            ) : null}
+
+            {!cameraReady && !photoDataUrl && !todayAttendance?.checkInPhotoUrl ? (
               <div className="camera-placeholder">
                 ยังไม่มีรูปถ่ายวันนี้ กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างาน
               </div>
-            )}
+            ) : null}
           </div>
 
           <canvas ref={canvasRef} style={{ display: "none" }} />
