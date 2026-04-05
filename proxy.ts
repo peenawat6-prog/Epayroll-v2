@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/employee/login",
   "/employee/register",
+  "/management/register",
   "/shop/register",
   "/sales/register",
 ]
@@ -23,6 +24,8 @@ const PROTECTED_PATHS = [
 const EMPLOYEE_ONLY_PATHS = ["/employee"]
 const DEV_ONLY_PATHS = ["/dev/dashboard"]
 const BACKOFFICE_PATHS = ["/dashboard", "/employees", "/attendance", "/payroll", "/audit", "/ops"]
+const REGISTER_SUBDOMAIN_PREFIX = "register."
+const MANAGEMENT_SUBDOMAIN_PREFIX = "manage."
 
 function isProtectedPath(pathname: string) {
   return PROTECTED_PATHS.some(
@@ -36,12 +39,37 @@ function isPublicPath(pathname: string) {
   )
 }
 
+function isRegisterSubdomain(hostname: string) {
+  return hostname.toLowerCase().startsWith(REGISTER_SUBDOMAIN_PREFIX)
+}
+
+function isManagementSubdomain(hostname: string) {
+  return hostname.toLowerCase().startsWith(MANAGEMENT_SUBDOMAIN_PREFIX)
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
+  const hostname = req.nextUrl.hostname
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
   })
+
+  if (
+    isRegisterSubdomain(hostname) &&
+    !pathname.startsWith("/api") &&
+    pathname !== "/shop/register"
+  ) {
+    return NextResponse.redirect(new URL("/shop/register", req.url))
+  }
+
+  if (
+    isManagementSubdomain(hostname) &&
+    !pathname.startsWith("/api") &&
+    pathname !== "/management/register"
+  ) {
+    return NextResponse.redirect(new URL("/management/register", req.url))
+  }
 
   if (!token && isProtectedPath(pathname) && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL("/login", req.url))
@@ -103,8 +131,10 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/login",
     "/employee/login",
+    "/management/register",
     "/shop/register",
     "/sales/register",
     "/dev/dashboard/:path*",

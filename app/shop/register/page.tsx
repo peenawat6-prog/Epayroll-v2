@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import PasswordInput from "@/app/components/password-input"
 import { useLanguage } from "@/lib/language"
 
 type LeafletInstance = {
@@ -165,6 +166,25 @@ function restoreDraft() {
   }
 }
 
+function getLoginUrl() {
+  if (typeof window === "undefined") {
+    return "/login"
+  }
+
+  const { protocol, hostname, port } = window.location
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "/login"
+  }
+
+  if (hostname.startsWith("register.")) {
+    const mainHostname = hostname.replace(/^register\./i, "")
+    return `${protocol}//${mainHostname}${port ? `:${port}` : ""}/login`
+  }
+
+  return "/login"
+}
+
 export default function ShopRegisterPage() {
   const router = useRouter()
   const { t } = useLanguage()
@@ -178,6 +198,10 @@ export default function ShopRegisterPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<LeafletInstance | null>(null)
   const markerRef = useRef<LeafletMarkerInstance | null>(null)
+
+  const goToLogin = () => {
+    window.location.href = getLoginUrl()
+  }
 
   useEffect(() => {
     setForm(restoreDraft())
@@ -334,7 +358,7 @@ export default function ShopRegisterPage() {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => router.push("/login")}
+            onClick={goToLogin}
           >
             {t("กลับหน้าเข้าสู่ระบบ", "Back to login")}
           </button>
@@ -415,15 +439,15 @@ export default function ShopRegisterPage() {
             </div>
             <div className="field">
               <label>{t("ตั้งรหัสผ่านเจ้าของร้าน", "Owner password")}</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={form.ownerPassword}
-                onChange={(event) =>
+                onChange={(value) =>
                   setForm((current) => ({
                     ...current,
-                    ownerPassword: event.target.value,
+                    ownerPassword: value,
                   }))
                 }
+                autoComplete="new-password"
               />
             </div>
             <div className="field">
@@ -604,7 +628,7 @@ export default function ShopRegisterPage() {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => router.push("/login")}
+              onClick={goToLogin}
             >
               {t("กลับหน้าเข้าสู่ระบบ", "Back to login")}
             </button>

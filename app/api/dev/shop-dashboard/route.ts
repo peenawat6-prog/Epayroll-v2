@@ -1,4 +1,5 @@
 import { jsonResponse } from "@/lib/http"
+import { listDevManagementRegistrationRequests } from "@/lib/management-registration"
 import { withAuthorizedRoute } from "@/lib/route-guard"
 import {
   listDevSalesAgentRegistrationRequests,
@@ -27,7 +28,7 @@ export const GET = withAuthorizedRoute(
       now.getFullYear(),
     )
 
-    const [requests, tenants, salesRequests, salesAgents] = await Promise.all([
+    const [requests, tenants, salesRequests, salesAgents, managementRequests] = await Promise.all([
       listDevShopRegistrationRequests(),
       listDevTenants(),
       listDevSalesAgentRegistrationRequests(),
@@ -35,6 +36,7 @@ export const GET = withAuthorizedRoute(
         month: commissionMonth,
         year: commissionYear,
       }),
+      listDevManagementRegistrationRequests(),
     ])
 
     return jsonResponse({
@@ -42,6 +44,7 @@ export const GET = withAuthorizedRoute(
       tenants,
       salesRequests,
       salesAgents,
+      managementRequests,
       commissionMonth,
       commissionYear,
     })

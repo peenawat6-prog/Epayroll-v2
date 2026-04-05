@@ -100,6 +100,7 @@ export default function StaffRequestsPage() {
 
   const canReview =
     user?.role === 'OWNER' || user?.role === 'ADMIN' || user?.role === 'HR'
+  const canSubmitRequests = user?.role === 'EMPLOYEE'
   const kindLabels = {
     LEAVE: t('ขอลางาน', 'Leave request'),
     OVERTIME: t('ขออนุมัติ OT', 'OT request'),
@@ -274,13 +275,20 @@ export default function StaffRequestsPage() {
             ) : null}
           </div>
           <h1 className="hero-title">
-            {t('ขอลางาน / ขอ OT / ยื่นลาออก', 'Leave / OT / resignation requests')}
+            {canSubmitRequests
+              ? t('ขอลางาน / ขอ OT / ยื่นลาออก', 'Leave / OT / resignation requests')
+              : t('คำขอจากพนักงาน', 'Employee requests')}
           </h1>
           <p className="hero-subtitle">
-            {t(
-              'ส่งคำขอล่วงหน้า และให้หัวหน้าตรวจอนุมัติได้จากหน้าเดียว รวมถึงการขอกลับก่อนเวลา',
-              'Submit advance requests and let managers approve in one place, including early checkout.',
-            )}
+            {canSubmitRequests
+              ? t(
+                  'ส่งคำขอล่วงหน้า และให้หัวหน้าตรวจอนุมัติได้จากหน้าเดียว รวมถึงการขอกลับก่อนเวลา',
+                  'Submit advance requests and let managers approve in one place, including early checkout.',
+                )
+              : t(
+                  'หน้านี้ใช้ตรวจคำขอที่พนักงานส่งเข้ามาเท่านั้น เพื่อตรวจและอนุมัติได้ง่ายขึ้น',
+                  'This page only shows requests submitted by employees so managers can review them more easily.',
+                )}
           </p>
         </div>
         <div className="action-row">
@@ -299,297 +307,299 @@ export default function StaffRequestsPage() {
         <div className="message message-error">{errorMessage}</div>
       ) : null}
 
-      <section className="grid stats">
-        <article className="panel">
-          <h2 className="panel-title">{t('ขอลางาน', 'Leave request')}</h2>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <div className="field">
-              <label>{t('พนักงาน', 'Employee')}</label>
-              <select
-                value={leaveForm.employeeId}
+      {canSubmitRequests ? (
+        <section className="grid stats">
+          <article className="panel">
+            <h2 className="panel-title">{t('ขอลางาน', 'Leave request')}</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="field">
+                <label>{t('พนักงาน', 'Employee')}</label>
+                <select
+                  value={leaveForm.employeeId}
+                  onChange={(e) =>
+                    setLeaveForm({ ...leaveForm, employeeId: e.target.value })
+                  }
+                >
+                  <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
+                  {employees.filter((item) => item.active).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.code} - {item.firstName} {item.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{t('วันที่เริ่มลา', 'Leave start date')}</label>
+                <input
+                  type="date"
+                  value={leaveForm.startDate}
+                  onChange={(e) =>
+                    setLeaveForm({ ...leaveForm, startDate: e.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label>{t('วันที่สิ้นสุด', 'Leave end date')}</label>
+                <input
+                  type="date"
+                  value={leaveForm.endDate}
+                  onChange={(e) =>
+                    setLeaveForm({ ...leaveForm, endDate: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('เหตุผลการลา', 'Leave reason')}</label>
+              <textarea
+                rows={3}
+                value={leaveForm.reason}
                 onChange={(e) =>
-                  setLeaveForm({ ...leaveForm, employeeId: e.target.value })
+                  setLeaveForm({ ...leaveForm, reason: e.target.value })
+                }
+              />
+            </div>
+            <div className="action-row" style={{ marginTop: 14 }}>
+              <button
+                className="btn btn-primary"
+                disabled={saving}
+                onClick={() =>
+                  submitRequest(
+                    { kind: 'LEAVE', ...leaveForm },
+                    () =>
+                      setLeaveForm({
+                        employeeId: '',
+                        startDate: '',
+                        endDate: '',
+                        reason: '',
+                      }),
+                    t('ส่งคำขอลางานเรียบร้อยแล้ว', 'Leave request submitted'),
+                  )
                 }
               >
-                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
-                {employees.filter((item) => item.active).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} - {item.firstName} {item.lastName}
-                  </option>
-                ))}
-              </select>
+                {t('ส่งคำขอลางาน', 'Submit leave request')}
+              </button>
             </div>
-            <div className="field">
-              <label>{t('วันที่เริ่มลา', 'Leave start date')}</label>
-              <input
-                type="date"
-                value={leaveForm.startDate}
-                onChange={(e) =>
-                  setLeaveForm({ ...leaveForm, startDate: e.target.value })
-                }
-              />
-            </div>
-            <div className="field">
-              <label>{t('วันที่สิ้นสุด', 'Leave end date')}</label>
-              <input
-                type="date"
-                value={leaveForm.endDate}
-                onChange={(e) =>
-                  setLeaveForm({ ...leaveForm, endDate: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>{t('เหตุผลการลา', 'Leave reason')}</label>
-            <textarea
-              rows={3}
-              value={leaveForm.reason}
-              onChange={(e) =>
-                setLeaveForm({ ...leaveForm, reason: e.target.value })
-              }
-            />
-          </div>
-          <div className="action-row" style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-primary"
-              disabled={saving}
-              onClick={() =>
-                submitRequest(
-                  { kind: 'LEAVE', ...leaveForm },
-                  () =>
-                    setLeaveForm({
-                      employeeId: '',
-                      startDate: '',
-                      endDate: '',
-                      reason: '',
-                    }),
-                  t('ส่งคำขอลางานเรียบร้อยแล้ว', 'Leave request submitted'),
-                )
-              }
-            >
-              {t('ส่งคำขอลางาน', 'Submit leave request')}
-            </button>
-          </div>
-        </article>
+          </article>
 
-        <article className="panel">
-          <h2 className="panel-title">{t('ขออนุมัติ OT', 'OT request')}</h2>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <div className="field">
-              <label>{t('พนักงาน', 'Employee')}</label>
-              <select
-                value={overtimeForm.employeeId}
-                onChange={(e) =>
-                  setOvertimeForm({ ...overtimeForm, employeeId: e.target.value })
-                }
-              >
-                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
-                {employees.filter((item) => item.active).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} - {item.firstName} {item.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>{t('วันที่ทำ OT', 'OT date')}</label>
-              <input
-                type="date"
-                value={overtimeForm.workDate}
-                onChange={(e) =>
-                  setOvertimeForm({ ...overtimeForm, workDate: e.target.value })
-                }
-              />
-            </div>
-            <div className="field">
-              <label>{t('จำนวนชั่วโมง', 'Hours')}</label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={overtimeForm.overtimeHours}
-                onChange={(e) =>
-                  setOvertimeForm({
-                    ...overtimeForm,
-                    overtimeHours: e.target.value,
-                  })
-                }
-              />
-            </div>
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>{t('เหตุผลขอ OT', 'OT reason')}</label>
-            <textarea
-              rows={3}
-              value={overtimeForm.reason}
-              onChange={(e) =>
-                setOvertimeForm({ ...overtimeForm, reason: e.target.value })
-              }
-            />
-          </div>
-          <div className="action-row" style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-primary"
-              disabled={saving}
-              onClick={() =>
-                submitRequest(
-                  { kind: 'OVERTIME', ...overtimeForm },
-                  () =>
+          <article className="panel">
+            <h2 className="panel-title">{t('ขออนุมัติ OT', 'OT request')}</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="field">
+                <label>{t('พนักงาน', 'Employee')}</label>
+                <select
+                  value={overtimeForm.employeeId}
+                  onChange={(e) =>
+                    setOvertimeForm({ ...overtimeForm, employeeId: e.target.value })
+                  }
+                >
+                  <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
+                  {employees.filter((item) => item.active).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.code} - {item.firstName} {item.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{t('วันที่ทำ OT', 'OT date')}</label>
+                <input
+                  type="date"
+                  value={overtimeForm.workDate}
+                  onChange={(e) =>
+                    setOvertimeForm({ ...overtimeForm, workDate: e.target.value })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label>{t('จำนวนชั่วโมง', 'Hours')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={overtimeForm.overtimeHours}
+                  onChange={(e) =>
                     setOvertimeForm({
-                      employeeId: '',
-                      workDate: '',
-                      overtimeHours: '',
-                      reason: '',
-                    }),
-                  t('ส่งคำขอ OT เรียบร้อยแล้ว', 'OT request submitted'),
-                )
-              }
-            >
-              {t('ส่งคำขอ OT', 'Submit OT request')}
-            </button>
-          </div>
-        </article>
-
-        <article className="panel">
-          <h2 className="panel-title">{t('ยื่นลาออก', 'Resignation request')}</h2>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <div className="field">
-              <label>{t('พนักงาน', 'Employee')}</label>
-              <select
-                value={resignationForm.employeeId}
-                onChange={(e) =>
-                  setResignationForm({
-                    ...resignationForm,
-                    employeeId: e.target.value,
-                  })
-                }
-              >
-                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
-                {employees.filter((item) => item.active).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} - {item.firstName} {item.lastName}
-                  </option>
-                ))}
-              </select>
+                      ...overtimeForm,
+                      overtimeHours: e.target.value,
+                    })
+                  }
+                />
+              </div>
             </div>
-            <div className="field">
-              <label>{t('วันทำงานวันสุดท้าย', 'Last work date')}</label>
-              <input
-                type="date"
-                value={resignationForm.lastWorkDate}
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('เหตุผลขอ OT', 'OT reason')}</label>
+              <textarea
+                rows={3}
+                value={overtimeForm.reason}
                 onChange={(e) =>
-                  setResignationForm({
-                    ...resignationForm,
-                    lastWorkDate: e.target.value,
-                  })
+                  setOvertimeForm({ ...overtimeForm, reason: e.target.value })
                 }
               />
             </div>
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>{t('เหตุผลลาออก', 'Resignation reason')}</label>
-            <textarea
-              rows={3}
-              value={resignationForm.reason}
-              onChange={(e) =>
-                setResignationForm({ ...resignationForm, reason: e.target.value })
-              }
-            />
-          </div>
-          <div className="action-row" style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-danger"
-              disabled={saving}
-              onClick={() =>
-                submitRequest(
-                  { kind: 'RESIGNATION', ...resignationForm },
-                  () =>
+            <div className="action-row" style={{ marginTop: 14 }}>
+              <button
+                className="btn btn-primary"
+                disabled={saving}
+                onClick={() =>
+                  submitRequest(
+                    { kind: 'OVERTIME', ...overtimeForm },
+                    () =>
+                      setOvertimeForm({
+                        employeeId: '',
+                        workDate: '',
+                        overtimeHours: '',
+                        reason: '',
+                      }),
+                    t('ส่งคำขอ OT เรียบร้อยแล้ว', 'OT request submitted'),
+                  )
+                }
+              >
+                {t('ส่งคำขอ OT', 'Submit OT request')}
+              </button>
+            </div>
+          </article>
+
+          <article className="panel">
+            <h2 className="panel-title">{t('ยื่นลาออก', 'Resignation request')}</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="field">
+                <label>{t('พนักงาน', 'Employee')}</label>
+                <select
+                  value={resignationForm.employeeId}
+                  onChange={(e) =>
                     setResignationForm({
-                      employeeId: '',
-                      lastWorkDate: '',
-                      reason: '',
-                    }),
-                  t('ส่งคำขอลาออกเรียบร้อยแล้ว', 'Resignation request submitted'),
-                )
-              }
-            >
-              {t('ส่งคำขอลาออก', 'Submit resignation')}
-            </button>
-          </div>
-        </article>
-
-        <article className="panel">
-          <h2 className="panel-title">{t('ขอกลับก่อนเวลา', 'Early checkout request')}</h2>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <div className="field">
-              <label>{t('พนักงาน', 'Employee')}</label>
-              <select
-                value={earlyCheckoutForm.employeeId}
+                      ...resignationForm,
+                      employeeId: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
+                  {employees.filter((item) => item.active).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.code} - {item.firstName} {item.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{t('วันทำงานวันสุดท้าย', 'Last work date')}</label>
+                <input
+                  type="date"
+                  value={resignationForm.lastWorkDate}
+                  onChange={(e) =>
+                    setResignationForm({
+                      ...resignationForm,
+                      lastWorkDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('เหตุผลลาออก', 'Resignation reason')}</label>
+              <textarea
+                rows={3}
+                value={resignationForm.reason}
                 onChange={(e) =>
-                  setEarlyCheckoutForm({
-                    ...earlyCheckoutForm,
-                    employeeId: e.target.value,
-                  })
+                  setResignationForm({ ...resignationForm, reason: e.target.value })
+                }
+              />
+            </div>
+            <div className="action-row" style={{ marginTop: 14 }}>
+              <button
+                className="btn btn-danger"
+                disabled={saving}
+                onClick={() =>
+                  submitRequest(
+                    { kind: 'RESIGNATION', ...resignationForm },
+                    () =>
+                      setResignationForm({
+                        employeeId: '',
+                        lastWorkDate: '',
+                        reason: '',
+                      }),
+                    t('ส่งคำขอลาออกเรียบร้อยแล้ว', 'Resignation request submitted'),
+                  )
                 }
               >
-                <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
-                {employees.filter((item) => item.active).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} - {item.firstName} {item.lastName}
-                  </option>
-                ))}
-              </select>
+                {t('ส่งคำขอลาออก', 'Submit resignation')}
+              </button>
             </div>
-            <div className="field">
-              <label>{t('วันที่ต้องการกลับก่อน', 'Early checkout date')}</label>
-              <input
-                type="date"
-                value={earlyCheckoutForm.workDate}
+          </article>
+
+          <article className="panel">
+            <h2 className="panel-title">{t('ขอกลับก่อนเวลา', 'Early checkout request')}</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="field">
+                <label>{t('พนักงาน', 'Employee')}</label>
+                <select
+                  value={earlyCheckoutForm.employeeId}
+                  onChange={(e) =>
+                    setEarlyCheckoutForm({
+                      ...earlyCheckoutForm,
+                      employeeId: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">{t('เลือกพนักงาน', 'Select employee')}</option>
+                  {employees.filter((item) => item.active).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.code} - {item.firstName} {item.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{t('วันที่ต้องการกลับก่อน', 'Early checkout date')}</label>
+                <input
+                  type="date"
+                  value={earlyCheckoutForm.workDate}
+                  onChange={(e) =>
+                    setEarlyCheckoutForm({
+                      ...earlyCheckoutForm,
+                      workDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('เหตุผลกลับก่อนเวลา', 'Reason')}</label>
+              <textarea
+                rows={3}
+                value={earlyCheckoutForm.reason}
                 onChange={(e) =>
                   setEarlyCheckoutForm({
                     ...earlyCheckoutForm,
-                    workDate: e.target.value,
+                    reason: e.target.value,
                   })
                 }
               />
             </div>
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>{t('เหตุผลกลับก่อนเวลา', 'Reason')}</label>
-            <textarea
-              rows={3}
-              value={earlyCheckoutForm.reason}
-              onChange={(e) =>
-                setEarlyCheckoutForm({
-                  ...earlyCheckoutForm,
-                  reason: e.target.value,
-                })
-              }
-            />
-          </div>
-          <div className="action-row" style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-primary"
-              disabled={saving}
-              onClick={() =>
-                submitRequest(
-                  { kind: 'EARLY_CHECKOUT', ...earlyCheckoutForm },
-                  () =>
-                    setEarlyCheckoutForm({
-                      employeeId: '',
-                      workDate: '',
-                      reason: '',
-                    }),
-                  t('ส่งคำขอกลับก่อนเวลาเรียบร้อยแล้ว', 'Early checkout request submitted'),
-                )
-              }
-            >
-              {t('ส่งคำขอกลับก่อนเวลา', 'Submit early checkout')}
-            </button>
-          </div>
-        </article>
-      </section>
+            <div className="action-row" style={{ marginTop: 14 }}>
+              <button
+                className="btn btn-primary"
+                disabled={saving}
+                onClick={() =>
+                  submitRequest(
+                    { kind: 'EARLY_CHECKOUT', ...earlyCheckoutForm },
+                    () =>
+                      setEarlyCheckoutForm({
+                        employeeId: '',
+                        workDate: '',
+                        reason: '',
+                      }),
+                    t('ส่งคำขอกลับก่อนเวลาเรียบร้อยแล้ว', 'Early checkout request submitted'),
+                  )
+                }
+              >
+                {t('ส่งคำขอกลับก่อนเวลา', 'Submit early checkout')}
+              </button>
+            </div>
+          </article>
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2 className="panel-title">{t('รายการคำขอล่าสุด', 'Latest requests')}</h2>

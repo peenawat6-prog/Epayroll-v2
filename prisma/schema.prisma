@@ -98,6 +98,12 @@ enum SalesAgentRegistrationStatus {
   REJECTED
 }
 
+enum ManagementRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum WorkShift {
   MORNING
   AFTERNOON
@@ -125,6 +131,7 @@ model Tenant {
   afternoonShiftEndMinutes   Int           @default(1320)
   nightShiftStartMinutes   Int             @default(1320)
   nightShiftEndMinutes     Int             @default(360)
+  latePenaltyPerMinute     Int             @default(0)
   latitude              Float?
   longitude             Float?
   allowedRadiusMeters   Int                @default(150)
@@ -141,6 +148,7 @@ model Tenant {
   auditLogs             AuditLog[]
   attendanceCorrections AttendanceCorrection[]
   employeeRegistrations EmployeeRegistrationRequest[]
+  managementRegistrations ManagementRegistrationRequest[]
   leaves                Leave[]
   overtimeRequests      OvertimeRequest[]
   earlyCheckoutRequests EarlyCheckoutRequest[]
@@ -256,6 +264,28 @@ model EmployeeRegistrationRequest {
   @@index([tenantId, code])
   @@index([tenantId, email])
   @@index([branchId])
+}
+
+model ManagementRegistrationRequest {
+  id               String                       @id @default(cuid())
+  tenantId         String
+  firstName        String
+  lastName         String
+  phone            String?
+  email            String
+  passwordHash     String
+  requestedRole    UserRole
+  status           ManagementRegistrationStatus @default(PENDING)
+  reviewNote       String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                     @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, email])
+  @@index([status, createdAt])
 }
 
 model User {
@@ -497,6 +527,7 @@ model Payroll {
   lateMinutes     Int           @default(0)
   basePay         Float
   overtimePay     Float
+  latePenaltyAmount Float      @default(0)
   deduction       Float
   netPay          Float
   paymentStatus   PaymentStatus @default(PENDING)

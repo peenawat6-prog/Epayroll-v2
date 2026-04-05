@@ -16,6 +16,8 @@ export type PayrollItem = {
   workedHours: number
   overtimeHours: number
   lateMinutes: number
+  latePenaltyPerMinute: number
+  latePenaltyAmount: number
   basePay: number
   overtimePay: number
   deduction: number
@@ -124,10 +126,24 @@ export async function getPayrollPeriod(
   })
 }
 
+export async function isPayrollPeriodLockedForDate(
+  tenantId: string,
+  workDate: Date,
+) {
+  const tenant = await getTenantPayrollSettings(tenantId)
+  const { month, year } = getPayrollPeriodLabelForDate(
+    workDate,
+    tenant.payrollPayday,
+  )
+  const period = await getPayrollPeriod(tenantId, month, year)
+
+  return period?.status === "LOCKED"
+}
+
 async function getTenantPayrollSettings(tenantId: string) {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { payrollPayday: true },
+    select: { payrollPayday: true, latePenaltyPerMinute: true },
   })
 
   if (!tenant) {
@@ -233,6 +249,7 @@ export async function calculatePayrollPreview(
 
       let basePay = 0
       let deduction = 0
+      const latePenaltyAmount = totalLateMinutes * tenant.latePenaltyPerMinute
 
       if (employee.payType === "MONTHLY") {
         basePay = employee.baseSalary ?? 0
@@ -247,6 +264,8 @@ export async function calculatePayrollPreview(
         basePay = (totalWorkedMinutes / 60) * hourlyRate
       }
 
+      deduction += latePenaltyAmount
+
       const overtimePay = (overtimeMinutes / 60) * hourlyRate * 1.5
       const netPay = Math.max(0, basePay + overtimePay - deduction)
 
@@ -260,6 +279,8 @@ export async function calculatePayrollPreview(
         workedHours: roundCurrency(totalWorkedMinutes / 60),
         overtimeHours: roundCurrency(overtimeMinutes / 60),
         lateMinutes: totalLateMinutes,
+        latePenaltyPerMinute: tenant.latePenaltyPerMinute,
+        latePenaltyAmount: roundCurrency(latePenaltyAmount),
         basePay: roundCurrency(basePay),
         overtimePay: roundCurrency(overtimePay),
         deduction: roundCurrency(deduction),
@@ -311,6 +332,11 @@ export async function getStoredPayrollItems(
     workedHours: roundCurrency(record.workedHours),
     overtimeHours: roundCurrency(Math.max(0, record.overtimePay) / Math.max(1, (record.employee.hourlyRate ?? (record.employee.baseSalary ? roundCurrency(record.employee.baseSalary / (30 * 8)) : 1)) * 1.5)),
     lateMinutes: record.lateMinutes,
+    latePenaltyPerMinute:
+      record.lateMinutes > 0
+        ? Math.round(record.latePenaltyAmount / record.lateMinutes)
+        : 0,
+    latePenaltyAmount: roundCurrency(record.latePenaltyAmount),
     basePay: roundCurrency(record.basePay),
     overtimePay: roundCurrency(record.overtimePay),
     deduction: roundCurrency(record.deduction),
@@ -422,6 +448,7 @@ export async function savePayrollPeriod(params: {
           absentDays: item.absentDays,
           workedHours: item.workedHours,
           lateMinutes: item.lateMinutes,
+          latePenaltyAmount: item.latePenaltyAmount,
           basePay: item.basePay,
           overtimePay: item.overtimePay,
           deduction: item.deduction,
@@ -436,6 +463,7 @@ export async function savePayrollPeriod(params: {
           absentDays: item.absentDays,
           workedHours: item.workedHours,
           lateMinutes: item.lateMinutes,
+          latePenaltyAmount: item.latePenaltyAmount,
           basePay: item.basePay,
           overtimePay: item.overtimePay,
           deduction: item.deduction,
@@ -484,17 +512,6 @@ export async function unlockPayrollPeriod(params: {
   year: number
   reason: string
 }) {
-  const tenant = await getTenantPayrollSettings(params.tenantId)
-  const range = getPayrollCycleRange(tenant.payrollPayday, params.year, params.month)
-
-  if (Date.now() > range.end.getTime()) {
-    throw new AppError(
-      "งวดเงินเดือนนี้สิ้นสุดแล้ว ไม่สามารถเปิดกลับมาแก้ไขย้อนหลังได้",
-      409,
-      "PAYROLL_PERIOD_ALREADY_ENDED",
-    )
-  }
-
   const period = await prisma.payrollPeriod.findUnique({
     where: {
       tenantId_month_year: {

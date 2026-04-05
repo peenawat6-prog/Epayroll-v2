@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import PasswordInput from "@/app/components/password-input"
 import { useLanguage } from "@/lib/language"
 
 type PublicBranch = {
@@ -424,17 +425,17 @@ export default function EmployeeRegisterPage() {
 
         <div className="field">
           <label htmlFor="password">{t("ตั้งรหัสผ่าน", "Password")}</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             value={form.password}
-            onChange={(event) =>
+            onChange={(value) =>
               setForm((current) => ({
                 ...current,
-                password: event.target.value,
+                password: value,
               }))
             }
             placeholder={t("อย่างน้อย 6 ตัวอักษร", "At least 6 characters")}
+            autoComplete="new-password"
           />
         </div>
 

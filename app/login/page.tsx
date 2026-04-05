@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import PasswordInput from "@/app/components/password-input"
 import { markBrowserSessionActive } from "@/lib/browser-session"
 import { useLanguage } from "@/lib/language"
 
@@ -90,11 +91,11 @@ export default function LoginPage() {
 
         <div className="field">
           <label htmlFor="password">{t("รหัสผ่าน", "Password")}</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
+            autoComplete="current-password"
           />
         </div>
 
@@ -112,13 +113,6 @@ export default function LoginPage() {
             onClick={() => router.push("/employee/register")}
           >
             {t("ลงทะเบียนพนักงาน", "Employee registration")}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => router.push("/shop/register")}
-          >
-            {t("ลงทะเบียนร้านค้า", "Register new shop")}
           </button>
         </div>
       </form>

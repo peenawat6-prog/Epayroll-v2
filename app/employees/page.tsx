@@ -93,12 +93,7 @@ const DAY_OFF_OPTIONS = [
 
 export default function EmployeesPage() {
   const { t, language } = useLanguage()
-  const [employees, setEmployees] = useState<EmployeeRow[]>([])
-  const [branches, setBranches] = useState<BranchOption[]>([])
-  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState({
+  const createInitialForm = () => ({
     branchId: '',
     firstName: '',
     lastName: '',
@@ -118,6 +113,13 @@ export default function EmployeesPage() {
     promptPayId: '',
     userRole: 'EMPLOYEE' as 'EMPLOYEE' | 'ADMIN' | 'HR' | 'FINANCE',
   })
+  const [employees, setEmployees] = useState<EmployeeRow[]>([])
+  const [branches, setBranches] = useState<BranchOption[]>([])
+  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [form, setForm] = useState(createInitialForm)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [reviewNote, setReviewNote] = useState('')
@@ -201,33 +203,32 @@ export default function EmployeesPage() {
     fetchRegistrationRequests()
   }, [user])
 
-  const resetForm = () => {
+  const resetForm = (options?: { clearMessage?: boolean }) => {
     setEditId(null)
-    setForm({
-      branchId: '',
-      firstName: '',
-      lastName: '',
-      phone: '',
-      position: '',
-      employeeType: 'FULL_TIME',
-      payType: 'MONTHLY',
-      workShift: 'MORNING',
-      dayOffWeekdays: [],
-      baseSalary: '',
-      dailyRate: '',
-      hourlyRate: '',
-      startDate: '',
-      bankName: '',
-      accountName: '',
-      accountNumber: '',
-      promptPayId: '',
-      userRole: 'EMPLOYEE',
-    })
-    setMessage('')
+    setIsFormOpen(false)
+    setForm(createInitialForm())
+    if (options?.clearMessage !== false) {
+      setMessage('')
+    }
     setError('')
   }
 
+  const openCreateForm = () => {
+    setEditId(null)
+    setIsFormOpen(true)
+    setForm(createInitialForm())
+    setMessage('')
+    setError('')
+    requestAnimationFrame(() => {
+      employeeFormPanelRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
   const handleEditClick = (emp: EmployeeRow) => {
+    setIsFormOpen(true)
     setEditId(emp.id)
     setForm({
       branchId: emp.branchId ?? '',
@@ -361,7 +362,7 @@ export default function EmployeesPage() {
 
     fetchEmployees()
     fetchRegistrationRequests()
-    resetForm()
+    resetForm({ clearMessage: false })
   }
 
   const handleReviewRegistration = async (
@@ -449,223 +450,245 @@ export default function EmployeesPage() {
           <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
             {t('กลับหน้าแรก', 'Back to dashboard')}
           </button>
+          {canManage ? (
+            <button className="btn btn-primary" onClick={openCreateForm}>
+              {t('เพิ่มพนักงานใหม่', 'Add new employee')}
+            </button>
+          ) : null}
           <LogoutButton />
         </div>
       </section>
 
+      {message ? <div className="message message-success">{message}</div> : null}
+      {error ? <div className="message message-error">{error}</div> : null}
+
       {canManage ? (
-        <section ref={employeeFormPanelRef} className="panel">
-          <h2 className="panel-title">
-            {editId ? t('แก้ไขข้อมูลพนักงาน', 'Edit employee') : t('เพิ่มพนักงานใหม่', 'Add employee')}
-          </h2>
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginTop: 16 }}>
-              {!editId ? (
+        isFormOpen ? (
+          <section ref={employeeFormPanelRef} className="panel">
+            <h2 className="panel-title">
+              {editId
+                ? t('แก้ไขข้อมูลพนักงาน', 'Edit employee')
+                : t('เพิ่มพนักงานใหม่', 'Add employee')}
+            </h2>
+            <form onSubmit={handleSubmit}>
+              <div className="form-grid" style={{ marginTop: 16 }}>
+                {!editId ? (
+                  <div className="field">
+                    <label>{t('รหัสพนักงาน', 'Employee code')}</label>
+                    <input
+                      value={t('ระบบจะรันให้อัตโนมัติ', 'Generated automatically')}
+                      disabled
+                    />
+                  </div>
+                ) : null}
                 <div className="field">
-                  <label>{t('รหัสพนักงาน', 'Employee code')}</label>
-                  <input value={t('ระบบจะรันให้อัตโนมัติ', 'Generated automatically')} disabled />
-                </div>
-              ) : null}
-              <div className="field">
-                <label>{t('สาขา', 'Branch')}</label>
-                <select
-                  value={form.branchId}
-                  onChange={(e) => setForm({ ...form, branchId: e.target.value })}
-                >
-                  <option value="">{t('ไม่ระบุสาขา', 'No branch')}</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('ชื่อจริง', 'First name')}</label>
-                <input
-                  value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('นามสกุล', 'Last name')}</label>
-                <input
-                  value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('เบอร์โทร', 'Phone')}</label>
-                <input
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ตำแหน่ง', 'Position')}</label>
-                <input
-                  value={form.position}
-                  onChange={(e) => setForm({ ...form, position: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ประเภทพนักงาน', 'Employee type')}</label>
-                <select
-                  value={form.employeeType}
-                  onChange={(e) => setForm({ ...form, employeeType: e.target.value as 'FULL_TIME' | 'PART_TIME' })}
-                >
-                  <option value="FULL_TIME">
-                    {getEmployeeTypeLabel('FULL_TIME', language)}
-                  </option>
-                  <option value="PART_TIME">
-                    {getEmployeeTypeLabel('PART_TIME', language)}
-                  </option>
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('รูปแบบจ่ายเงิน', 'Pay type')}</label>
-                <select
-                  value={form.payType}
-                  onChange={(e) => setForm({ ...form, payType: e.target.value as 'MONTHLY' | 'DAILY' | 'HOURLY' })}
-                >
-                  <option value="MONTHLY">{t('รายเดือน', 'Monthly')}</option>
-                  <option value="DAILY">{t('รายวัน', 'Daily')}</option>
-                  <option value="HOURLY">{t('รายชั่วโมง', 'Hourly')}</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('กะการทำงานประจำ', 'Regular shift')}</label>
-                <select
-                  value={form.workShift}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      workShift: e.target.value as 'MORNING' | 'AFTERNOON' | 'NIGHT',
-                    })
-                  }
-                >
-                  <option value="MORNING">{workShiftLabels.MORNING}</option>
-                  <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
-                  <option value="NIGHT">{workShiftLabels.NIGHT}</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('วันหยุดประจำสัปดาห์', 'Weekly days off')}</label>
-                <div className="weekday-picker">
-                  {DAY_OFF_OPTIONS.map((day) => (
-                    <label key={day.value} className="weekday-option">
-                      <input
-                        type="checkbox"
-                        checked={form.dayOffWeekdays.includes(day.value)}
-                        onChange={() => toggleDayOff(day.value)}
-                      />
-                      <span>{t(day.th, day.en)}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="field">
-                <label>{t('เงินเดือนฐาน', 'Base salary')}</label>
-                <input
-                  type="number"
-                  value={form.baseSalary}
-                  onChange={(e) => setForm({ ...form, baseSalary: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ค่าแรงรายวัน', 'Daily rate')}</label>
-                <input
-                  type="number"
-                  value={form.dailyRate}
-                  onChange={(e) => setForm({ ...form, dailyRate: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ค่าแรงรายชั่วโมง', 'Hourly rate')}</label>
-                <input
-                  type="number"
-                  value={form.hourlyRate}
-                  onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('วันเริ่มงาน', 'Start date')}</label>
-                <input
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ธนาคาร', 'Bank')}</label>
-                <input
-                  value={form.bankName}
-                  onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                  placeholder={t('เช่น SCB', 'e.g. SCB')}
-                />
-              </div>
-              <div className="field">
-                <label>{t('ชื่อบัญชี', 'Account name')}</label>
-                <input
-                  value={form.accountName}
-                  onChange={(e) => setForm({ ...form, accountName: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('เลขบัญชี', 'Account number')}</label>
-                <input
-                  value={form.accountNumber}
-                  onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>{t('พร้อมเพย์', 'PromptPay')}</label>
-                <input
-                  value={form.promptPayId}
-                  onChange={(e) => setForm({ ...form, promptPayId: e.target.value })}
-                  placeholder={t('เบอร์โทรหรือเลขบัตร', 'Phone number or ID number')}
-                />
-              </div>
-              {editId && canGrantStaffRole ? (
-                <div className="field">
-                  <label>{t('สิทธิ์ใช้งานระบบ', 'System role')}</label>
+                  <label>{t('สาขา', 'Branch')}</label>
                   <select
-                    value={form.userRole}
+                    value={form.branchId}
+                    onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+                  >
+                    <option value="">{t('ไม่ระบุสาขา', 'No branch')}</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t('ชื่อจริง', 'First name')}</label>
+                  <input
+                    value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('นามสกุล', 'Last name')}</label>
+                  <input
+                    value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('เบอร์โทร', 'Phone')}</label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ตำแหน่ง', 'Position')}</label>
+                  <input
+                    value={form.position}
+                    onChange={(e) => setForm({ ...form, position: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ประเภทพนักงาน', 'Employee type')}</label>
+                  <select
+                    value={form.employeeType}
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        userRole: e.target.value as
-                          | 'EMPLOYEE'
-                          | 'ADMIN'
-                          | 'HR'
-                          | 'FINANCE',
+                        employeeType: e.target.value as 'FULL_TIME' | 'PART_TIME',
                       })
                     }
                   >
-                    <option value="EMPLOYEE">{t('พนักงาน', 'Employee')}</option>
-                    <option value="ADMIN">{t('แอดมิน', 'Admin')}</option>
-                    <option value="HR">{t('ฝ่ายบุคคล', 'HR')}</option>
-                    <option value="FINANCE">{t('ฝ่ายการเงิน', 'Finance')}</option>
+                    <option value="FULL_TIME">
+                      {getEmployeeTypeLabel('FULL_TIME', language)}
+                    </option>
+                    <option value="PART_TIME">
+                      {getEmployeeTypeLabel('PART_TIME', language)}
+                    </option>
                   </select>
                 </div>
-              ) : null}
-            </div>
+                <div className="field">
+                  <label>{t('รูปแบบจ่ายเงิน', 'Pay type')}</label>
+                  <select
+                    value={form.payType}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        payType: e.target.value as 'MONTHLY' | 'DAILY' | 'HOURLY',
+                      })
+                    }
+                  >
+                    <option value="MONTHLY">{t('รายเดือน', 'Monthly')}</option>
+                    <option value="DAILY">{t('รายวัน', 'Daily')}</option>
+                    <option value="HOURLY">{t('รายชั่วโมง', 'Hourly')}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t('กะการทำงานประจำ', 'Regular shift')}</label>
+                  <select
+                    value={form.workShift}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        workShift: e.target.value as 'MORNING' | 'AFTERNOON' | 'NIGHT',
+                      })
+                    }
+                  >
+                    <option value="MORNING">{workShiftLabels.MORNING}</option>
+                    <option value="AFTERNOON">{workShiftLabels.AFTERNOON}</option>
+                    <option value="NIGHT">{workShiftLabels.NIGHT}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t('วันหยุดประจำสัปดาห์', 'Weekly days off')}</label>
+                  <div className="weekday-picker">
+                    {DAY_OFF_OPTIONS.map((day) => (
+                      <label key={day.value} className="weekday-option">
+                        <input
+                          type="checkbox"
+                          checked={form.dayOffWeekdays.includes(day.value)}
+                          onChange={() => toggleDayOff(day.value)}
+                        />
+                        <span>{t(day.th, day.en)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <label>{t('เงินเดือนฐาน', 'Base salary')}</label>
+                  <input
+                    type="number"
+                    value={form.baseSalary}
+                    onChange={(e) => setForm({ ...form, baseSalary: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ค่าแรงรายวัน', 'Daily rate')}</label>
+                  <input
+                    type="number"
+                    value={form.dailyRate}
+                    onChange={(e) => setForm({ ...form, dailyRate: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ค่าแรงรายชั่วโมง', 'Hourly rate')}</label>
+                  <input
+                    type="number"
+                    value={form.hourlyRate}
+                    onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('วันเริ่มงาน', 'Start date')}</label>
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ธนาคาร', 'Bank')}</label>
+                  <input
+                    value={form.bankName}
+                    onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                    placeholder={t('เช่น SCB', 'e.g. SCB')}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ชื่อบัญชี', 'Account name')}</label>
+                  <input
+                    value={form.accountName}
+                    onChange={(e) => setForm({ ...form, accountName: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('เลขบัญชี', 'Account number')}</label>
+                  <input
+                    value={form.accountNumber}
+                    onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('พร้อมเพย์', 'PromptPay')}</label>
+                  <input
+                    value={form.promptPayId}
+                    onChange={(e) => setForm({ ...form, promptPayId: e.target.value })}
+                    placeholder={t('เบอร์โทรหรือเลขบัตร', 'Phone number or ID number')}
+                  />
+                </div>
+                {editId && canGrantStaffRole ? (
+                  <div className="field">
+                    <label>{t('สิทธิ์ใช้งานระบบ', 'System role')}</label>
+                    <select
+                      value={form.userRole}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          userRole: e.target.value as
+                            | 'EMPLOYEE'
+                            | 'ADMIN'
+                            | 'HR'
+                            | 'FINANCE',
+                        })
+                      }
+                    >
+                      <option value="EMPLOYEE">{t('พนักงาน', 'Employee')}</option>
+                      <option value="ADMIN">{t('แอดมิน', 'Admin')}</option>
+                      <option value="HR">{t('ฝ่ายบุคคล', 'HR')}</option>
+                      <option value="FINANCE">{t('ฝ่ายการเงิน', 'Finance')}</option>
+                    </select>
+                  </div>
+                ) : null}
+              </div>
 
-            <div className="action-row" style={{ marginTop: 16 }}>
-              <button type="submit" className="btn btn-primary">
-                {editId ? t('บันทึกการแก้ไข', 'Save changes') : t('เพิ่มพนักงาน', 'Add employee')}
-              </button>
-              {editId ? (
-                <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                  {t('ยกเลิก', 'Cancel')}
+              <div className="action-row" style={{ marginTop: 16 }}>
+                <button type="submit" className="btn btn-primary">
+                  {editId
+                    ? t('บันทึกการแก้ไข', 'Save changes')
+                    : t('เพิ่มพนักงาน', 'Add employee')}
                 </button>
-              ) : null}
-            </div>
-          </form>
-
-          {message ? <div className="message message-success">{message}</div> : null}
-          {error ? <div className="message message-error">{error}</div> : null}
-        </section>
+                <button type="button" className="btn btn-secondary" onClick={() => resetForm()}>
+                  {t('ปิดฟอร์ม', 'Close form')}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null
       ) : (
         <section className="panel">
           <h2 className="panel-title">{t('สิทธิ์ของคุณเป็นแบบอ่านอย่างเดียว', 'Read-only access')}</h2>
@@ -947,8 +970,8 @@ export default function EmployeesPage() {
                   <span>{t('บัญชีรับเงิน', 'Payment account')}</span>
                   <strong>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong>
                 </div>
-                <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{emp.bank?.accountNumber ?? '-'}</strong></div>
-                <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{emp.bank?.promptPayId ?? '-'}</strong></div>
+                <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{emp.bank?.accountNumber ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
+                <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{emp.bank?.promptPayId ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
                 <div className="record-line">
                   <span>{t('สิทธิ์ระบบ', 'System role')}</span>
                   <strong>

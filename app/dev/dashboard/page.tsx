@@ -74,6 +74,24 @@ type SalesRequest = {
   createdAt: string
 }
 
+type ManagementRequest = {
+  id: string
+  firstName: string
+  lastName: string
+  phone: string | null
+  email: string
+  requestedRole: "OWNER" | "ADMIN" | "HR" | "FINANCE"
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  reviewNote: string | null
+  reviewedAt: string | null
+  createdAt: string
+  tenant: {
+    id: string
+    name: string
+    registrationCode: string
+  }
+}
+
 type SalesAgentSummary = {
   id: string
   code: string
@@ -154,6 +172,7 @@ export default function DevDashboardPage() {
   const now = new Date()
   const [requests, setRequests] = useState<ShopRequest[]>([])
   const [salesRequests, setSalesRequests] = useState<SalesRequest[]>([])
+  const [managementRequests, setManagementRequests] = useState<ManagementRequest[]>([])
   const [salesAgents, setSalesAgents] = useState<SalesAgentSummary[]>([])
   const [salesAgentForm, setSalesAgentForm] = useState<SalesAgentForm>(
     DEFAULT_SALES_AGENT_FORM,
@@ -168,6 +187,7 @@ export default function DevDashboardPage() {
   const [subscriptionDaysByRequestId, setSubscriptionDaysByRequestId] = useState<Record<string, string>>({})
   const [reviewNoteByRequestId, setReviewNoteByRequestId] = useState<Record<string, string>>({})
   const [salesReviewNoteByRequestId, setSalesReviewNoteByRequestId] = useState<Record<string, string>>({})
+  const [managementReviewNoteByRequestId, setManagementReviewNoteByRequestId] = useState<Record<string, string>>({})
   const [extraDaysByTenantId, setExtraDaysByTenantId] = useState<Record<string, string>>({})
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
@@ -200,6 +220,7 @@ export default function DevDashboardPage() {
 
     setRequests(data.requests ?? [])
     setSalesRequests(data.salesRequests ?? [])
+    setManagementRequests(data.managementRequests ?? [])
     setSalesAgents(data.salesAgents ?? [])
     setTenants(data.tenants ?? [])
   }
@@ -302,6 +323,48 @@ export default function DevDashboardPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "บันทึกคำขอเซลล์ไม่สำเร็จ",
+      )
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const reviewManagementRequest = async (
+    requestId: string,
+    decision: "APPROVED" | "REJECTED",
+  ) => {
+    setSavingId(requestId)
+    setError("")
+    setMessage("")
+
+    try {
+      const res = await fetch(`/api/dev/management-requests/${requestId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          decision,
+          reviewNote: managementReviewNoteByRequestId[requestId] || undefined,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "บันทึกคำขอสิทธิ์บริหารไม่สำเร็จ")
+      }
+
+      setMessage(
+        decision === "APPROVED"
+          ? "อนุมัติสิทธิ์บริหารเรียบร้อยแล้ว"
+          : "ไม่อนุมัติคำขอสิทธิ์บริหารเรียบร้อยแล้ว",
+      )
+      await loadDashboard()
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "บันทึกคำขอสิทธิ์บริหารไม่สำเร็จ",
       )
     } finally {
       setSavingId(null)
@@ -427,6 +490,9 @@ export default function DevDashboardPage() {
   const pendingSalesCount = salesRequests.filter(
     (request) => request.status === "PENDING",
   ).length
+  const pendingManagementCount = managementRequests.filter(
+    (request) => request.status === "PENDING",
+  ).length
   const totalCommission = salesAgents.reduce(
     (sum, agent) => sum + agent.commissionAmountBaht,
     0,
@@ -440,6 +506,7 @@ export default function DevDashboardPage() {
             <div className="badge">แดชบอร์ดทีมซัพพอร์ต</div>
             <div className="badge">ร้านรออนุมัติ {pendingShopCount}</div>
             <div className="badge">เซลล์รออนุมัติ {pendingSalesCount}</div>
+            <div className="badge">สิทธิ์บริหารรออนุมัติ {pendingManagementCount}</div>
             <div className="badge">ร้านค้าทั้งหมด {tenants.length} ร้าน</div>
           </div>
           <h1 className="hero-title">แดชบอร์ดทีมซัพพอร์ต</h1>
@@ -457,6 +524,98 @@ export default function DevDashboardPage() {
 
       {message ? <div className="message message-success">{message}</div> : null}
       {error ? <div className="message message-error">{error}</div> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">คำขอลงทะเบียนสิทธิ์บริหาร</h2>
+        <p className="panel-subtitle">
+          ใช้สำหรับอนุมัติเจ้าของร่วม หุ้นส่วน แอดมิน ฝ่ายบุคคล และฝ่ายการเงินของแต่ละร้าน
+        </p>
+
+        {managementRequests.length === 0 ? (
+          <div className="empty-state">ยังไม่มีคำขอลงทะเบียนสิทธิ์บริหาร</div>
+        ) : (
+          <div className="mobile-card-list" style={{ marginTop: 16 }}>
+            {managementRequests.map((request) => (
+              <article key={request.id} className="record-card">
+                <div className="record-card-head">
+                  <strong>
+                    {request.firstName} {request.lastName}
+                  </strong>
+                  <span className={getStatusPillClass(request.status)}>
+                    {getRequestStatusLabel(request.status)}
+                  </span>
+                </div>
+                <div className="record-card-body">
+                  <div className="record-line">
+                    <span>ร้าน</span>
+                    <strong>{request.tenant.name}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>สิทธิ์ที่ขอ</span>
+                    <strong>{request.requestedRole}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>อีเมล</span>
+                    <strong>{request.email}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>เบอร์โทร</span>
+                    <strong>{request.phone || "-"}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>วันที่ส่งคำขอ</span>
+                    <strong>{formatThaiDateTime24h(request.createdAt)}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>หมายเหตุซัพพอร์ต</span>
+                    <strong>{request.reviewNote || "-"}</strong>
+                  </div>
+                </div>
+
+                {request.status === "PENDING" ? (
+                  <>
+                    <div className="field" style={{ marginTop: 14 }}>
+                      <label>หมายเหตุซัพพอร์ต</label>
+                      <input
+                        value={managementReviewNoteByRequestId[request.id] ?? ""}
+                        onChange={(event) =>
+                          setManagementReviewNoteByRequestId((current) => ({
+                            ...current,
+                            [request.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="ถ้าไม่อนุมัติ ควรกรอกเหตุผล"
+                      />
+                    </div>
+                    <div className="action-row" style={{ marginTop: 14 }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={savingId === request.id}
+                        onClick={() =>
+                          reviewManagementRequest(request.id, "APPROVED")
+                        }
+                      >
+                        อนุมัติสิทธิ์
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        disabled={savingId === request.id}
+                        onClick={() =>
+                          reviewManagementRequest(request.id, "REJECTED")
+                        }
+                      >
+                        ไม่อนุมัติ
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="panel">
         <h2 className="panel-title">สรุปค่าคอมเซลล์รายเดือน</h2>

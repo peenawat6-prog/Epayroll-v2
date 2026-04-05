@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/audit"
 import { AppError } from "@/lib/http"
-import { assertPayrollPeriodOpenForDate } from "@/lib/payroll"
+import {
+  assertPayrollPeriodOpenForDate,
+  isPayrollPeriodLockedForDate,
+} from "@/lib/payroll"
 import { getBusinessDateStart } from "@/lib/time"
 import {
   asAction,
@@ -359,9 +362,15 @@ async function approveLeave(
   const totalDays =
     Math.floor((leave.endDate.getTime() - leave.startDate.getTime()) / 86400000) + 1
 
+  let skippedLockedDays = 0
+
   for (let dayIndex = 0; dayIndex < totalDays; dayIndex += 1) {
     const workDate = addDays(leave.startDate, dayIndex)
-    await assertPayrollPeriodOpenForDate(tenantId, workDate)
+
+    if (await isPayrollPeriodLockedForDate(tenantId, workDate)) {
+      skippedLockedDays += 1
+      continue
+    }
 
     await prisma.attendance.upsert({
       where: {
@@ -405,6 +414,7 @@ async function approveLeave(
       employeeId: updated.employeeId,
       startDate: updated.startDate,
       endDate: updated.endDate,
+      skippedLockedDays,
     },
   })
 

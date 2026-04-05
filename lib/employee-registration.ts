@@ -92,7 +92,11 @@ export async function submitEmployeeRegistrationRequest(params: {
     ])
 
   if (existingUser) {
-    throw new AppError("อีเมลนี้มีบัญชีอยู่แล้ว", 409, "EMAIL_ALREADY_EXISTS")
+    throw new AppError(
+      "บัญชีนี้มีผู้ใช้แล้ว โปรดติดต่อเจ้าของร้าน",
+      409,
+      "EMAIL_ALREADY_EXISTS",
+    )
   }
 
   if (existingEmployee) {
@@ -174,6 +178,7 @@ export async function listEmployeeRegistrationRequests(tenantId: string) {
   return prisma.employeeRegistrationRequest.findMany({
     where: {
       tenantId,
+      status: "PENDING",
     },
     select: {
       id: true,
@@ -299,7 +304,11 @@ export async function reviewEmployeeRegistrationRequest(params: {
   ])
 
   if (existingUser) {
-    throw new AppError("อีเมลนี้มีบัญชีอยู่แล้ว", 409, "EMAIL_ALREADY_EXISTS")
+    throw new AppError(
+      "บัญชีนี้มีผู้ใช้แล้ว โปรดติดต่อเจ้าของร้าน",
+      409,
+      "EMAIL_ALREADY_EXISTS",
+    )
   }
 
   if (existingEmployee) {

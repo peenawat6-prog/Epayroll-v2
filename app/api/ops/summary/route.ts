@@ -7,6 +7,7 @@ import { withAuthorizedRoute } from "@/lib/route-guard"
 import { getBusinessDateStart } from "@/lib/time"
 import {
   asClockMinutes,
+  asLatePenaltyPerMinute,
   asMeterRadius,
   asOptionalLatitude,
   asOptionalLongitude,
@@ -15,6 +16,7 @@ import {
 
 type OpsSettingsBody = {
   payrollPayday?: unknown
+  latePenaltyPerMinute?: unknown
   morningShiftStartTime?: unknown
   morningShiftEndTime?: unknown
   afternoonShiftStartTime?: unknown
@@ -82,6 +84,7 @@ export const GET = withAuthorizedRoute(
           select: {
             registrationCode: true,
             payrollPayday: true,
+            latePenaltyPerMinute: true,
             workStartMinutes: true,
             workEndMinutes: true,
             morningShiftStartMinutes: true,
@@ -167,6 +170,7 @@ export const GET = withAuthorizedRoute(
       settings: {
         registrationCode: tenant.registrationCode,
         payrollPayday: tenant.payrollPayday,
+        latePenaltyPerMinute: tenant.latePenaltyPerMinute,
         workStartMinutes: tenant.workStartMinutes,
         workEndMinutes: tenant.workEndMinutes,
         morningShiftStartMinutes: tenant.morningShiftStartMinutes,
@@ -191,6 +195,7 @@ export const PUT = withAuthorizedRoute(
   async (req, _context, access) => {
     const body = await readJsonBody<OpsSettingsBody>(req)
     const payrollPayday = asPayrollPayday(body.payrollPayday)
+    const latePenaltyPerMinute = asLatePenaltyPerMinute(body.latePenaltyPerMinute)
     const morningShiftStartMinutes = asClockMinutes(
       body.morningShiftStartTime,
       "morningShiftStartTime",
@@ -252,6 +257,7 @@ export const PUT = withAuthorizedRoute(
       },
       data: {
         payrollPayday,
+        latePenaltyPerMinute,
         workStartMinutes: morningShiftStartMinutes,
         workEndMinutes: morningShiftEndMinutes,
         morningShiftStartMinutes,
@@ -274,6 +280,7 @@ export const PUT = withAuthorizedRoute(
       entityId: updatedTenant.id,
       metadata: {
         payrollPayday,
+        latePenaltyPerMinute,
         morningShiftStartMinutes,
         morningShiftEndMinutes,
         afternoonShiftStartMinutes,
@@ -291,6 +298,7 @@ export const PUT = withAuthorizedRoute(
       settings: {
         registrationCode: updatedTenant.registrationCode,
         payrollPayday: updatedTenant.payrollPayday,
+        latePenaltyPerMinute: updatedTenant.latePenaltyPerMinute,
         workStartMinutes: updatedTenant.workStartMinutes,
         workEndMinutes: updatedTenant.workEndMinutes,
         morningShiftStartMinutes: updatedTenant.morningShiftStartMinutes,

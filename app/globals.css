@@ -257,6 +257,33 @@ textarea {
   margin-top: 18px;
 }
 
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-right: 74px;
+}
+
+.password-visibility-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(122, 74, 22, 0.16);
+  background: #fff;
+  color: #7a4a16;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.password-visibility-btn:hover {
+  background: #f8f1e8;
+}
+
 .field {
   display: flex;
   flex-direction: column;

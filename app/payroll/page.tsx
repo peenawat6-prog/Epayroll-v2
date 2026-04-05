@@ -20,6 +20,8 @@ type PayrollSummaryItem = {
   workedHours: number
   overtimeHours: number
   lateMinutes: number
+  latePenaltyPerMinute: number
+  latePenaltyAmount: number
   basePay: number
   overtimePay: number
   deduction: number
@@ -212,6 +214,7 @@ export default function PayrollPage() {
       'workedHours',
       'overtimeHours',
       'lateMinutes',
+      'latePenaltyAmount',
       'basePay',
       'overtimePay',
       'deduction',
@@ -230,6 +233,7 @@ export default function PayrollPage() {
       item.workedHours.toFixed(2),
       item.overtimeHours.toFixed(2),
       item.lateMinutes.toString(),
+      item.latePenaltyAmount.toFixed(2),
       item.basePay.toFixed(2),
       item.overtimePay.toFixed(2),
       item.deduction.toFixed(2),
@@ -395,6 +399,7 @@ export default function PayrollPage() {
                   <th>{t('ล่วงเวลา', 'OT')}</th>
                   <th>{t('ขาดงาน', 'Absent')}</th>
                   <th>{t('เข้าสาย (นาที)', 'Late (min)')}</th>
+                  <th>{t('หักสาย', 'Late deduction')}</th>
                   <th>{t('ค่าจ้าง', 'Pay')}</th>
                   <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
                   <th>{t('สถานะโอน', 'Payment status')}</th>
@@ -416,6 +421,14 @@ export default function PayrollPage() {
                     </td>
                     <td>{item.absentDays}</td>
                     <td>{item.lateMinutes}</td>
+                    <td>
+                      <div>{item.latePenaltyAmount.toFixed(2)} {t('บาท', 'THB')}</div>
+                      <div className="table-meta">
+                        {item.latePenaltyPerMinute > 0
+                          ? `${item.latePenaltyPerMinute} ${t('บาท/นาที', 'THB/min')}`
+                          : t('ไม่มีค่าปรับ', 'No penalty')}
+                      </div>
+                    </td>
                     <td>
                       <div>{t('ฐาน', 'Base')} {item.basePay.toFixed(2)}</div>
                       <div className="table-meta">{t('หัก', 'Deduct')} {item.deduction.toFixed(2)}</div>
@@ -514,10 +527,11 @@ export default function PayrollPage() {
                     <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
                     <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
                     <div className="record-line"><span>{t('หักเงิน', 'Deduction')}</span><strong>{item.deduction.toFixed(2)} {t('บาท', 'THB')}</strong></div>
+                    <div className="record-line"><span>{t('หักจากการมาสาย', 'Late deduction')}</span><strong>{item.latePenaltyAmount.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('ยอดสุทธิ', 'Net pay')}</span><strong>{item.netPay.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{item.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
-                    <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{maskAccountValue(item.accountNumber)}</strong></div>
-                    <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{maskAccountValue(item.promptPayId)}</strong></div>
+                    <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{item.accountNumber ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
+                    <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{item.promptPayId ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
                   </div>
                   <div className="action-row" style={{ marginTop: 14 }}>
                     <button

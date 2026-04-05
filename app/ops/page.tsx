@@ -26,6 +26,7 @@ type OpsSummary = {
   settings: {
     registrationCode: string
     payrollPayday: number
+    latePenaltyPerMinute: number
     workStartMinutes: number
     workEndMinutes: number
     morningShiftStartMinutes: number
@@ -102,6 +103,7 @@ function toCoordinateValue(value: string, fallback: number) {
 
 function restoreOpsDraft(defaultForm: {
   payrollPayday: string
+  latePenaltyPerMinute: string
   morningShiftStartTime: string
   morningShiftEndTime: string
   afternoonShiftStartTime: string
@@ -196,6 +198,7 @@ export default function OpsPage() {
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({
     payrollPayday: '31',
+    latePenaltyPerMinute: '0',
     morningShiftStartTime: '09:00',
     morningShiftEndTime: '18:00',
     afternoonShiftStartTime: '13:00',
@@ -232,6 +235,7 @@ export default function OpsPage() {
     setSummary(summaryData)
     const nextForm = {
       payrollPayday: String(summaryData.settings.payrollPayday),
+      latePenaltyPerMinute: String(summaryData.settings.latePenaltyPerMinute),
       morningShiftStartTime: formatClock(
         summaryData.settings.morningShiftStartMinutes,
       ),
@@ -346,6 +350,7 @@ export default function OpsPage() {
         },
         body: JSON.stringify({
           payrollPayday: Number(form.payrollPayday),
+          latePenaltyPerMinute: Number(form.latePenaltyPerMinute),
           morningShiftStartTime: form.morningShiftStartTime,
           morningShiftEndTime: form.morningShiftEndTime,
           afternoonShiftStartTime: form.afternoonShiftStartTime,
@@ -474,6 +479,7 @@ export default function OpsPage() {
         },
         body: JSON.stringify({
           payrollPayday: Number(form.payrollPayday),
+          latePenaltyPerMinute: Number(form.latePenaltyPerMinute),
           morningShiftStartTime: form.morningShiftStartTime,
           morningShiftEndTime: form.morningShiftEndTime,
           afternoonShiftStartTime: form.afternoonShiftStartTime,
@@ -701,6 +707,22 @@ export default function OpsPage() {
                     value={form.payrollPayday}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, payrollPayday: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('ค่าปรับมาสายต่อนาที (บาท)', 'Late penalty per minute (THB)')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    step="1"
+                    value={form.latePenaltyPerMinute}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        latePenaltyPerMinute: event.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -1006,6 +1028,9 @@ export default function OpsPage() {
                   : t('ไม่ได้กำหนด', 'Not set')}
               </div>
               <div className="badge">{t('วันจ่ายเงินเดือน', 'Payday')}: {summary.settings.payrollPayday}</div>
+              <div className="badge">
+                {t('ค่าปรับสาย', 'Late penalty')}: {summary.settings.latePenaltyPerMinute} {t('บาท/นาที', 'THB/min')}
+              </div>
               <div className="badge">
                 {t('กะเช้า', 'Morning shift')}: {formatClock(summary.settings.morningShiftStartMinutes)}-
                 {formatClock(summary.settings.morningShiftEndMinutes)}

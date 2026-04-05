@@ -18,6 +18,12 @@ const STAFF_MANAGEMENT_ROLES: UserRole[] = [
   "HR",
   "FINANCE",
 ]
+const MANAGEMENT_REGISTRATION_ROLES: UserRole[] = [
+  "OWNER",
+  "ADMIN",
+  "HR",
+  "FINANCE",
+]
 const WEEKDAY_CODES = [
   "SUNDAY",
   "MONDAY",
@@ -281,6 +287,16 @@ export function asMeterRadius(value: unknown) {
   return parsed
 }
 
+export function asLatePenaltyPerMinute(value: unknown) {
+  const parsed = asOptionalInteger(value)
+
+  if (parsed === null || parsed < 0 || parsed > 1000) {
+    throw new AppError("Invalid late penalty per minute", 400, "INVALID_INPUT")
+  }
+
+  return parsed
+}
+
 export function asPhotoReference(value: unknown) {
   const photo = asTrimmedString(value, "photo")
 
@@ -346,6 +362,16 @@ export function asStaffManagementRole(value: unknown): UserRole {
 
   if (!STAFF_MANAGEMENT_ROLES.includes(normalized)) {
     throw new AppError("Invalid user role", 400, "INVALID_INPUT")
+  }
+
+  return normalized
+}
+
+export function asManagementRegistrationRole(value: unknown): UserRole {
+  const normalized = String(value ?? "").trim() as UserRole
+
+  if (!MANAGEMENT_REGISTRATION_ROLES.includes(normalized)) {
+    throw new AppError("Invalid management role", 400, "INVALID_INPUT")
   }
 
   return normalized
