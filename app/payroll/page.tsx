@@ -64,12 +64,7 @@ export default function PayrollPage() {
   const [month, setMonth] = useState(String(today.getMonth() + 1))
   const [year, setYear] = useState(String(today.getFullYear()))
   const canUnlock = userRole === 'OWNER'
-  const canUnlockCurrentPeriod =
-    canUnlock &&
-    Boolean(periodInfo?.locked) &&
-    Boolean(
-      periodInfo && Date.now() <= new Date(periodInfo.periodEnd).getTime(),
-    )
+  const canUnlockCurrentPeriod = canUnlock && Boolean(periodInfo?.locked)
 
   const loadPayroll = () => {
     setLoading(true)
@@ -303,12 +298,11 @@ export default function PayrollPage() {
               {formatThaiDate(periodInfo.periodEnd)}
             </div>
             <div className="badge">{t('วันจ่ายเงินเดือน', 'Payday')}: {periodInfo.payday}</div>
-            {periodInfo.locked &&
-            Date.now() > new Date(periodInfo.periodEnd).getTime() ? (
+            {periodInfo.locked ? (
               <div className="badge">
                 {t(
-                  'งวดนี้ยืนยันสรุปเงินเดือนแล้ว ไม่เปิดให้แก้ย้อนหลัง',
-                  'This period is confirmed and cannot be reopened retroactively.',
+                  'ถ้ากดยืนยันผิด สามารถเปิดงวดกลับมาแก้ได้ทุกเมื่อ',
+                  'If this period was confirmed by mistake, it can be reopened anytime.',
                 )}
               </div>
             ) : null}
