@@ -227,13 +227,15 @@ export async function reviewAttendanceCorrection(params: {
 
   const nextCheckIn = correction.requestedCheckIn ?? correction.attendance.checkIn
   const nextCheckOut = correction.requestedCheckOut ?? correction.attendance.checkOut
-  const requestedStatusChanged =
-    correction.requestedStatus !== null &&
-    correction.requestedStatus !== correction.attendance.status
-  const normalizedStatus =
-    !requestedStatusChanged && nextCheckIn
-      ? "PRESENT"
-      : correction.requestedStatus ?? correction.attendance.status
+  const requestedStatus = correction.requestedStatus
+  const shouldForceNormalStatus =
+    Boolean(nextCheckIn) &&
+    (requestedStatus === null ||
+      requestedStatus === "PRESENT" ||
+      requestedStatus === "LATE")
+  const normalizedStatus = shouldForceNormalStatus
+    ? "PRESENT"
+    : requestedStatus ?? correction.attendance.status
   const metrics = calculateAttendanceMetrics({
     checkIn: nextCheckIn,
     checkOut: nextCheckOut,
