@@ -111,6 +111,9 @@ export async function submitManagementRegistrationRequest(params: {
 
 export async function listDevManagementRegistrationRequests() {
   return prisma.managementRegistrationRequest.findMany({
+    where: {
+      status: "PENDING",
+    },
     orderBy: {
       createdAt: "desc",
     },

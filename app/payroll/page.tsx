@@ -59,7 +59,6 @@ export default function PayrollPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [csvReady, setCsvReady] = useState(false)
   const [periodInfo, setPeriodInfo] = useState<PayrollResponse | null>(null)
-  const [unlockReason, setUnlockReason] = useState('')
   const today = new Date()
   const [month, setMonth] = useState(String(today.getMonth() + 1))
   const [year, setYear] = useState(String(today.getFullYear()))
@@ -117,10 +116,6 @@ export default function PayrollPage() {
         action,
       }
 
-      if (action === 'unlock') {
-        body.reason = unlockReason
-      }
-
       const res = await fetch('/api/payroll/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,9 +136,6 @@ export default function PayrollPage() {
             ? t('เปิดงวดเงินเดือนกลับมาแก้ไขได้แล้ว', 'Payroll period reopened')
             : t('บันทึกสรุปเงินเดือนเรียบร้อยแล้ว', 'Payroll summary saved'),
       )
-      if (action === 'unlock') {
-        setUnlockReason('')
-      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('เกิดข้อผิดพลาด', 'Something went wrong'))
     } finally {
@@ -323,16 +315,6 @@ export default function PayrollPage() {
             <label>{t('ปี', 'Year')}</label>
             <input value={year} onChange={(e) => setYear(e.target.value)} />
           </div>
-          {canUnlockCurrentPeriod ? (
-            <div className="field">
-              <label>{t('เหตุผลที่ต้องเปิดงวดกลับมาแก้', 'Reason to reopen period')}</label>
-              <input
-                value={unlockReason}
-                onChange={(e) => setUnlockReason(e.target.value)}
-                placeholder={t('เช่น พบรายการลงเวลาผิด', 'e.g. Found incorrect attendance')}
-              />
-            </div>
-          ) : null}
         </div>
         <div className="action-row" style={{ marginTop: 16 }}>
           <button className="btn btn-secondary" onClick={loadPayroll}>
@@ -356,7 +338,7 @@ export default function PayrollPage() {
             <button
               className="btn btn-secondary"
               onClick={() => persistPayroll('unlock')}
-              disabled={saving || !unlockReason.trim()}
+              disabled={saving}
             >
               {saving ? t('กำลังเปิดงวด...', 'Reopening...') : t('เปิดงวดกลับมาแก้', 'Reopen period')}
             </button>

@@ -510,7 +510,7 @@ export async function unlockPayrollPeriod(params: {
   userId: string
   month: number
   year: number
-  reason: string
+  reason?: string | null
 }) {
   const period = await prisma.payrollPeriod.findUnique({
     where: {
@@ -556,7 +556,7 @@ export async function unlockPayrollPeriod(params: {
         metadata: {
           month: params.month,
           year: params.year,
-          reason: params.reason,
+          reason: params.reason ?? "เจ้าของร้านเปิดงวดกลับมาแก้ไข",
         },
       },
     })

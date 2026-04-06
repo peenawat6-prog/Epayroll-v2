@@ -45,15 +45,9 @@ export const POST = withAuthorizedRoute(
         throw new AppError("Forbidden", 403, "FORBIDDEN")
       }
 
-      const reason = asOptionalTrimmedString(body.reason)
-
-      if (!reason) {
-        throw new AppError(
-          "Unlock reason is required",
-          400,
-          "UNLOCK_REASON_REQUIRED",
-        )
-      }
+      const reason =
+        asOptionalTrimmedString(body.reason) ??
+        "เจ้าของร้านเปิดงวดกลับมาแก้ไข"
 
       return jsonResponse(
         await unlockPayrollPeriod({
