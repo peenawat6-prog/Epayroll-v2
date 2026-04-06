@@ -84,7 +84,6 @@ declare global {
 
 const DEFAULT_SHOP_LATITUDE = 13.7563
 const DEFAULT_SHOP_LONGITUDE = 100.5018
-const OPS_SETTINGS_DRAFT_KEY = "epayroll-ops-settings-draft"
 const LEAFLET_SCRIPT_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 const LEAFLET_STYLE_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
 
@@ -99,35 +98,6 @@ function formatClock(minutes: number) {
 function toCoordinateValue(value: string, fallback: number) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
-}
-
-function restoreOpsDraft(defaultForm: {
-  payrollPayday: string
-  latePenaltyPerMinute: string
-  morningShiftStartTime: string
-  morningShiftEndTime: string
-  afternoonShiftStartTime: string
-  afternoonShiftEndTime: string
-  nightShiftStartTime: string
-  nightShiftEndTime: string
-  latitude: string
-  longitude: string
-  allowedRadiusMeters: string
-}) {
-  const draftText = window.localStorage.getItem(OPS_SETTINGS_DRAFT_KEY)
-
-  if (!draftText) {
-    return defaultForm
-  }
-
-  try {
-    return {
-      ...defaultForm,
-      ...JSON.parse(draftText),
-    }
-  } catch {
-    return defaultForm
-  }
 }
 
 function loadLeaflet() {
@@ -219,8 +189,6 @@ export default function OpsPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<LeafletInstance | null>(null)
   const markerRef = useRef<LeafletMarkerInstance | null>(null)
-  const autoSaveTimerRef = useRef<number | null>(null)
-  const hydratedSettingsRef = useRef(false)
   const currentMapStatus =
     mapStatus || t('กำลังโหลดแผนที่...', 'Loading map...')
 
@@ -258,8 +226,7 @@ export default function OpsPage() {
       longitude: summaryData.settings.longitude?.toString() ?? '',
       allowedRadiusMeters: String(summaryData.settings.allowedRadiusMeters),
     }
-    setForm(restoreOpsDraft(nextForm))
-    hydratedSettingsRef.current = true
+    setForm(nextForm)
     setLoading(false)
   }
 
@@ -330,64 +297,6 @@ export default function OpsPage() {
       mounted = false
     }
   }, [router])
-
-  useEffect(() => {
-    if (!hydratedSettingsRef.current) return
-
-    window.localStorage.setItem(OPS_SETTINGS_DRAFT_KEY, JSON.stringify(form))
-
-    if (autoSaveTimerRef.current) {
-      window.clearTimeout(autoSaveTimerRef.current)
-    }
-
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      if (!hydratedSettingsRef.current) return
-
-      fetch('/api/ops/summary', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          payrollPayday: Number(form.payrollPayday),
-          latePenaltyPerMinute: Number(form.latePenaltyPerMinute),
-          morningShiftStartTime: form.morningShiftStartTime,
-          morningShiftEndTime: form.morningShiftEndTime,
-          afternoonShiftStartTime: form.afternoonShiftStartTime,
-          afternoonShiftEndTime: form.afternoonShiftEndTime,
-          nightShiftStartTime: form.nightShiftStartTime,
-          nightShiftEndTime: form.nightShiftEndTime,
-          latitude: form.latitude || null,
-          longitude: form.longitude || null,
-          allowedRadiusMeters: Number(form.allowedRadiusMeters),
-        }),
-      })
-        .then(async (res) => {
-          const responseData = await res.json()
-          if (!res.ok) {
-            throw new Error(
-              responseData.error ||
-                t('บันทึกการตั้งค่าไม่สำเร็จ', 'Failed to save settings'),
-            )
-          }
-          setMessage(t('บันทึกการตั้งค่าร้านอัตโนมัติแล้ว', 'Shop settings autosaved'))
-          setError('')
-        })
-        .catch((caughtError) => {
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : t('บันทึกการตั้งค่าไม่สำเร็จ', 'Failed to save settings'),
-          )
-        })
-    }, 1200)
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current)
-      }
-    }
-  }, [form, t])
 
   useEffect(() => {
     if (loading || !mapContainerRef.current || mapInstanceRef.current) {
