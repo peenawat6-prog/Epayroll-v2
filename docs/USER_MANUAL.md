@@ -1,471 +1,384 @@
-# คู่มือการใช้งาน Epayroll
+# Epayroll User Manual / คู่มือการใช้งาน Epayroll
 
-เอกสารนี้ใช้สำหรับเริ่มร้านใหม่และสอนทีมใช้งานระบบ Epayroll ทั้งฝั่งผู้บริหาร HR การเงิน และพนักงานหน้าร้าน
+เอกสารนี้เป็นคู่มือใช้งานจริงแบบ 2 ภาษา สำหรับร้านค้า ฝ่ายบริหาร ฝ่ายบุคคล ฝ่ายการเงิน พนักงาน และทีมซัพพอร์ต  
+This is a practical bilingual user manual for shop owners, managers, HR, finance staff, employees, and support teams.
 
-เว็บใช้งานจริงตอนนี้:
+เว็บไซต์หลัก / Main website:
 
-- `https://epayroll.vercel.app`
+- `https://epayroll.cloud`
 
-ถ้าผูกโดเมนร้านเองแล้ว ให้เปลี่ยนไปใช้โดเมนร้านนั้นแทนลิงก์ข้างบน
+ลิงก์ใช้งานพิเศษ / Special links:
 
-## ภาพรวมการใช้งาน
+- สมัครร้านใหม่ / New shop registration: `https://register.epayroll.cloud`
+- สมัครสิทธิ์บริหาร / Management registration: `https://manage.epayroll.cloud`
 
-ระบบนี้ใช้ทำงานหลัก 5 เรื่อง:
+## 1. ภาพรวมระบบ / System Overview
 
-- ให้พนักงานลงทะเบียนและล็อกอินเข้าระบบเอง
-- บันทึกเข้างาน/ออกงานด้วยรูปถ่ายและ GPS
-- ส่งคำขอลา ขอ OT ขอกลับก่อนเวลา และยื่นลาออก
-- ตรวจรายงานการลงเวลาและแก้ไขข้อมูลการลงเวลา
-- สรุปเงินเดือน ยืนยันสรุปเงินเดือน และอัปเดตสถานะการโอน
+Epayroll ถูกออกแบบมาสำหรับกิจการขนาดเล็ก เช่น ร้านกาแฟ ร้านอาหาร และร้านค้าทั่วไป  
+Epayroll is designed for small businesses such as cafes, restaurants, and retail shops.
 
-## สิทธิ์ผู้ใช้งาน
+ระบบช่วยงานหลัก 5 เรื่อง / The system covers 5 main jobs:
 
-### OWNER / ADMIN
+- ลงทะเบียนร้านและเริ่มใช้งานระบบ / Register a new shop and start using the system
+- ลงเวลาเข้างานและออกงานด้วยรูปถ่ายและ GPS / Check in and check out with photo and GPS
+- รับคำขอพนักงาน เช่น ลา, OT, กลับก่อนเวลา, ลาออก / Handle staff requests such as leave, OT, early leave, and resignation
+- ตรวจรายงานการลงเวลาและแก้ไขข้อมูลย้อนหลัง / Review attendance reports and attendance corrections
+- สรุปเงินเดือน ยืนยันสรุปเงินเดือน เปิดงวดกลับมาแก้ และติดตามสถานะการโอน / Review payroll, confirm payroll, reopen payroll periods, and track transfer status
 
-ใช้สำหรับเจ้าของร้านหรือผู้จัดการร้าน
+## 2. สิทธิ์ผู้ใช้งาน / User Roles
 
-ทำได้:
+### OWNER
 
-- ดูหน้าแรกของร้าน
-- อนุมัติคำขอลงทะเบียนพนักงาน
-- เพิ่ม แก้ไข และระงับพนักงาน
-- ตรวจรายงานการลงเวลา
-- อนุมัติ/ไม่อนุมัติคำขอพนักงาน
-- แก้ไขการลงเวลา
-- สรุปเงินเดือน
-- ยืนยันสรุปเงินเดือน
-- อัปเดตสถานะโอนเงิน
-- ตั้งค่าร้าน ตั้งค่าสาขา เวลาแต่ละกะ วันจ่ายเงินเดือน และพิกัดร้าน
+เจ้าของร้าน ใช้งานได้ครบทุกส่วนของร้านตัวเอง  
+Shop owner with full access to their own shop.
+
+ทำได้ / Can do:
+
+- จัดการพนักงาน / Manage employees
+- อนุมัติคำขอพนักงาน / Approve staff requests
+- จัดการสิทธิ์ `ADMIN`, `HR`, `FINANCE` / Manage `ADMIN`, `HR`, `FINANCE` access
+- ดูและยืนยันสรุปเงินเดือน / Review and confirm payroll
+- เปิดงวดเงินเดือนกลับมาแก้ / Reopen confirmed payroll periods
+- ตั้งค่าร้าน สาขา กะงาน GPS และวันจ่ายเงินเดือน / Configure shop settings, branches, shifts, GPS, and payday
+
+### ADMIN
+
+ผู้ช่วยดูแลร้าน / Store administrator.
+
+ทำได้ / Can do:
+
+- จัดการข้อมูลพนักงาน / Manage employee records
+- อนุมัติคำขอทั่วไป / Approve general requests
+- ดูรายงานการลงเวลา / Review attendance reports
+- ช่วยตรวจสรุปเงินเดือน / Assist with payroll review
 
 ### HR
 
-ใช้สำหรับฝ่ายบุคคล
+ฝ่ายบุคคล / Human resources.
 
-ทำได้:
+ทำได้ / Can do:
 
-- ดูข้อมูลพนักงาน
-- อนุมัติคำขอลงทะเบียนพนักงาน
-- จัดการข้อมูลพนักงาน
-- ดูรายงานการลงเวลา
-- ตรวจคำขอลา OT กลับก่อนเวลา และลาออก
-
-ข้อจำกัด:
-
-- ไม่เห็นเมนูสรุปเงินเดือน
-- ไม่เห็นเมนูตั้งค่าร้าน
+- อนุมัติคำขอลงทะเบียนพนักงาน / Approve employee registration requests
+- ดูและแก้ข้อมูลพนักงาน / View and edit employee details
+- ดูรายงานการลงเวลา / Review attendance reports
+- ตรวจคำขอของพนักงาน / Review staff requests
 
 ### FINANCE
 
-ใช้สำหรับฝ่ายการเงิน
+ฝ่ายการเงิน / Finance team.
 
-ทำได้:
+ทำได้ / Can do:
 
-- ดูข้อมูลพนักงาน
-- ดูรายงานการลงเวลา
-- ดูสรุปเงินเดือน
-- อัปเดตสถานะโอนเงินหลังยืนยันสรุปเงินเดือน
-
-ข้อจำกัด:
-
-- ไม่เห็นเมนูอนุมัติคำขอพนักงาน
-- ไม่เห็นเมนูตั้งค่าร้าน
+- ดูสรุปเงินเดือน / View payroll summary
+- ดูข้อมูลบัญชีและพร้อมเพย์ / View bank and PromptPay details
+- อัปเดตสถานะการโอน / Update payment transfer status
 
 ### EMPLOYEE
 
-ใช้สำหรับพนักงานหน้าร้าน
+พนักงาน / Employee.
 
-ทำได้:
+ทำได้ / Can do:
 
-- ดูข้อมูลตัวเอง
-- แก้ข้อมูลบัญชีรับเงินของตัวเอง
-- บันทึกเข้างานด้วยรูปถ่ายและ GPS
-- บันทึกออกงาน
-- ส่งคำขอลา ขอ OT ขอกลับก่อนเวลา และลาออก
+- ดูข้อมูลตัวเอง / View their own profile
+- กรอกหรือแก้ข้อมูลบัญชีรับเงิน / Add or edit bank/payment details
+- ลงเวลาเข้างานและออกงาน / Check in and check out
+- ส่งคำขอลา, OT, กลับก่อนเวลา, ลาออก / Submit leave, OT, early leave, and resignation requests
 
-## เริ่มใช้งานร้านใหม่ครั้งแรก
+### DEV / SUPPORT
 
-ให้ล็อกอินด้วยบัญชี `OWNER` หรือ `ADMIN` ก่อน แล้วทำตามลำดับนี้
+ทีมซัพพอร์ต / Support team.
 
-### 1. ตั้งค่าร้าน
+ทำได้ / Can do:
 
-ไปที่เมนู `ตั้งค่าร้าน`
+- อนุมัติเปิดร้านใหม่ / Approve new shop registrations
+- อนุมัติสิทธิ์บริหาร / Approve management registrations
+- อนุมัติเซลล์ / Approve sales agents
+- ดูวันหมดอายุร้านและต่ออายุการใช้งาน / Review subscription expiry and extend subscriptions
 
-ตั้งค่า:
+## 3. เริ่มต้นร้านใหม่ / Starting a New Shop
 
-- วันจ่ายเงินเดือนของร้าน
-- กะเช้า เวลาเข้างาน / เวลาเลิกงาน
-- กะบ่าย เวลาเข้างาน / เวลาเลิกงาน
-- กะดึก เวลาเข้างาน / เวลาเลิกงาน
-- พิกัดร้านจากแผนที่
-- รัศมีที่อนุญาตให้ลงเวลา
+### 3.1 ลงทะเบียนร้าน / Register a New Shop
 
-กด `บันทึกการตั้งค่า`
+ไปที่ / Go to:
 
-คำแนะนำ:
+- `https://register.epayroll.cloud`
 
-- ถ้าไม่ได้ตั้งพิกัดร้าน พนักงานจะเช็กอินด้วย GPS ไม่ได้
-- ถ้าร้านมีหลายสาขา ให้สร้างสาขาในหน้านี้ด้วย และใส่พิกัดสาขาแยกได้
+กรอกข้อมูลที่จำเป็น / Fill in the required details:
 
-### 2. เพิ่มสาขา
+- ชื่อร้าน / Shop name
+- ชื่อสาขาหลัก / Main branch name
+- ชื่อเจ้าของร้าน / Owner name
+- เบอร์โทร / Phone number
+- อีเมล / Email
+- รหัสผ่าน / Password
+- พิกัดร้าน / Shop GPS location
+- รัศมีลงเวลา / Allowed check-in radius
+- วันจ่ายเงินเดือน / Payroll payday
+- เวลาเปิด-ปิดของกะเช้า กะบ่าย กะดึก / Morning, afternoon, and night shift times
 
-ในหน้า `ตั้งค่าร้าน` ไปที่ส่วน `จัดการสาขาในร้านนี้`
+หมายเหตุ / Notes:
 
-กรอก:
+- ระบบจะจำค่าพิกัดที่เลือกไว้จนกว่าจะบันทึกใหม่ / The selected location is remembered until a new one is saved
+- เลือกเวลาแบบ 24 ชั่วโมง / Time selection uses 24-hour format
+- หลังส่งคำขอ ร้านจะรอทีมซัพพอร์ตอนุมัติ / After submission, the shop waits for support approval
 
-- ชื่อสาขา
-- ละติจูด/ลองจิจูดของสาขา ถ้าต้องการให้สาขานั้นใช้พิกัดแยก
-- รัศมีเช็กอินของสาขา
+### 3.2 ทีมซัพพอร์ตอนุมัติร้าน / Support Team Approves the Shop
 
-กด `เพิ่มสาขา`
+DEV เข้าหน้าแดชบอร์ดซัพพอร์ต / DEV opens the support dashboard:
 
-ถ้าไม่กรอกพิกัดสาขา ระบบจะใช้พิกัดร้านหลักแทน
+- `https://epayroll.cloud/dev/dashboard`
 
-### 3. ให้พนักงานลงทะเบียนเอง
+ทำได้ / Can do:
 
-พนักงานเข้าไปที่หน้า `เข้าสู่ระบบ` แล้วกด `ลงทะเบียนพนักงาน`
+- ดูคำขอร้านใหม่ / Review new shop requests
+- อนุมัติหรือไม่อนุมัติ / Approve or reject
+- กำหนดจำนวนวันใช้งาน / Set subscription days
+- ดูวันหมดอายุร้าน / See expiry dates
+- ต่ออายุร้าน / Extend subscriptions
 
-ให้พนักงานกรอก:
+## 4. การลงทะเบียนพนักงาน / Employee Registration
 
-- ชื่อร้าน
-- สาขาที่สมัคร
-- ชื่อ-นามสกุล
-- เบอร์โทร
-- ตำแหน่งงาน
-- ประเภทพนักงาน
-- รูปแบบจ่ายเงิน
-- กะการทำงานประจำ
-- อีเมลสำหรับล็อกอิน
-- รหัสผ่าน
-- ข้อมูลบัญชีรับเงิน และพร้อมเพย์
+พนักงานเข้าไปที่ / Employees go to:
 
-หลังส่งคำขอแล้ว ต้องรอหัวหน้า/HR/เจ้าของร้านอนุมัติก่อน จึงจะล็อกอินได้
+- `https://epayroll.cloud/login`
 
-### 4. อนุมัติคำขอลงทะเบียนพนักงาน
+แล้วกด / Then click:
 
-ผู้บริหารหรือ HR ไปที่เมนู `สรุปข้อมูลพนักงาน`
+- `ลงทะเบียนพนักงาน / Employee registration`
 
-ดูส่วน `คำขอลงทะเบียนพนักงาน`
+กรอกข้อมูล / Fill in:
 
-ถ้าข้อมูลถูกต้อง:
+- ชื่อร้าน / Shop name
+- สาขา / Branch
+- ชื่อ-นามสกุล / First and last name
+- เบอร์โทร / Phone number
+- ตำแหน่ง / Position
+- กะประจำ / Assigned shift
+- วันหยุดประจำสัปดาห์ / Weekly day off
+- อีเมล / Email
+- รหัสผ่าน / Password
+- ข้อมูลธนาคาร / Bank details
+- พร้อมเพย์ / PromptPay
 
-- กด `อนุมัติให้ใช้งาน`
+ถ้าใช้อีเมลซ้ำ ระบบจะแจ้ง / If the email already exists, the system will show:
 
-ถ้าไม่ถูกต้อง:
+- `บัญชีนี้มีผู้ใช้แล้ว โปรดติดต่อเจ้าของร้าน`
+- `This account is already in use. Please contact the shop owner.`
 
-- กรอกหมายเหตุ
-- กด `ไม่อนุมัติ`
+## 5. การลงทะเบียนสิทธิ์บริหาร / Management Registration
 
-เมื่ออนุมัติแล้ว ระบบจะสร้างรหัสพนักงานให้อัตโนมัติ และพนักงานล็อกอินได้ทันที
+สำหรับเจ้าของร่วม หุ้นส่วน หรือทีมบริหาร / For co-owners, partners, or management team members.
 
-## วิธีใช้งานฝั่งพนักงาน
+เข้าไปที่ / Go to:
 
-### 1. ล็อกอิน
+- `https://manage.epayroll.cloud`
 
-พนักงานเปิดหน้า `เข้าสู่ระบบ`
+เลือก / Choose:
 
-กรอกอีเมลและรหัสผ่านของตัวเอง แล้วกด `เข้าสู่ระบบ`
+- ร้าน / Shop
+- สิทธิ์ที่ต้องการ / Requested role
+  - `OWNER`
+  - `ADMIN`
+  - `HR`
+  - `FINANCE`
 
-ถ้าบัญชีนั้นเป็นพนักงาน ระบบจะพาเข้าหน้า `ลงเวลาและดูสถานะของฉัน` อัตโนมัติ
+หลังส่งคำขอแล้ว DEV จะเป็นผู้อนุมัติ / After submission, DEV approves the request.
 
-### 2. กรอกหรือแก้ข้อมูลบัญชีรับเงิน
+## 6. การใช้งานประจำวันของพนักงาน / Daily Employee Usage
 
-ในหน้าโหมดพนักงาน ไปที่ส่วน `ข้อมูลบัญชีรับเงินของฉัน`
+### 6.1 เข้าสู่ระบบ / Login
 
-กรอกหรือแก้:
+หน้าใช้งาน / Login page:
 
-- ธนาคารที่รับเงิน
-- ชื่อบัญชีรับเงิน
-- เลขบัญชีธนาคาร
-- พร้อมเพย์
+- `https://epayroll.cloud/login`
 
-กด `บันทึกบัญชีรับเงิน`
+ถ้าบัญชีเป็นพนักงาน ระบบจะพาไปหน้าโหมดพนักงานอัตโนมัติ  
+If the account is an employee account, the system redirects to the employee mode automatically.
 
-### 3. บันทึกเข้างาน
+### 6.2 เข้างาน / Check In
 
-ในหน้าโหมดพนักงาน ไปที่ส่วน `บันทึกเข้างานด้วยรูปถ่ายและตำแหน่ง`
+พนักงานต้อง / Employees must:
 
-ขั้นตอน:
+- เปิดกล้อง / Open camera
+- ถ่ายรูป / Take a photo
+- เปิดตำแหน่ง / Enable location
+- กดบันทึกเข้างาน / Tap check in
 
-- กด `เปิดกล้อง`
-- จัดหน้ากล้องให้เห็นหน้าพนักงาน
-- กด `ถ่ายรูป`
-- อนุญาตตำแหน่ง GPS ในมือถือ/เบราว์เซอร์
-- กด `บันทึกเข้างาน`
+ระบบจะไม่ยอมให้บันทึกถ้า / The system blocks check-in if:
 
-เงื่อนไขสำคัญ:
+- ไม่มีรูป / No photo
+- ไม่ได้ตำแหน่ง GPS / No GPS location
+- อยู่นอกรัศมีร้านหรือสาขา / Outside allowed radius
 
-- ต้องมีรูปถ่ายก่อน จึงจะบันทึกเข้างานได้
-- ต้องอยู่ในรัศมีพิกัดร้านหรือสาขาที่กำหนด จึงจะบันทึกเข้างานได้
+### 6.3 ออกงาน / Check Out
 
-### 4. บันทึกออกงาน
+ตอนออกงานก็ต้องถ่ายรูปและส่งพิกัดเช่นกัน เพื่อป้องกันการกดแทนกัน  
+Check-out also requires a photo and GPS to reduce fraud and buddy punching.
 
-เมื่อเลิกงาน ให้กลับมาหน้าโหมดพนักงาน แล้วกด `บันทึกออกงาน`
+### 6.4 คำขอของพนักงาน / Employee Requests
 
-ถ้าต้องการกลับก่อนเวลา ให้ส่งคำขอ `ขอกลับก่อนเวลา` และรออนุมัติก่อน
+พนักงานส่งคำขอได้ดังนี้ / Employees can submit:
 
-### 5. ส่งคำขอลา / OT / ลาออก
+- ขอลางาน / Leave request
+- ขอ OT / OT request
+- ขอกลับก่อนเวลา / Early leave request
+- ยื่นลาออก / Resignation request
 
-ในหน้าโหมดพนักงาน กด `ขอลา/OT/ลาออก`
+## 7. การจัดการพนักงาน / Employee Management
 
-เลือกกรอกแบบฟอร์มที่ต้องการ:
+หน้า `สรุปข้อมูลพนักงาน / Employee summary` ใช้สำหรับ:
 
-- ขอลางาน
-- ขออนุมัติ OT
-- ยื่นลาออก
-- ขอกลับก่อนเวลา
+- ดูรายชื่อพนักงาน / View employee list
+- อนุมัติคำขอลงทะเบียน / Approve registrations
+- เพิ่มพนักงานใหม่ / Add a new employee
+- แก้ข้อมูล / Edit details
+- เปลี่ยนสิทธิ์ / Change role
+- ระงับใช้งาน / Deactivate
 
-กดส่งคำขอ แล้วรอหัวหน้าหรือ HR อนุมัติ
+พฤติกรรมสำคัญ / Important behavior:
 
-## วิธีใช้งานฝั่งผู้บริหาร / HR
+- ฟอร์มเพิ่มพนักงานจะไม่แสดงตลอดเวลา / The add employee form is hidden by default
+- ต้องกดปุ่มเปิดฟอร์มก่อน / You must click to open the form
+- เมื่อบันทึกเสร็จ ฟอร์มจะล้างค่าและปิดเอง / After saving, the form clears and closes automatically
 
-### 1. ดูหน้าแรกของร้าน
+ข้อจำกัดร้านขนาดเล็ก / Small business limit:
 
-ล็อกอินด้วยบัญชี `OWNER`, `ADMIN`, `HR`, `FINANCE`, หรือ `DEV`
+- จำนวนพนักงานที่ยังไม่ลาออกต้องไม่เกิน 30 คน / Active employees cannot exceed 30
+- ถ้าเกิน ระบบจะไม่ให้เพิ่มพนักงาน / The system blocks new active employees beyond that limit
 
-ระบบจะพาเข้า `หน้าแรกของร้าน`
+## 8. รายงานการลงเวลา / Attendance Reports
 
-ในหน้านี้ดูได้:
+หน้า `รายงานการลงเวลา / Attendance history` แสดง:
 
-- จำนวนพนักงานที่ใช้งานอยู่
-- จำนวนคนที่เข้างานแล้ววันนี้
-- จำนวนคนที่ออกงานแล้ววันนี้
-- จำนวนคนที่ยังไม่มีการลงเวลา
-- จำนวนคำขอพนักงานที่รอตรวจ
-- จำนวนคำขอแก้ไขการลงเวลาที่รอตรวจ
+- รูปเข้างาน / Check-in photo
+- รูปออกงาน / Check-out photo
+- เวลาเข้าและออก / Check-in and check-out times
+- สถานะ / Status
+- ข้อมูลพนักงาน / Employee information
 
-### 2. ดูรายงานการลงเวลา
+ใช้สำหรับ / Used for:
 
-ไปที่เมนู `รายงานการลงเวลา`
+- ตรวจการลงเวลา / Reviewing attendance
+- ตรวจภาพประกอบ / Reviewing proof photos
+- ตรวจสอบก่อนทำเงินเดือน / Checking before payroll
 
-ดูข้อมูล:
+## 9. เงินเดือน / Payroll
 
-- รหัสพนักงาน
-- ชื่อพนักงาน
-- วันที่
-- รูปเข้างาน
-- เวลาเข้า
-- เวลาออก
-- สถานะ
+หน้า `สรุปเงินเดือน / Payroll summary` แสดง:
 
-ถ้าต้องการดูรูปเข้างาน กดที่รูปย่อเพื่อเปิดดูรูปใหญ่
+- ชื่อพนักงาน / Employee name
+- ประเภทการจ่าย / Pay type
+- จำนวนวันหรือชั่วโมงทำงาน / Worked days or hours
+- OT / OT
+- มาสาย / Late minutes
+- หักสาย / Late penalty
+- ยอดสุทธิ / Net pay
+- ธนาคาร / Bank
+- เลขบัญชี / Account number
+- พร้อมเพย์ / PromptPay
+- สถานะการโอน / Transfer status
 
-### 3. ตรวจคำขอพนักงาน
+ขั้นตอน / Steps:
 
-ไปที่เมนู `คำขอพนักงาน`
+1. เลือกเดือนและปี / Select month and year
+2. กดโหลดข้อมูลใหม่ / Reload data
+3. ตรวจความถูกต้อง / Review correctness
+4. กด `บันทึกยอด / Save`
+5. กด `ยืนยันสรุปเงินเดือน / Confirm payroll`
 
-คำขอที่ตรวจได้:
+ถ้ากดยืนยันผิด / If confirmed by mistake:
 
-- ขอลางาน
-- ขออนุมัติ OT
-- ขอกลับก่อนเวลา
-- ยื่นลาออก
+- เจ้าของร้านสามารถกด `เปิดงวดกลับมาแก้ / Reopen period` ได้ทุกครั้ง
+- The owner can always reopen a confirmed payroll period
 
-ถ้าอนุมัติ:
+หลังยืนยันแล้ว / After confirmation:
 
-- กด `อนุมัติ`
+- ฝ่ายการเงินหรือเจ้าของสามารถเปลี่ยนสถานะการโอน / Finance or owners can update payment status
+- `รอโอน / Pending`
+- `โอนแล้ว / Paid`
+- `โอนไม่สำเร็จ / Failed`
 
-ถ้าไม่อนุมัติ:
+## 10. สาขาและพิกัด / Branches and GPS
 
-- กรอกหมายเหตุผู้ตรวจ
-- กด `ไม่อนุมัติ`
+หน้า `ตั้งค่าร้าน / Shop settings` ใช้สำหรับ:
 
-### 4. ตรวจคำขอแก้ไขการลงเวลา
+- เพิ่มสาขา / Add branches
+- แก้ข้อมูลสาขา / Edit branches
+- ลบสาขา / Delete branches
+- ตั้งพิกัดร้านหลัก / Set main shop GPS
+- ตั้งพิกัดสาขา / Set branch GPS
+- ตั้งรัศมีลงเวลา / Set allowed radius
 
-ไปที่เมนู `แก้ไขการลงเวลา`
+ระบบจะใช้พิกัดสาขาก่อน ถ้ามีพิกัดสาขา  
+The system uses branch GPS first if a branch location is set.
 
-ในหน้านี้ใช้สำหรับตรวจคำขอแก้ไขเวลาเข้างาน/ออกงานย้อนหลัง
+## 11. หน้าซัพพอร์ต DEV / DEV Support Dashboard
 
-ถ้าอนุมัติแล้ว ระบบจะอัปเดตเวลาการลงงานตามคำขอ และบันทึก audit log ไว้
+หน้า `แดชบอร์ดทีมซัพพอร์ต / DEV dashboard` ใช้สำหรับ:
 
-### 5. จัดการข้อมูลพนักงาน
+- อนุมัติร้านใหม่ / Approve new shops
+- อนุมัติสิทธิ์บริหาร / Approve management access
+- อนุมัติเซลล์ / Approve sales agents
+- กำหนดว่าใครเป็นเซลล์เจ้าของร้าน / Track which sales agent owns which shop
+- ดูวันหมดอายุร้าน / See shop expiry dates
+- เพิ่มวันใช้งานร้าน / Extend subscription days
+- ซ่อนร้านไม่ให้แสดงในช่องค้นหา / Hide shops from public search
 
-ไปที่เมนู `สรุปข้อมูลพนักงาน`
+คำขอที่อนุมัติแล้วจะถูกซ่อนออกจากรายการรอทันที  
+Approved management requests disappear from the pending list immediately.
 
-ถ้าต้องการเพิ่มพนักงานเอง:
+## 12. การเปลี่ยนภาษา / Language Switching
 
-- กรอกฟอร์มส่วน `เพิ่มพนักงานใหม่`
-- เลือกสาขา
-- เลือกประเภทพนักงาน
-- เลือกรูปแบบจ่ายเงิน
-- เลือกกะการทำงานประจำ
-- กรอกอัตราค่าจ้างและข้อมูลบัญชีรับเงิน
-- กด `เพิ่มพนักงาน`
+ทุกหน้าหลักมีปุ่ม `TH / EN`  
+Main pages provide a `TH / EN` language switch.
 
-ถ้าต้องการแก้ข้อมูลพนักงาน:
+ระบบจะจำภาษาที่เลือกไว้ในเครื่องนั้น  
+The system remembers the selected language on that device.
 
-- กด `แก้ไข` ที่พนักงานคนนั้น
-- ระบบจะเลื่อนขึ้นไปที่ฟอร์มด้านบนให้อัตโนมัติ
-- แก้ข้อมูลแล้วกด `บันทึกการแก้ไข`
+## 13. ติดต่อซัพพอร์ต / Support Contact
 
-ถ้าต้องการหยุดใช้งานพนักงาน:
+ลิงก์ช่วยเหลือ / Support link:
 
-- กด `ระงับ`
+- [LINE OA](https://lin.ee/Ouy2wb6)
 
-## วิธีสรุปเงินเดือน
+ข้อความ `ติดต่อทีมซัพพอร์ต / Contact support team` อยู่ด้านล่างทุกหน้า  
+The `Contact support team` link appears at the bottom of all pages.
 
-ไปที่เมนู `สรุปเงินเดือน`
+## 14. ปัญหาที่พบบ่อย / Common Issues
 
-### 1. เลือกเดือนและปี
+### 14.1 เปิดกล้องแล้วภาพดำ / Camera opens but shows black screen
 
-เลือก `เดือน` และ `ปี` ที่ต้องการคำนวณ
+ให้ลอง / Try:
 
-กด `โหลดข้อมูลใหม่`
+- ปิด Private Mode / Turn off Private Mode
+- ใช้ Safari หรือ Chrome ปกติ / Use normal Safari or Chrome
+- ตรวจสิทธิ์กล้อง / Check camera permissions
+- รีเฟรชหน้า / Refresh the page
 
-### 2. ตรวจข้อมูลในตาราง
+### 14.2 ลงเวลาไม่ได้ / Cannot check in or out
 
-ตรวจรายการ:
+สาเหตุที่พบบ่อย / Common reasons:
 
-- รหัสพนักงาน
-- ชื่อพนักงาน
-- ประเภทจ่าย
-- วัน/ชั่วโมงทำงาน
-- ล่วงเวลา
-- ขาดงาน
-- เข้าสาย
-- ค่าจ้าง
-- ข้อมูลรับเงิน
-- สถานะโอน
+- ยังไม่ได้ถ่ายรูป / No photo taken
+- ยังไม่ได้อนุญาตตำแหน่ง / Location not allowed
+- อยู่นอกรัศมี / Outside allowed radius
+- ร้านหรือสาขายังไม่ได้ตั้งพิกัด / Shop or branch GPS not configured
 
-ถ้าข้อมูลการลงเวลายังผิด ให้กลับไปแก้ที่เมนู `แก้ไขการลงเวลา` ก่อน
+### 14.3 ล็อกอินไม่ได้ / Cannot log in
 
-### 3. บันทึกยอด
+ให้ตรวจ / Check:
 
-ถ้าตรวจแล้วยังไม่ต้องการล็อกงวด ให้กด `บันทึกยอด`
+- อีเมลและรหัสผ่านถูกต้อง / Correct email and password
+- บัญชีได้รับอนุมัติแล้ว / Account has been approved
+- บัญชีไม่ได้ถูกระงับ / Account is not deactivated
 
-### 4. ยืนยันสรุปเงินเดือน
+### 14.4 เปลี่ยนสถานะโอนไม่ได้ / Cannot update payment status
 
-ถ้าตรวจครบแล้วและพร้อมโอนเงิน ให้กด `ยืนยันสรุปเงินเดือน`
+ต้องยืนยันสรุปเงินเดือนก่อน / Payroll must be confirmed first.
 
-หลังยืนยันแล้ว งวดนั้นจะถูกล็อกเพื่อป้องกันการแก้ย้อนหลัง
+## 15. หมายเหตุสำหรับทีมเทคนิค / Notes for Technical Team
 
-ถ้าเป็นงวดที่ยังไม่พ้นรอบเงินเดือน และเจ้าของร้านจำเป็นต้องแก้ไขจริง ให้กรอกเหตุผลและกด `เปิดงวดกลับมาแก้`
-
-### 5. อัปเดตสถานะการโอน
-
-หลังโอนเงินให้พนักงานแล้ว ให้กดสถานะรายคน:
-
-- `โอนแล้ว`
-- `โอนไม่สำเร็จ`
-- `กลับไปรอโอน`
-
-ปุ่มเหล่านี้จะกดได้หลังจาก `ยืนยันสรุปเงินเดือน` แล้วเท่านั้น
-
-### 6. ดาวน์โหลดรายการโอน
-
-ถ้าต้องการส่งออกข้อมูล ให้กด `ดาวน์โหลดรายการโอน`
-
-## การเปลี่ยนภาษา TH / EN
-
-มุมขวาบนของหน้าเว็บจะมีปุ่ม `TH` และ `EN`
-
-- กด `TH` เพื่อใช้ภาษาไทย
-- กด `EN` เพื่อใช้ภาษาอังกฤษ
-
-ระบบจะจำภาษาที่เลือกไว้ในเบราว์เซอร์เครื่องนั้น
-
-## การออกจากระบบ
-
-กดปุ่ม `ออกจากระบบ`
-
-ถ้าปิดเบราว์เซอร์แล้วเปิดใหม่ ระบบจะให้ล็อกอินใหม่ตามการตั้งค่าความปลอดภัยที่ทำไว้
-
-## คำแนะนำการใช้งานบนมือถือ
-
-- ใช้ Safari หรือ Chrome รุ่นปัจจุบัน
-- อนุญาตกล้องและตำแหน่งก่อนบันทึกเข้างาน
-- ถ้าเปิดกล้องไม่ได้ ให้ปิด Private Mode แล้วลองใหม่
-- ถ้าตำแหน่งไม่ผ่าน ให้เช็กว่าอยู่ในสาขาที่ถูกต้องและเปิด Location Services แล้ว
-
-## ปัญหาที่พบบ่อย
-
-### ล็อกอินไม่ได้
-
-สาเหตุที่พบบ่อย:
-
-- ยังไม่ได้รับการอนุมัติบัญชีพนักงาน
-- อีเมลหรือรหัสผ่านไม่ถูกต้อง
-- บัญชีถูกระงับใช้งาน
-
-ให้ติดต่อเจ้าของร้านหรือ HR เพื่อตรวจสอบสถานะบัญชี
-
-### เช็กอินไม่ได้
-
-สาเหตุที่พบบ่อย:
-
-- ยังไม่ได้ถ่ายรูป
-- ยังไม่ได้อนุญาตตำแหน่ง GPS
-- อยู่นอกรัศมีสาขา/ร้าน
-- ยังไม่ได้ตั้งพิกัดร้านหรือสาขา
-
-ให้ตรวจการตั้งค่าร้านในเมนู `ตั้งค่าร้าน`
-
-### เปิดกล้องแล้วจอดำ
-
-ลองทำตามนี้:
-
-- ปิด Private Mode
-- ใช้ Safari หรือ Chrome ปกติ
-- อนุญาตสิทธิ์กล้องให้เว็บ
-- รีเฟรชหน้าแล้วกดเปิดกล้องใหม่
-
-### รายการโอนไม่ให้กดเปลี่ยนสถานะ
-
-ต้องกด `ยืนยันสรุปเงินเดือน` ก่อน จึงจะเปลี่ยนสถานะ `โอนแล้ว / โอนไม่สำเร็จ / กลับไปรอโอน` ได้
-
-## ขั้นตอนผูกโดเมนกับ Vercel
-
-ถ้าซื้อโดเมนไว้แล้ว ให้ทำตามนี้
-
-### 1. เพิ่มโดเมนใน Vercel
-
-- เข้า Vercel project `epayroll`
-- ไปที่ `Settings`
-- ไปที่ `Domains`
-- ใส่โดเมนที่ซื้อไว้ เช่น `yourdomain.com`
-- กด `Add`
-
-### 2. ตั้ง DNS ที่ผู้ให้บริการโดเมน
-
-ถ้าใช้โดเมนหลัก เช่น `yourdomain.com`
-
-- เพิ่ม DNS record ตามค่าที่ Vercel แสดงให้
-
-ถ้าใช้ `www.yourdomain.com`
-
-- เพิ่ม `CNAME` ไปที่ค่าที่ Vercel ให้มา
-
-ให้ยึดค่าจากหน้าจอ Vercel เป็นหลัก เพราะ Vercel จะโชว์ record ที่ต้องใส่แบบตรงโดเมนนั้น ๆ
-
-### 3. รอ DNS และ SSL ทำงาน
-
-- รอให้สถานะโดเมนใน Vercel เป็น `Valid Configuration`
-- รอ SSL ถูกออกให้อัตโนมัติ
-
-### 4. แก้ `NEXTAUTH_URL`
-
-ไปที่ Vercel project `epayroll`
-
-- `Settings`
-- `Environment Variables`
-- แก้ `NEXTAUTH_URL` เป็นโดเมนจริง เช่น `https://yourdomain.com`
-- กด Save
-- ไปที่ `Deployments`
-- กด `Redeploy`
-
-### 5. ทดสอบหลังผูกโดเมน
-
-เปิดโดเมนจริงแล้วทดสอบ:
-
-- หน้า Login
-- ล็อกอิน Owner/HR/Finance/Employee
-- เช็กอินพร้อมกล้องและ GPS
-- รายงานการลงเวลา
-- สรุปเงินเดือน
-- `/api/health`
-
-## หมายเหตุสำหรับทีม Dev
-
-- หน้า `/audit` ยังเปิดให้เข้าเองได้สำหรับตรวจประวัติระบบ
-- ถ้าเปลี่ยน domain แล้ว login callback เพี้ยน ให้เช็ก `NEXTAUTH_URL` ใน Vercel ก่อน
-- ถ้า push code ขึ้น `main` แล้ว Vercel จะ deploy อัตโนมัติ
-- ถ้าเพิ่ม env ใหม่ ต้องตั้งใน Vercel ด้วย ไม่ใช่แค่ใน `.env` ของเครื่อง local
+- ถ้า push เข้า `main` แล้ว Vercel จะ deploy อัตโนมัติ / Pushing to `main` triggers Vercel deployment automatically
+- ถ้าเปลี่ยนโดเมน ต้องอัปเดต `NEXTAUTH_URL` / If the domain changes, update `NEXTAUTH_URL`
+- รูปลงเวลาเก็บใน Cloudflare R2 / Attendance photos are stored in Cloudflare R2
+- ตรวจสุขภาพระบบได้ที่ `/api/health` / System health can be checked at `/api/health`

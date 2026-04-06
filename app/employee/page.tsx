@@ -98,6 +98,7 @@ export default function EmployeePage() {
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraOpening, setCameraOpening] = useState(false)
   const [cameraSupported, setCameraSupported] = useState(true)
+  const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("user")
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -158,7 +159,7 @@ export default function EmployeePage() {
     }
   }, [router])
 
-  const openCamera = async () => {
+  const openCamera = async (preferredFacingMode = cameraFacingMode) => {
     clearMessages()
 
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -173,7 +174,7 @@ export default function EmployeePage() {
       stopCamera()
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "user",
+          facingMode: { ideal: preferredFacingMode },
           width: { ideal: 960 },
           height: { ideal: 1280 },
         },
@@ -190,6 +191,33 @@ export default function EmployeePage() {
       setCameraReady(true)
       setCameraOpening(false)
     } catch (error) {
+      if (preferredFacingMode !== "user") {
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: "user" },
+              width: { ideal: 960 },
+              height: { ideal: 1280 },
+            },
+            audio: false,
+          })
+
+          streamRef.current = fallbackStream
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream
+            await videoRef.current.play()
+          }
+
+          setCameraFacingMode("user")
+          setCameraReady(true)
+          setCameraOpening(false)
+          return
+        } catch {
+          // Fall through to the normal error message below.
+        }
+      }
+
       setCameraReady(false)
       setCameraOpening(false)
       setMessage(
@@ -198,6 +226,12 @@ export default function EmployeePage() {
           : t("เปิดกล้องไม่สำเร็จ", "Cannot open camera"),
       )
     }
+  }
+
+  const toggleCameraFacingMode = async () => {
+    const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user"
+    setCameraFacingMode(nextFacingMode)
+    await openCamera(nextFacingMode)
   }
 
   const capturePhoto = () => {
@@ -584,7 +618,9 @@ export default function EmployeePage() {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={openCamera}
+              onClick={() => {
+                void openCamera()
+              }}
               disabled={loading || cameraOpening || Boolean(todayAttendance?.checkOut)}
             >
               {cameraOpening
@@ -600,6 +636,16 @@ export default function EmployeePage() {
               disabled={loading || !cameraReady || Boolean(todayAttendance?.checkOut)}
             >
               {t("ถ่ายรูป", "Take photo")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={toggleCameraFacingMode}
+              disabled={loading || cameraOpening || Boolean(todayAttendance?.checkOut)}
+            >
+              {cameraFacingMode === "user"
+                ? t("ใช้กล้องหลัง", "Use back camera")
+                : t("ใช้กล้องหน้า", "Use front camera")}
             </button>
             {cameraReady ? (
               <button

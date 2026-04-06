@@ -161,6 +161,8 @@ export default function OpsPage() {
   const { t } = useLanguage()
   const [summary, setSummary] = useState<OpsSummary | null>(null)
   const [branches, setBranches] = useState<BranchItem[]>([])
+  const [selectedBranchId, setSelectedBranchId] = useState('')
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false)
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -191,6 +193,7 @@ export default function OpsPage() {
   const markerRef = useRef<LeafletMarkerInstance | null>(null)
   const currentMapStatus =
     mapStatus || t('กำลังโหลดแผนที่...', 'Loading map...')
+  const hasBranches = branches.length > 0
 
   const loadSummary = async () => {
     const res = await fetch('/api/ops/summary')
@@ -242,6 +245,8 @@ export default function OpsPage() {
   }
 
   const resetBranchForm = () => {
+    setIsCreatingBranch(false)
+    setSelectedBranchId('')
     setEditingBranchId(null)
     setBranchForm({
       name: '',
@@ -249,6 +254,40 @@ export default function OpsPage() {
       longitude: '',
       allowedRadiusMeters: '',
     })
+  }
+
+  const startCreateBranch = () => {
+    resetBranchForm()
+    setIsCreatingBranch(true)
+    setMessage('')
+    setError('')
+  }
+
+  const handleSelectBranch = (branchId: string) => {
+    setIsCreatingBranch(false)
+    setSelectedBranchId(branchId)
+
+    if (!branchId) {
+      resetBranchForm()
+      return
+    }
+
+    const branch = branches.find((item) => item.id === branchId)
+
+    if (!branch) {
+      resetBranchForm()
+      return
+    }
+
+    setEditingBranchId(branch.id)
+    setBranchForm({
+      name: branch.name,
+      latitude: branch.latitude?.toString() ?? '',
+      longitude: branch.longitude?.toString() ?? '',
+      allowedRadiusMeters: branch.allowedRadiusMeters?.toString() ?? '',
+    })
+    setMessage('')
+    setError('')
   }
 
   useEffect(() => {
@@ -395,9 +434,15 @@ export default function OpsPage() {
           afternoonShiftEndTime: form.afternoonShiftEndTime,
           nightShiftStartTime: form.nightShiftStartTime,
           nightShiftEndTime: form.nightShiftEndTime,
-          latitude: form.latitude || null,
-          longitude: form.longitude || null,
-          allowedRadiusMeters: Number(form.allowedRadiusMeters),
+          latitude: hasBranches
+            ? summary?.settings.latitude ?? null
+            : form.latitude || null,
+          longitude: hasBranches
+            ? summary?.settings.longitude ?? null
+            : form.longitude || null,
+          allowedRadiusMeters: hasBranches
+            ? summary?.settings.allowedRadiusMeters ?? 150
+            : Number(form.allowedRadiusMeters),
         }),
       })
       const data = await res.json()
@@ -416,6 +461,7 @@ export default function OpsPage() {
   }
 
   const handleEditBranch = (branch: BranchItem) => {
+    setSelectedBranchId(branch.id)
     setEditingBranchId(branch.id)
     setBranchForm({
       name: branch.name,
@@ -713,49 +759,62 @@ export default function OpsPage() {
                     }
                   />
                 </div>
-                <div className="field">
-                  <label>{t('ละติจูดร้าน', 'Shop latitude')}</label>
-                  <input
-                    inputMode="decimal"
-                    value={form.latitude}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, latitude: event.target.value }))
-                    }
-                    placeholder="13.7563"
-                  />
-                </div>
-                <div className="field">
-                  <label>{t('ลองจิจูดร้าน', 'Shop longitude')}</label>
-                  <input
-                    inputMode="decimal"
-                    value={form.longitude}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, longitude: event.target.value }))
-                    }
-                    placeholder="100.5018"
-                  />
-                </div>
-                <div className="field">
-                  <label>{t('รัศมีที่อนุญาตให้ลงเวลา (เมตร)', 'Allowed check-in radius (m)')}</label>
-                  <input
-                    type="number"
-                    min="10"
-                    max="5000"
-                    value={form.allowedRadiusMeters}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        allowedRadiusMeters: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
               </div>
-              <div className="field" style={{ marginTop: 16 }}>
-                <label>{t('จิ้มพิกัดร้านจากแผนที่', 'Pick shop location on map')}</label>
-                <div ref={mapContainerRef} className="map-picker" />
-                <div className="table-meta">{currentMapStatus}</div>
-              </div>
+              {hasBranches ? (
+                <div className="message message-success" style={{ marginTop: 16 }}>
+                  {t(
+                    'ร้านนี้มีหลายสาขาแล้ว ถ้าจะเปลี่ยนพิกัดหรือรัศมี ให้เลือกสาขาด้านล่างก่อนทุกครั้ง',
+                    'This shop already uses branches. Choose a branch below before changing location or radius.',
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="form-grid" style={{ marginTop: 16 }}>
+                    <div className="field">
+                      <label>{t('ละติจูดร้านหลัก', 'Main shop latitude')}</label>
+                      <input
+                        inputMode="decimal"
+                        value={form.latitude}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, latitude: event.target.value }))
+                        }
+                        placeholder="13.7563"
+                      />
+                    </div>
+                    <div className="field">
+                      <label>{t('ลองจิจูดร้านหลัก', 'Main shop longitude')}</label>
+                      <input
+                        inputMode="decimal"
+                        value={form.longitude}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, longitude: event.target.value }))
+                        }
+                        placeholder="100.5018"
+                      />
+                    </div>
+                    <div className="field">
+                      <label>{t('รัศมีลงเวลาร้านหลัก (เมตร)', 'Main shop check-in radius (m)')}</label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="5000"
+                        value={form.allowedRadiusMeters}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            allowedRadiusMeters: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="field" style={{ marginTop: 16 }}>
+                    <label>{t('จิ้มพิกัดร้านหลักจากแผนที่', 'Pick main shop location on map')}</label>
+                    <div ref={mapContainerRef} className="map-picker" />
+                    <div className="table-meta">{currentMapStatus}</div>
+                  </div>
+                </>
+              )}
               <div className="action-row" style={{ marginTop: 16 }}>
                 <button className="btn btn-primary" type="submit" disabled={saving}>
                   {saving ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกการตั้งค่า', 'Save settings')}
@@ -773,87 +832,121 @@ export default function OpsPage() {
               )}
             </p>
 
-            <form onSubmit={handleSaveBranch}>
+            {hasBranches ? (
               <div className="form-grid" style={{ marginTop: 16 }}>
                 <div className="field">
-                  <label>{t('ชื่อสาขา', 'Branch name')}</label>
-                  <input
-                    value={branchForm.name}
-                    onChange={(event) =>
-                      setBranchForm((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                    placeholder={t('เช่น สาขาสยาม', 'e.g. Siam branch')}
-                  />
-                </div>
-                <div className="field">
-                  <label>{t('ละติจูดสาขา', 'Branch latitude')}</label>
-                  <input
-                    inputMode="decimal"
-                    value={branchForm.latitude}
-                    onChange={(event) =>
-                      setBranchForm((current) => ({
-                        ...current,
-                        latitude: event.target.value,
-                      }))
-                    }
-                    placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
-                  />
-                </div>
-                <div className="field">
-                  <label>{t('ลองจิจูดสาขา', 'Branch longitude')}</label>
-                  <input
-                    inputMode="decimal"
-                    value={branchForm.longitude}
-                    onChange={(event) =>
-                      setBranchForm((current) => ({
-                        ...current,
-                        longitude: event.target.value,
-                      }))
-                    }
-                    placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
-                  />
-                </div>
-                <div className="field">
-                  <label>{t('รัศมีเช็กอินของสาขา (เมตร)', 'Branch check-in radius (m)')}</label>
-                  <input
-                    type="number"
-                    min="10"
-                    max="5000"
-                    value={branchForm.allowedRadiusMeters}
-                    onChange={(event) =>
-                      setBranchForm((current) => ({
-                        ...current,
-                        allowedRadiusMeters: event.target.value,
-                      }))
-                    }
-                    placeholder={t('ไม่กรอก = ใช้รัศมีร้านหลัก', 'Leave empty to use main shop radius')}
-                  />
-                </div>
-              </div>
-              <div className="action-row" style={{ marginTop: 16 }}>
-                <button className="btn btn-primary" type="submit" disabled={saving}>
-                  {editingBranchId
-                      ? saving
-                      ? t('กำลังบันทึก...', 'Saving...')
-                      : t('บันทึกการแก้ไขสาขา', 'Save branch changes')
-                    : saving
-                      ? t('กำลังเพิ่ม...', 'Adding...')
-                      : t('เพิ่มสาขา', 'Add branch')}
-                </button>
-                {editingBranchId ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={resetBranchForm}
+                  <label>{t('เลือกสาขาที่ต้องการแก้ไข', 'Choose a branch to edit')}</label>
+                  <select
+                    value={selectedBranchId}
+                    onChange={(event) => handleSelectBranch(event.target.value)}
                   >
-                    {t('ยกเลิกแก้ไขสาขา', 'Cancel edit')}
-                  </button>
-                ) : null}
+                    <option value="">{t('เลือกสาขาก่อนแก้ไข', 'Select a branch first')}</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </form>
+            ) : null}
+
+            <div className="action-row" style={{ marginTop: 16 }}>
+              <button type="button" className="btn btn-secondary" onClick={startCreateBranch}>
+                {t('เพิ่มสาขาใหม่', 'Add new branch')}
+              </button>
+            </div>
+
+            {(!hasBranches || isCreatingBranch || Boolean(editingBranchId)) ? (
+              <form onSubmit={handleSaveBranch}>
+                <div className="form-grid" style={{ marginTop: 16 }}>
+                  <div className="field">
+                    <label>{t('ชื่อสาขา', 'Branch name')}</label>
+                    <input
+                      value={branchForm.name}
+                      onChange={(event) =>
+                        setBranchForm((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                      placeholder={t('เช่น สาขาสยาม', 'e.g. Siam branch')}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>{t('ละติจูดสาขา', 'Branch latitude')}</label>
+                    <input
+                      inputMode="decimal"
+                      value={branchForm.latitude}
+                      onChange={(event) =>
+                        setBranchForm((current) => ({
+                          ...current,
+                          latitude: event.target.value,
+                        }))
+                      }
+                      placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>{t('ลองจิจูดสาขา', 'Branch longitude')}</label>
+                    <input
+                      inputMode="decimal"
+                      value={branchForm.longitude}
+                      onChange={(event) =>
+                        setBranchForm((current) => ({
+                          ...current,
+                          longitude: event.target.value,
+                        }))
+                      }
+                      placeholder={t('ไม่กรอก = ใช้พิกัดร้านหลัก', 'Leave empty to use main shop location')}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>{t('รัศมีเช็กอินของสาขา (เมตร)', 'Branch check-in radius (m)')}</label>
+                    <input
+                      type="number"
+                      min="10"
+                      max="5000"
+                      value={branchForm.allowedRadiusMeters}
+                      onChange={(event) =>
+                        setBranchForm((current) => ({
+                          ...current,
+                          allowedRadiusMeters: event.target.value,
+                        }))
+                      }
+                      placeholder={t('ไม่กรอก = ใช้รัศมีร้านหลัก', 'Leave empty to use main shop radius')}
+                    />
+                  </div>
+                </div>
+                <div className="action-row" style={{ marginTop: 16 }}>
+                  <button className="btn btn-primary" type="submit" disabled={saving}>
+                    {editingBranchId
+                        ? saving
+                        ? t('กำลังบันทึก...', 'Saving...')
+                        : t('บันทึกการแก้ไขสาขา', 'Save branch changes')
+                      : saving
+                        ? t('กำลังเพิ่ม...', 'Adding...')
+                        : t('เพิ่มสาขา', 'Add branch')}
+                  </button>
+                  {editingBranchId || branchForm.name || branchForm.latitude || branchForm.longitude || branchForm.allowedRadiusMeters ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={resetBranchForm}
+                    >
+                      {t('ยกเลิก', 'Cancel')}
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+            ) : hasBranches ? (
+              <div className="message message-success" style={{ marginTop: 16 }}>
+                {t(
+                  'เลือกรายการสาขาที่ถูกต้องก่อน แล้วค่อยแก้พิกัดหรือรัศมีของสาขานั้น',
+                  'Please choose the correct branch first before editing its location or radius.',
+                )}
+              </div>
+            ) : null}
 
             {branches.length === 0 ? (
               <div className="empty-state">{t('ยังไม่มีสาขา', 'No branches yet')}</div>
@@ -867,9 +960,9 @@ export default function OpsPage() {
                         <button
                           type="button"
                           className="btn btn-secondary"
-                          onClick={() => handleEditBranch(branch)}
+                          onClick={() => handleSelectBranch(branch.id)}
                         >
-                          {t('แก้ไขสาขา', 'Edit branch')}
+                          {t('เลือกสาขานี้', 'Choose this branch')}
                         </button>
                         <button
                           type="button"
