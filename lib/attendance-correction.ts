@@ -236,11 +236,18 @@ export async function reviewAttendanceCorrection(params: {
   const normalizedStatus = shouldForceNormalStatus
     ? "PRESENT"
     : requestedStatus ?? correction.attendance.status
-  const metrics = calculateAttendanceMetrics({
+  const calculatedMetrics = calculateAttendanceMetrics({
     checkIn: nextCheckIn,
     checkOut: nextCheckOut,
     status: normalizedStatus,
   })
+  const metrics = shouldForceNormalStatus
+    ? {
+        ...calculatedMetrics,
+        lateMinutes: 0,
+        status: "PRESENT" as AttendanceStatus,
+      }
+    : calculatedMetrics
 
   return prisma.$transaction(async (tx) => {
     const updatedAttendance = await tx.attendance.update({
