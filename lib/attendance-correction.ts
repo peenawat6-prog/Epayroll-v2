@@ -126,7 +126,7 @@ export async function createAttendanceCorrection(params: {
         requestedByUserId: params.requestedByUserId,
         requestedCheckIn: params.requestedCheckIn ?? attendance.checkIn,
         requestedCheckOut: params.requestedCheckOut ?? attendance.checkOut,
-        requestedStatus: params.requestedStatus ?? attendance.status,
+        requestedStatus: params.requestedStatus ?? null,
         requestedWorkDate: params.requestedWorkDate ?? attendance.workDate,
         reason: params.reason,
       },
@@ -227,10 +227,17 @@ export async function reviewAttendanceCorrection(params: {
 
   const nextCheckIn = correction.requestedCheckIn ?? correction.attendance.checkIn
   const nextCheckOut = correction.requestedCheckOut ?? correction.attendance.checkOut
+  const requestedStatusChanged =
+    correction.requestedStatus !== null &&
+    correction.requestedStatus !== correction.attendance.status
+  const normalizedStatus =
+    !requestedStatusChanged && nextCheckIn
+      ? "PRESENT"
+      : correction.requestedStatus ?? correction.attendance.status
   const metrics = calculateAttendanceMetrics({
     checkIn: nextCheckIn,
     checkOut: nextCheckOut,
-    status: correction.requestedStatus ?? correction.attendance.status,
+    status: normalizedStatus,
   })
 
   return prisma.$transaction(async (tx) => {
