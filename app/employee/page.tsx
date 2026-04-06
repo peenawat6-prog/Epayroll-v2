@@ -671,7 +671,10 @@ export default function EmployeePage() {
           <div className="table-meta">
             {locationLabel
               ? t("อ่านตำแหน่งเรียบร้อยแล้ว", "Location ready")
-              : t("จะอ่านตำแหน่งให้อัตโนมัติตอนกดบันทึกเข้างาน", "Location will be checked automatically when you tap clock in")}
+              : t(
+                  "ระบบจะอ่านตำแหน่งอัตโนมัติตอนกดบันทึกเข้างานหรือออกงาน",
+                  "Location will be checked automatically when you tap clock in or clock out",
+                )}
           </div>
             {photoName ? <div className="table-meta">{t("มีรูปพร้อมบันทึกแล้ว", "Photo ready")}</div> : null}
         </div>
@@ -689,7 +692,6 @@ export default function EmployeePage() {
             onClick={handleCheckOut}
             disabled={
               loading ||
-              !photoDataUrl ||
               !todayAttendance?.checkIn ||
               Boolean(todayAttendance?.checkOut)
             }

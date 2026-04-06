@@ -519,7 +519,7 @@ export default function AttendancePage() {
           <button className="btn btn-primary" onClick={handleCheckIn} disabled={loading || !photoDataUrl}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกเข้างาน', 'Clock in')}
           </button>
-          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading || !photoDataUrl}>
+          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกออกงาน', 'Clock out')}
           </button>
         </div>
