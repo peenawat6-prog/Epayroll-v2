@@ -24,11 +24,22 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "prisma/**/*.ts",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "types/**/*.ts",
+    "types/**/*.tsx",
+    "instrumentation.ts",
+    "next.config.ts",
+    "prisma.config.ts",
+    "proxy.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "backups", "cafe-saas", "oh-my-codex-repo", "oh-my-codex", "oh-my-codex-src", "codex-plugin-cc", ".omx", ".tmp"]
 }

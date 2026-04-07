@@ -129,15 +129,17 @@ export function getWorkDate(date = new Date()) {
 }
 
 export function ensureCheckoutAfterCheckin(checkIn: Date, checkOut: Date) {
-  const workedMinutes = minutesBetween(checkIn, checkOut)
+  const diffMilliseconds = checkOut.getTime() - checkIn.getTime()
 
-  if (workedMinutes <= 0) {
+  if (diffMilliseconds <= 0) {
     throw new AppError(
       "Check-out time must be after check-in time",
       400,
       "INVALID_ATTENDANCE_TIME",
     )
   }
+
+  const workedMinutes = Math.max(1, minutesBetween(checkIn, checkOut))
 
   return workedMinutes
 }

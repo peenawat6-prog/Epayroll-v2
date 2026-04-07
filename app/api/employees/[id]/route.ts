@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
 import { createAuditLog } from "@/lib/audit"
 import { AppError, handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
+import { formatThaiDate } from "@/lib/display-time"
 import { ROLE_GROUPS } from "@/lib/role"
 import {
   asBusinessDate,
@@ -136,9 +137,14 @@ export async function PATCH(
 
       if (openAttendance) {
         throw new AppError(
-          "Cannot deactivate employee with an open attendance record",
+          `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
           409,
           "EMPLOYEE_HAS_OPEN_ATTENDANCE",
+          {
+            employeeCode: employee.code,
+            openAttendanceId: openAttendance.id,
+            openAttendanceWorkDate: openAttendance.workDate,
+          },
         )
       }
     }
@@ -323,9 +329,14 @@ export async function DELETE(
 
     if (openAttendance) {
       throw new AppError(
-        "Cannot archive employee with an open attendance record",
+        `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
         409,
         "EMPLOYEE_HAS_OPEN_ATTENDANCE",
+        {
+          employeeCode: employee.code,
+          openAttendanceId: openAttendance.id,
+          openAttendanceWorkDate: openAttendance.workDate,
+        },
       )
     }
 

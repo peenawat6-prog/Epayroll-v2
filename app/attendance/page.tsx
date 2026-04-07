@@ -80,6 +80,7 @@ export default function AttendancePage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const autoOpenAttemptedRef = useRef(false)
   const router = useRouter()
   const workShiftLabels = {
     MORNING: t('กะเช้า', 'Morning shift'),
@@ -122,6 +123,19 @@ export default function AttendancePage() {
       stopCamera()
     }
   }, [router])
+
+  useEffect(() => {
+    if (pageLoading || cameraReady || cameraOpening || photoDataUrl) {
+      return
+    }
+
+    if (autoOpenAttemptedRef.current) {
+      return
+    }
+
+    autoOpenAttemptedRef.current = true
+    void openCamera().catch(() => undefined)
+  }, [cameraOpening, cameraReady, pageLoading, photoDataUrl])
 
   const clearMessages = () => {
     setMessage('')
@@ -206,6 +220,15 @@ export default function AttendancePage() {
     const nextFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user'
     setCameraFacingMode(nextFacingMode)
     await openCamera(nextFacingMode)
+  }
+
+  const handlePrimaryCameraAction = async () => {
+    if (cameraReady) {
+      capturePhoto()
+      return
+    }
+
+    await openCamera()
   }
 
   const capturePhoto = () => {
@@ -437,8 +460,8 @@ export default function AttendancePage() {
             {!cameraReady && !photoDataUrl ? (
               <div className="camera-placeholder">
                 {t(
-                  'ยังไม่มีรูปถ่าย กด “เปิดกล้อง” เพื่อถ่ายก่อนบันทึกเข้างานหรือออกงาน',
-                  'No photo yet. Tap “Open camera” before clock-in or clock-out.',
+                  'ยังไม่มีรูปถ่าย กดปุ่มถ่ายรูปเพื่อเปิดกล้อง แล้วกดปุ่มเดิมอีกครั้งเพื่อถ่ายรูปก่อนบันทึกเข้างานหรือออกงาน',
+                  'No photo yet. Tap the photo button to open the camera, then tap it again to capture a photo before clock-in or clock-out.',
                 )}
               </div>
             ) : null}
@@ -449,25 +472,17 @@ export default function AttendancePage() {
           <div className="action-row">
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-primary"
               onClick={() => {
-                void openCamera()
+                void handlePrimaryCameraAction()
               }}
               disabled={loading || cameraOpening}
             >
               {cameraOpening
                 ? t('กำลังเปิดกล้อง...', 'Opening camera...')
                 : cameraReady
-                  ? t('เปิดกล้องใหม่', 'Restart camera')
-                  : t('เปิดกล้อง', 'Open camera')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={capturePhoto}
-              disabled={loading || !cameraReady}
-            >
-              {t('ถ่ายรูป', 'Take photo')}
+                  ? t('ถ่ายรูป', 'Take photo')
+                  : t('เปิดกล้องถ่ายรูป', 'Open camera to take photo')}
             </button>
             <button
               type="button"

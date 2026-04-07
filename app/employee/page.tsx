@@ -107,6 +107,7 @@ export default function EmployeePage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const autoOpenAttemptedRef = useRef(false)
   const needsCheckoutPhoto =
     Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut
 
@@ -160,6 +161,23 @@ export default function EmployeePage() {
       stopCamera()
     }
   }, [loadProfile, router])
+
+  useEffect(() => {
+    if (pageLoading || cameraReady || cameraOpening || photoDataUrl) {
+      return
+    }
+
+    if (todayAttendance?.checkOut) {
+      return
+    }
+
+    if (autoOpenAttemptedRef.current) {
+      return
+    }
+
+    autoOpenAttemptedRef.current = true
+    void openCamera().catch(() => undefined)
+  }, [cameraOpening, cameraReady, pageLoading, photoDataUrl, todayAttendance?.checkOut])
 
   const openCamera = async (preferredFacingMode = cameraFacingMode) => {
     clearMessages()
@@ -234,6 +252,15 @@ export default function EmployeePage() {
     const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user"
     setCameraFacingMode(nextFacingMode)
     await openCamera(nextFacingMode)
+  }
+
+  const handlePrimaryCameraAction = async () => {
+    if (cameraReady) {
+      capturePhoto()
+      return
+    }
+
+    await openCamera()
   }
 
   const capturePhoto = () => {
@@ -618,8 +645,8 @@ export default function EmployeePage() {
             {!cameraReady && !photoDataUrl && !todayAttendance?.checkInPhotoUrl ? (
               <div className="camera-placeholder">
                 {t(
-                  "กด “เปิดกล้อง” แล้วถ่ายรูปก่อนบันทึกเข้างานหรือออกงาน",
-                  'Tap "Open camera" and take a photo before clock-in or clock-out.',
+                  "กดปุ่มถ่ายรูปเพื่อเปิดกล้อง แล้วกดปุ่มเดิมอีกครั้งเพื่อถ่ายรูปก่อนบันทึกเข้างานหรือออกงาน",
+                  'Tap the photo button to open the camera, then tap it again to capture a photo before clock-in or clock-out.',
                 )}
               </div>
             ) : null}
@@ -630,25 +657,19 @@ export default function EmployeePage() {
           <div className="action-row">
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-primary"
               onClick={() => {
-                void openCamera()
+                void handlePrimaryCameraAction()
               }}
               disabled={loading || cameraOpening || Boolean(todayAttendance?.checkOut)}
             >
               {cameraOpening
                 ? t("กำลังเปิดกล้อง...", "Opening camera...")
                 : cameraReady
-                  ? t("เปิดกล้องใหม่", "Restart camera")
-                  : t("เปิดกล้อง", "Open camera")}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={capturePhoto}
-              disabled={loading || !cameraReady || Boolean(todayAttendance?.checkOut)}
-            >
-              {t("ถ่ายรูป", "Take photo")}
+                  ? t("ถ่ายรูป", "Take photo")
+                  : needsCheckoutPhoto
+                    ? t("เปิดกล้องถ่ายรูปออกงาน", "Open camera for checkout photo")
+                    : t("เปิดกล้องถ่ายรูป", "Open camera to take photo")}
             </button>
             <button
               type="button"
