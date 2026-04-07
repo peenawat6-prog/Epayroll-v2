@@ -7,7 +7,7 @@
 
 - ระบบเป็น Next.js + Prisma + PostgreSQL แบบ multi-tenant
 - ใช้งานโหมด production ได้แล้ว
-- migration, seed, build และ start ผ่านแล้ว
+- migration, seed, lint, typecheck, build และ start ผ่านแล้ว
 - หน้าใช้งานหลักพร้อม:
   - `/dashboard`
   - `/employees`
@@ -55,9 +55,30 @@
 ## บัญชีเดโม
 
 - Owner: `owner@demo.local`
+- Owner 2: `owner2@demo.local`
 - Admin: `admin@demo.local`
+- HR: `hr@demo.local`
+- Finance: `finance@demo.local`
 - Dev: `dev@epayroll.cloud`
+- Employee: `employee@demo.local`
 - Password: `@Epayroll2026`
+
+## ผลการตรวจล่าสุด
+
+ตรวจล่าสุดบนโฟลเดอร์หลัก `cafe-saas` และยืนยันแล้วว่า:
+
+- `npm run lint` ผ่าน
+- `npm run typecheck` ผ่าน
+- `npm run build` ผ่าน
+- `npm run verify:smoke` ผ่าน
+- health endpoint `/api/health` ตอบ `ok=true`, `database=up`, `app=up`
+- `Permissions-Policy` ล่าสุดอนุญาต `camera=(self)` และ `geolocation=(self)` สำหรับ attendance flow
+- protected routes ก่อน login redirect ถูกต้อง
+- owner login และหน้า/ API หลักตอบปกติ
+- employee login และหน้า self-service ตอบปกติ
+- employee ถูกกันสิทธิ์จาก payroll / ops / audit APIs ถูกต้อง
+- flow จริงแบบ reversible ผ่าน:
+  employee ส่ง leave request -> owner review reject -> employee เห็นสถานะ `REJECTED`
 
 ## สิ่งที่ยังสามารถเชื่อมทีหลังได้
 
@@ -109,6 +130,7 @@
 
 ### ความพร้อมด้านปฏิบัติการ
 
+- รัน `npm run verify`
 - ตรวจ `/api/health`
 - ทดสอบ login
 - ทดสอบ attendance flow

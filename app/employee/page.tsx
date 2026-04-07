@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiTime24h } from "@/lib/display-time"
@@ -97,7 +98,11 @@ export default function EmployeePage() {
   })
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraOpening, setCameraOpening] = useState(false)
-  const [cameraSupported, setCameraSupported] = useState(true)
+  const [cameraSupported, setCameraSupported] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      Boolean(navigator.mediaDevices?.getUserMedia),
+  )
   const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("user")
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -120,7 +125,7 @@ export default function EmployeePage() {
     setStatusMessage("")
   }
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     const res = await fetch("/api/employee/me")
     const data = await res.json()
 
@@ -137,14 +142,9 @@ export default function EmployeePage() {
       promptPayId: data.employee?.bank?.promptPayId ?? "",
     })
     setPageLoading(false)
-  }
+  }, [t])
 
   useEffect(() => {
-    setCameraSupported(
-      typeof navigator !== "undefined" &&
-        Boolean(navigator.mediaDevices?.getUserMedia),
-    )
-
     loadProfile().catch((error: Error) => {
       if (error.message === "Subscription expired") {
         router.push("/subscription-expired")
@@ -157,7 +157,7 @@ export default function EmployeePage() {
     return () => {
       stopCamera()
     }
-  }, [router])
+  }, [loadProfile, router])
 
   const openCamera = async (preferredFacingMode = cameraFacingMode) => {
     clearMessages()

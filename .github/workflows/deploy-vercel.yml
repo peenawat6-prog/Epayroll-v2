@@ -1,0 +1,47 @@
+name: Deploy Vercel Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      ATTENDANCE_PHOTO_STORAGE_BACKEND: ${{ secrets.ATTENDANCE_PHOTO_STORAGE_BACKEND }}
+      ATTENDANCE_PHOTO_STORAGE_DIR: ${{ secrets.ATTENDANCE_PHOTO_STORAGE_DIR }}
+      R2_ATTENDANCE_PHOTO_ENDPOINT: ${{ secrets.R2_ATTENDANCE_PHOTO_ENDPOINT }}
+      R2_ATTENDANCE_PHOTO_BUCKET: ${{ secrets.R2_ATTENDANCE_PHOTO_BUCKET }}
+      R2_ATTENDANCE_PHOTO_ACCESS_KEY_ID: ${{ secrets.R2_ATTENDANCE_PHOTO_ACCESS_KEY_ID }}
+      R2_ATTENDANCE_PHOTO_SECRET_ACCESS_KEY: ${{ secrets.R2_ATTENDANCE_PHOTO_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Prisma Migrate Deploy
+        run: npx prisma migrate deploy
+
+      - name: Deploy to Vercel Production
+        run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

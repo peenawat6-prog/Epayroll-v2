@@ -1,5 +1,6 @@
 'use client'
 
+import type { UserRole } from '@prisma/client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
@@ -11,7 +12,7 @@ import {
 } from '@/lib/display-time'
 
 type CurrentUser = {
-  role: string
+  role: UserRole
 }
 
 type EmployeeOption = {
@@ -174,7 +175,7 @@ export default function StaffRequestsPage() {
     return () => {
       mounted = false
     }
-  }, [router])
+  }, [router, t])
 
   const submitRequest = async (
     body: Record<string, unknown>,
@@ -264,7 +265,7 @@ export default function StaffRequestsPage() {
           <div className="badge-row">
             <div className="badge">{t('คำขอพนักงาน', 'Staff requests')}</div>
             {user?.role ? (
-              <div className="badge">{getRoleLabel(user.role as any, language)}</div>
+              <div className="badge">{getRoleLabel(user.role, language)}</div>
             ) : null}
             {requests.filter((item) => item.status === 'PENDING').length ? (
               <div className="badge">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiDateTime24h } from "@/lib/display-time"
@@ -194,7 +194,7 @@ export default function DevDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
 
-  const loadDashboard = async (
+  const loadDashboard = useCallback(async (
     nextMonth = Number(commissionMonth),
     nextYear = Number(commissionYear),
   ) => {
@@ -223,7 +223,7 @@ export default function DevDashboardPage() {
     setManagementRequests(data.managementRequests ?? [])
     setSalesAgents(data.salesAgents ?? [])
     setTenants(data.tenants ?? [])
-  }
+  }, [commissionMonth, commissionYear, router])
 
   useEffect(() => {
     let mounted = true
@@ -245,7 +245,7 @@ export default function DevDashboardPage() {
     return () => {
       mounted = false
     }
-  }, [router])
+  }, [loadDashboard, router])
 
   const reviewRequest = async (requestId: string, decision: "APPROVED" | "REJECTED") => {
     setSavingId(requestId)

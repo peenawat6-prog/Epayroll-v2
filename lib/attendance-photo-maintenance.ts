@@ -9,7 +9,6 @@ import { logServerEvent } from "@/lib/observability"
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 declare global {
-  // eslint-disable-next-line no-var
   var attendancePhotoCleanupScheduled: boolean | undefined
 }
 

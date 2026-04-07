@@ -14,6 +14,12 @@ export async function GET(req: Request) {
     const shops = await prisma.tenant.findMany({
       where: {
         isPubliclyVisible: true,
+        subscriptionStatus: {
+          in: ["TRIAL", "ACTIVE"],
+        },
+        subscriptionExpiresAt: {
+          gt: new Date(),
+        },
         name: {
           contains: name,
           mode: "insensitive",

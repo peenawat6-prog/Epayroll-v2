@@ -3,6 +3,7 @@ import type { ManagementRegistrationStatus, UserRole } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
 import { createAuditLog } from "@/lib/audit"
+import { assertTenantSubscriptionSnapshotActive } from "@/lib/subscription"
 
 export async function submitManagementRegistrationRequest(params: {
   registrationCode: string
@@ -20,12 +21,16 @@ export async function submitManagementRegistrationRequest(params: {
     select: {
       id: true,
       name: true,
+      subscriptionStatus: true,
+      subscriptionExpiresAt: true,
     },
   })
 
   if (!tenant) {
     throw new AppError("ไม่พบร้านที่เลือก", 404, "TENANT_NOT_FOUND")
   }
+
+  assertTenantSubscriptionSnapshotActive(tenant)
 
   const [existingUser, existingPendingRequest] = await Promise.all([
     prisma.user.findUnique({

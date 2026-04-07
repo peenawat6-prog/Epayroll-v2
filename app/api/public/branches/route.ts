@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { AppError, handleApiError, jsonResponse } from "@/lib/http"
+import { assertTenantSubscriptionSnapshotActive } from "@/lib/subscription"
 import { asTrimmedString } from "@/lib/validators"
 
 export async function GET(req: Request) {
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
       select: {
         id: true,
         name: true,
+        subscriptionStatus: true,
+        subscriptionExpiresAt: true,
         branches: {
           orderBy: {
             name: "asc",
@@ -32,6 +35,8 @@ export async function GET(req: Request) {
     if (!tenant) {
       throw new AppError("รหัสร้านไม่ถูกต้อง", 404, "TENANT_NOT_FOUND")
     }
+
+    assertTenantSubscriptionSnapshotActive(tenant)
 
     return jsonResponse({
       tenantName: tenant.name,

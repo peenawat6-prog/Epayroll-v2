@@ -106,6 +106,37 @@ R2_ATTENDANCE_PHOTO_SECRET_ACCESS_KEY="..."
 
 ตอนยังไม่ได้ผูก domain ให้ใช้ `NEXTAUTH_URL` เป็น Vercel URL ก่อน เช่น `https://your-project.vercel.app`
 
+### Secrets / IDs ที่ต้องมีสำหรับ deploy automation
+
+ถ้าจะใช้ GitHub Actions หรือ PowerShell deploy wrapper ต้องมี:
+
+```env
+VERCEL_TOKEN="..."
+VERCEL_ORG_ID="..."
+VERCEL_PROJECT_ID="..."
+```
+
+## 4.1) Deploy Commands
+
+ถ้า deploy จากเครื่อง:
+
+```powershell
+$env:VERCEL_TOKEN="..."
+$env:VERCEL_ORG_ID="..."
+$env:VERCEL_PROJECT_ID="..."
+npm run deploy:vercel
+```
+
+ถ้า deploy จาก GitHub Actions:
+
+- ตั้ง secrets:
+  - `VERCEL_TOKEN`
+  - `VERCEL_ORG_ID`
+  - `VERCEL_PROJECT_ID`
+  - และ env ทั้งหมดของ production app
+- ใช้ workflow:
+  [deploy-vercel.yml](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas/.github/workflows/deploy-vercel.yml)
+
 ## 5) Cron ล้างรูปเก่า 30 วัน
 
 โปรเจกต์มี `vercel.json` แล้ว และตั้งให้เรียก:
@@ -131,6 +162,35 @@ Route นี้จะใช้ `CRON_SECRET` ถ้ามี `Authorization: Bea
 - `/attendance/history` เปิดรูปเช็กอินจาก R2 ได้
 - `/payroll` สรุปเงินเดือนได้
 - `/ops` เห็นสถานะ storage เป็น `r2://cafe-saas-check-in-photos`
+
+ถ้าต้องการรัน smoke test แบบสคริปต์:
+
+```bash
+SMOKE_BASE_URL="https://your-project.vercel.app" npm run verify:smoke
+```
+
+ค่า default ของ script จะใช้บัญชี demo:
+
+- `owner@demo.local`
+- `employee@demo.local`
+- password `@Epayroll2026`
+
+ถ้าจะใช้บัญชีจริง ให้ override:
+
+```bash
+SMOKE_BASE_URL="https://your-project.vercel.app" \
+SMOKE_OWNER_EMAIL="owner@example.com" \
+SMOKE_OWNER_PASSWORD="..." \
+SMOKE_EMPLOYEE_EMAIL="employee@example.com" \
+SMOKE_EMPLOYEE_PASSWORD="..." \
+npm run verify:smoke
+```
+
+หรือใช้ PowerShell wrapper:
+
+```powershell
+.\scripts\verify-smoke.ps1 -BaseUrl "https://your-project.vercel.app"
+```
 
 ## 7) Domain Name
 

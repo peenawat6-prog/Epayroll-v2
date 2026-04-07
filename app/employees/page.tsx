@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDateTime24h } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
@@ -154,7 +154,7 @@ export default function EmployeesPage() {
       .then((data) => setEmployees(data))
   }
 
-  const fetchRegistrationRequests = () => {
+  const fetchRegistrationRequests = useCallback(() => {
     if (!canManage) {
       setRegistrationRequests([])
       return
@@ -164,7 +164,7 @@ export default function EmployeesPage() {
       .then((res) => res.json())
       .then((data) => setRegistrationRequests(data.items ?? []))
       .catch(() => setRegistrationRequests([]))
-  }
+  }, [canManage])
 
   const fetchBranches = () => {
     fetch('/api/branches')
@@ -201,7 +201,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     if (!user) return
     fetchRegistrationRequests()
-  }, [user])
+  }, [fetchRegistrationRequests, user])
 
   const resetForm = (options?: { clearMessage?: boolean }) => {
     setEditId(null)
@@ -313,7 +313,7 @@ export default function EmployeesPage() {
       method = 'PATCH'
     }
 
-    const body: any = {
+    const body: Record<string, unknown> = {
       branchId: form.branchId || null,
       firstName: form.firstName,
       lastName: form.lastName,

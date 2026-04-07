@@ -12,6 +12,36 @@ This is a practical bilingual user manual for shop owners, managers, HR, finance
 - สมัครร้านใหม่ / New shop registration: `https://register.epayroll.cloud`
 - สมัครสิทธิ์บริหาร / Management registration: `https://manage.epayroll.cloud`
 
+## เริ่มใช้งานเร็ว / Quick Start
+
+ถ้าต้องการเริ่มใช้งานทันที ให้ทำตามลำดับนี้:
+
+1. เปิด `https://epayroll.cloud/login`
+2. ล็อกอินด้วยบัญชีที่ได้รับอนุมัติแล้ว
+3. ถ้าเป็นเจ้าของร้าน ให้เริ่มที่:
+   - `หน้าแรกของร้าน / Shop dashboard`
+   - `จัดการพนักงาน / Manage employees`
+   - `ตั้งค่าร้าน / Shop settings`
+4. ถ้าเป็นพนักงาน ให้เริ่มที่:
+   - `โหมดพนักงาน / Employee mode`
+   - ถ่ายรูป
+   - เปิดตำแหน่ง
+   - กดเข้างานหรือออกงาน
+5. ถ้าจะทำเงินเดือน:
+   - เปิด `สรุปเงินเดือน / Payroll summary`
+   - ตรวจยอด
+   - บันทึกยอด
+   - ยืนยันสรุปเงินเดือน
+
+หน้าหลักที่ใช้บ่อย / Most-used pages:
+
+- `https://epayroll.cloud/dashboard`
+- `https://epayroll.cloud/employees`
+- `https://epayroll.cloud/attendance`
+- `https://epayroll.cloud/payroll`
+- `https://epayroll.cloud/requests`
+- `https://epayroll.cloud/ops`
+
 ## 1. ภาพรวมระบบ / System Overview
 
 Epayroll ถูกออกแบบมาสำหรับกิจการขนาดเล็ก เช่น ร้านกาแฟ ร้านอาหาร และร้านค้าทั่วไป  

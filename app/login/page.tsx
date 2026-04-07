@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import PasswordInput from "@/app/components/password-input"
@@ -12,18 +12,16 @@ const REMEMBERED_EMAIL_KEY = "epayroll-remembered-email"
 export default function LoginPage() {
   const router = useRouter()
   const { t } = useLanguage()
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") {
+      return ""
+    }
+
+    return window.localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? ""
+  })
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY)
-
-    if (rememberedEmail) {
-      setEmail(rememberedEmail)
-    }
-  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -60,6 +58,22 @@ export default function LoginPage() {
 
     const meRes = await fetch("/api/me")
     const me = await meRes.json()
+
+    if (!meRes.ok) {
+      if (meRes.status === 402) {
+        router.push("/subscription-expired")
+        router.refresh()
+        return
+      }
+
+      setError(
+        t(
+          "เข้าสู่ระบบสำเร็จ แต่โหลดข้อมูลผู้ใช้ไม่สำเร็จ",
+          "Signed in, but failed to load your account.",
+        ),
+      )
+      return
+    }
 
     window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim().toLowerCase())
     markBrowserSessionActive()

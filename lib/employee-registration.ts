@@ -5,6 +5,7 @@ import { generateNextEmployeeCode } from "@/lib/employee-code"
 import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
 import { createAuditLog } from "@/lib/audit"
+import { assertTenantSubscriptionSnapshotActive } from "@/lib/subscription"
 
 export async function submitEmployeeRegistrationRequest(params: {
   registrationCode: string
@@ -31,12 +32,16 @@ export async function submitEmployeeRegistrationRequest(params: {
     select: {
       id: true,
       name: true,
+      subscriptionStatus: true,
+      subscriptionExpiresAt: true,
     },
   })
 
   if (!tenant) {
     throw new AppError("รหัสร้านไม่ถูกต้อง", 404, "TENANT_NOT_FOUND")
   }
+
+  assertTenantSubscriptionSnapshotActive(tenant)
 
   await assertCanAddActiveEmployee(tenant.id)
 

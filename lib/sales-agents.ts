@@ -324,7 +324,7 @@ export async function reviewSalesAgentRegistrationRequest(params: {
   )
 
   return prisma.$transaction(async (tx) => {
-    const agent = await tx.salesAgent.create({
+    await tx.salesAgent.create({
       data: {
         code,
         firstName: request.firstName,

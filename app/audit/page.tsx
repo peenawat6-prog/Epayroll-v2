@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDateTime24h } from '@/lib/display-time'
@@ -30,10 +30,7 @@ export default function AuditPage() {
   const [action, setAction] = useState('')
   const [userId, setUserId] = useState('')
 
-  const loadAudit = async () => {
-    setLoading(true)
-    setError('')
-
+  const fetchAudit = useCallback(async () => {
     const params = new URLSearchParams()
     if (search.trim()) params.set('search', search.trim())
     if (entityType.trim()) params.set('entityType', entityType.trim())
@@ -47,9 +44,8 @@ export default function AuditPage() {
       throw new Error(data.error || 'โหลด audit log ไม่สำเร็จ')
     }
 
-    setRecords((data as AuditResponse).items)
-    setLoading(false)
-  }
+    return (data as AuditResponse).items
+  }, [action, entityType, search, userId])
 
   const exportCsv = () => {
     if (records.length === 0) return
@@ -85,7 +81,11 @@ export default function AuditPage() {
       })
       .then(() => {
         setAuthorized(true)
-        return loadAudit()
+        return fetchAudit()
+      })
+      .then((items) => {
+        setRecords(items)
+        setLoading(false)
       })
       .catch((error: Error) => {
         if (error.message === 'subscription') {
@@ -101,12 +101,24 @@ export default function AuditPage() {
         setError(error.message)
         setLoading(false)
       })
-  }, [router])
+  }, [fetchAudit, router])
 
   useEffect(() => {
     if (!authorized) return
-    loadAudit().catch(() => undefined)
-  }, [search, entityType, action, userId])
+
+    let active = true
+
+    fetchAudit()
+      .then((items) => {
+        if (!active) return
+        setRecords(items)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      active = false
+    }
+  }, [authorized, fetchAudit])
 
   if (loading) {
     return <div className="page">Loading...</div>

@@ -1,5 +1,6 @@
 import type { SubscriptionStatus } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { AppError } from "@/lib/http"
 
 export type TenantSubscription = {
   plan: string
@@ -66,4 +67,34 @@ export async function getTenantSubscription(
 export async function isSubscriptionActive(tenantId: string): Promise<boolean> {
   const subscription = await getTenantSubscription(tenantId)
   return subscription.isActive
+}
+
+export function isTenantSubscriptionSnapshotActive(input: {
+  subscriptionStatus: SubscriptionStatus
+  subscriptionExpiresAt: Date | null
+}) {
+  if (!input.subscriptionExpiresAt) {
+    return false
+  }
+
+  if (input.subscriptionExpiresAt.getTime() < Date.now()) {
+    return false
+  }
+
+  return (
+    input.subscriptionStatus === "ACTIVE" || input.subscriptionStatus === "TRIAL"
+  )
+}
+
+export function assertTenantSubscriptionSnapshotActive(input: {
+  subscriptionStatus: SubscriptionStatus
+  subscriptionExpiresAt: Date | null
+}) {
+  if (!isTenantSubscriptionSnapshotActive(input)) {
+    throw new AppError(
+      "ร้านนี้หมดอายุการใช้งานแล้ว กรุณาติดต่อเจ้าของร้านหรือทีมซัพพอร์ต",
+      402,
+      "SUBSCRIPTION_EXPIRED",
+    )
+  }
 }

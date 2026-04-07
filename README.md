@@ -56,6 +56,12 @@ npx prisma migrate deploy
 npm run dev
 ```
 
+ถ้าต้องการบัญชีเดโมกลับมาใช้ทดสอบ:
+
+```bash
+npm run seed:demo
+```
+
 ## Production Run
 
 ```bash
@@ -65,6 +71,42 @@ npx prisma migrate deploy
 npm run build
 npm run start
 ```
+
+ตรวจสภาพพร้อมใช้งานแบบรวมได้ด้วย:
+
+```bash
+npm run verify
+```
+
+ตรวจ smoke test กับระบบที่กำลังรันอยู่ได้ด้วย:
+
+```bash
+npm run verify:smoke
+```
+
+ถ้าต้องการให้ระบบเปิดแอปบนพอร์ตชั่วคราวแล้วรัน smoke test ให้อัตโนมัติ:
+
+```bash
+npm run verify:runtime
+```
+
+ถ้าจะยิง environment อื่น:
+
+```bash
+SMOKE_BASE_URL="https://your-domain.com" npm run verify:smoke
+```
+
+PowerShell wrapper:
+
+```powershell
+.\scripts\verify-smoke.ps1 -BaseUrl "https://your-domain.com"
+```
+
+CI พื้นฐานถูกเพิ่มไว้ที่:
+[.github/workflows/ci.yml](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas/.github/workflows/ci.yml)
+
+Deploy workflow สำหรับ Vercel อยู่ที่:
+[.github/workflows/deploy-vercel.yml](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas/.github/workflows/deploy-vercel.yml)
 
 หมายเหตุ:
 - `prebuild` และ `prestart` จะตรวจ env ให้อัตโนมัติก่อนรัน
@@ -81,6 +123,9 @@ npm run start
 
 คู่มือ deploy แบบละเอียดอยู่ที่
 [DEPLOY_VERCEL_NEON_R2.md](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas/docs/DEPLOY_VERCEL_NEON_R2.md)
+
+Checklist วันขึ้นระบบจริงอยู่ที่
+[GO_LIVE_CHECKLIST.md](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas/docs/GO_LIVE_CHECKLIST.md)
 
 ### 1. Database
 
@@ -189,3 +234,17 @@ Prerequisites:
 - PDF reporting
 - billing integration
 - scheduled backup automation
+
+## Verified Local Status
+
+ตรวจล่าสุดบนโฟลเดอร์หลัก
+[cafe-saas](C:/Users/peena/OneDrive/Documents/Playground/cafe-saas)
+แล้วผ่านดังนี้:
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
+- `http://localhost:3000/api/health`
+- owner login + owner pages/APIs หลัก
+- employee login + employee self-service + RBAC restrictions
+- reversible request workflow: employee submit leave -> owner reject -> employee เห็นสถานะอัปเดต

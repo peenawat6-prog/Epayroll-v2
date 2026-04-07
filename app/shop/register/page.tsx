@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import PasswordInput from "@/app/components/password-input"
 import { useLanguage } from "@/lib/language"
 
@@ -186,7 +185,6 @@ function getLoginUrl() {
 }
 
 export default function ShopRegisterPage() {
-  const router = useRouter()
   const { t } = useLanguage()
   const [form, setForm] = useState<ShopRegisterForm>(createDefaultForm)
   const [statusText, setStatusText] = useState("")
@@ -282,7 +280,7 @@ export default function ShopRegisterPage() {
       mapInstanceRef.current = null
       markerRef.current = null
     }
-  }, [draftReady, t])
+  }, [draftReady, form.latitude, form.longitude, t])
 
   useEffect(() => {
     if (!mapInstanceRef.current || !markerRef.current) return

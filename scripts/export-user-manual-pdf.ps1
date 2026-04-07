@@ -7,6 +7,92 @@ $pdfPath = Join-Path $projectRoot 'docs\USER_MANUAL.pdf'
 $edgeProfilePath = Join-Path $projectRoot '.tmp\edge-pdf-profile'
 $edgePath = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 
+function Convert-MarkdownFallback {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Markdown
+  )
+
+  $escaped = [System.Net.WebUtility]::HtmlEncode($Markdown)
+  $lines = $escaped -split "`r?`n"
+  $htmlLines = New-Object System.Collections.Generic.List[string]
+  $inList = $false
+  $inCodeBlock = $false
+
+  foreach ($line in $lines) {
+    $trimmed = $line.Trim()
+
+    if ($trimmed -match '^```') {
+      if ($inCodeBlock) {
+        $htmlLines.Add('</code></pre>')
+        $inCodeBlock = $false
+      } else {
+        if ($inList) {
+          $htmlLines.Add('</ul>')
+          $inList = $false
+        }
+        $htmlLines.Add('<pre><code>')
+        $inCodeBlock = $true
+      }
+      continue
+    }
+
+    if ($inCodeBlock) {
+      $htmlLines.Add($line)
+      continue
+    }
+
+    if ($trimmed -eq '') {
+      if ($inList) {
+        $htmlLines.Add('</ul>')
+        $inList = $false
+      }
+      continue
+    }
+
+    if ($trimmed.StartsWith('- ')) {
+      if (-not $inList) {
+        $htmlLines.Add('<ul>')
+        $inList = $true
+      }
+      $htmlLines.Add('<li>' + $trimmed.Substring(2) + '</li>')
+      continue
+    }
+
+    if ($inList) {
+      $htmlLines.Add('</ul>')
+      $inList = $false
+    }
+
+    if ($trimmed.StartsWith('### ')) {
+      $htmlLines.Add('<h3>' + $trimmed.Substring(4) + '</h3>')
+      continue
+    }
+
+    if ($trimmed.StartsWith('## ')) {
+      $htmlLines.Add('<h2>' + $trimmed.Substring(3) + '</h2>')
+      continue
+    }
+
+    if ($trimmed.StartsWith('# ')) {
+      $htmlLines.Add('<h1>' + $trimmed.Substring(2) + '</h1>')
+      continue
+    }
+
+    $htmlLines.Add('<p>' + $trimmed + '</p>')
+  }
+
+  if ($inList) {
+    $htmlLines.Add('</ul>')
+  }
+
+  if ($inCodeBlock) {
+    $htmlLines.Add('</code></pre>')
+  }
+
+  return ($htmlLines -join "`n")
+}
+
 if (-not (Test-Path -LiteralPath $markdownPath)) {
   throw "Markdown source not found: $markdownPath"
 }
@@ -16,7 +102,12 @@ if (-not (Test-Path -LiteralPath $edgePath)) {
 }
 
 $markdownContent = Get-Content -LiteralPath $markdownPath -Raw -Encoding UTF8
-$convertedHtml = (ConvertFrom-Markdown -InputObject $markdownContent).Html
+$convertedHtml =
+  if (Get-Command ConvertFrom-Markdown -ErrorAction SilentlyContinue) {
+    (ConvertFrom-Markdown -InputObject $markdownContent).Html
+  } else {
+    Convert-MarkdownFallback -Markdown $markdownContent
+  }
 
 $documentHtml = @"
 <!doctype html>

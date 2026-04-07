@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { formatThaiDateTime24h } from '@/lib/display-time'
@@ -195,7 +195,7 @@ export default function OpsPage() {
     mapStatus || t('กำลังโหลดแผนที่...', 'Loading map...')
   const hasBranches = branches.length > 0
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     const res = await fetch('/api/ops/summary')
     const data = await res.json()
     if (!res.ok) {
@@ -231,9 +231,9 @@ export default function OpsPage() {
     }
     setForm(nextForm)
     setLoading(false)
-  }
+  }, [t])
 
-  const loadBranches = async () => {
+  const loadBranches = useCallback(async () => {
     const res = await fetch('/api/branches')
     const data = await res.json()
 
@@ -242,7 +242,7 @@ export default function OpsPage() {
     }
 
     setBranches(data.items ?? [])
-  }
+  }, [t])
 
   const resetBranchForm = () => {
     setIsCreatingBranch(false)
@@ -335,7 +335,7 @@ export default function OpsPage() {
     return () => {
       mounted = false
     }
-  }, [router])
+  }, [loadBranches, loadSummary, router])
 
   useEffect(() => {
     if (loading || !mapContainerRef.current || mapInstanceRef.current) {
@@ -395,7 +395,7 @@ export default function OpsPage() {
       mapInstanceRef.current = null
       markerRef.current = null
     }
-  }, [loading])
+  }, [form.latitude, form.longitude, loading, t])
 
   useEffect(() => {
     if (!mapInstanceRef.current || !markerRef.current) {
@@ -458,19 +458,6 @@ export default function OpsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleEditBranch = (branch: BranchItem) => {
-    setSelectedBranchId(branch.id)
-    setEditingBranchId(branch.id)
-    setBranchForm({
-      name: branch.name,
-      latitude: branch.latitude?.toString() ?? '',
-      longitude: branch.longitude?.toString() ?? '',
-      allowedRadiusMeters: branch.allowedRadiusMeters?.toString() ?? '',
-    })
-    setMessage('')
-    setError('')
   }
 
   const handleSaveBranch = async (event: React.FormEvent<HTMLFormElement>) => {

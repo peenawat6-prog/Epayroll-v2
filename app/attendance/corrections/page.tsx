@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import {
@@ -94,7 +95,7 @@ export default function AttendanceCorrectionsPage() {
     [user],
   )
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const correctionParams = new URLSearchParams()
     if (search.trim()) {
       correctionParams.set('search', search.trim())
@@ -121,7 +122,7 @@ export default function AttendanceCorrectionsPage() {
 
     setRecords(attendanceData)
     setCorrections(correctionData.items ?? [])
-  }
+  }, [search, statusFilter])
 
   useEffect(() => {
     fetch('/api/me')
@@ -144,7 +145,7 @@ export default function AttendanceCorrectionsPage() {
 
         router.push('/login')
       })
-  }, [router])
+  }, [loadData, router])
 
   useEffect(() => {
     if (!user) {
@@ -154,7 +155,7 @@ export default function AttendanceCorrectionsPage() {
     loadData().catch((error: Error) => {
       setError(error.message)
     })
-  }, [search, statusFilter])
+  }, [loadData, user])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import PasswordInput from "@/app/components/password-input"
 import { useLanguage } from "@/lib/language"
 
@@ -48,7 +47,6 @@ function getLoginUrl() {
 }
 
 export default function ManagementRegisterPage() {
-  const router = useRouter()
   const { t } = useLanguage()
   const [form, setForm] = useState(createEmptyForm)
   const [message, setMessage] = useState("")

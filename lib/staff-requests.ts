@@ -124,85 +124,135 @@ function mapRequestItem(
   }
 }
 
-export async function listStaffRequests(tenantId: string) {
-  const [leaves, overtimeRequests, resignationRequests] = await Promise.all([
-    prisma.leave.findMany({
-      where: { tenantId },
-      include: {
-        employee: {
-          select: {
-            code: true,
-            firstName: true,
-            lastName: true,
-            position: true,
+export async function listStaffRequests(
+  tenantId: string,
+  options?: {
+    employeeId?: string | null
+  },
+) {
+  const employeeScope = options?.employeeId
+    ? {
+        employeeId: options.employeeId,
+      }
+    : {}
+
+  const [leaves, overtimeRequests, earlyCheckoutRequests, resignationRequests] =
+    await Promise.all([
+      prisma.leave.findMany({
+        where: {
+          tenantId,
+          ...employeeScope,
+        },
+        include: {
+          employee: {
+            select: {
+              code: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.overtimeRequest.findMany({
-      where: { tenantId },
-      include: {
-        employee: {
-          select: {
-            code: true,
-            firstName: true,
-            lastName: true,
-            position: true,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.overtimeRequest.findMany({
+        where: {
+          tenantId,
+          ...employeeScope,
+        },
+        include: {
+          employee: {
+            select: {
+              code: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.resignationRequest.findMany({
-      where: { tenantId },
-      include: {
-        employee: {
-          select: {
-            code: true,
-            firstName: true,
-            lastName: true,
-            position: true,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.earlyCheckoutRequest.findMany({
+        where: {
+          tenantId,
+          ...employeeScope,
+        },
+        include: {
+          employee: {
+            select: {
+              code: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-  ])
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.resignationRequest.findMany({
+        where: {
+          tenantId,
+          ...employeeScope,
+        },
+        include: {
+          employee: {
+            select: {
+              code: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+    ])
 
   return [
     ...leaves.map((item) => mapRequestItem("LEAVE", item)),
     ...overtimeRequests.map((item) => mapRequestItem("OVERTIME", item)),
-    ...(await prisma.earlyCheckoutRequest.findMany({
-      where: { tenantId },
-      include: {
-        employee: {
-          select: {
-            code: true,
-            firstName: true,
-            lastName: true,
-            position: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    })).map((item) => mapRequestItem("EARLY_CHECKOUT", item)),
+    ...earlyCheckoutRequests.map((item) =>
+      mapRequestItem("EARLY_CHECKOUT", item),
+    ),
     ...resignationRequests.map((item) => mapRequestItem("RESIGNATION", item)),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
 }
 
 export async function submitStaffRequest(params: {
   tenantId: string
   userId: string
+  requesterEmployeeId?: string | null
+  enforceSelfEmployeeScope?: boolean
   body: StaffRequestCreateInput
 }) {
   const kind = asRequestKind(params.body.kind)
   const employeeId = asTrimmedString(params.body.employeeId, "employeeId")
   const reason = asOptionalTrimmedString(params.body.reason)
+
+  if (params.enforceSelfEmployeeScope) {
+    if (!params.requesterEmployeeId) {
+      throw new AppError(
+        "บัญชีพนักงานนี้ยังไม่ได้ผูกกับข้อมูลพนักงาน",
+        409,
+        "EMPLOYEE_PROFILE_NOT_LINKED",
+      )
+    }
+
+    if (employeeId !== params.requesterEmployeeId) {
+      throw new AppError(
+        "พนักงานส่งคำขอได้เฉพาะข้อมูลของตนเองเท่านั้น",
+        403,
+        "FORBIDDEN",
+      )
+    }
+  }
+
   const employee = await getScopedEmployee(employeeId, params.tenantId)
 
   if (kind === "LEAVE") {

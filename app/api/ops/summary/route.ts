@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { getAppVersion } from "@/lib/app-version"
 import { getAttendancePhotoStorageHealth } from "@/lib/attendance-photo-maintenance"
 import { createAuditLog } from "@/lib/audit"
 import { AppError, jsonResponse, readJsonBody } from "@/lib/http"
@@ -158,7 +159,7 @@ export const GET = withAuthorizedRoute(
       app: "up",
       database: "up",
       nodeEnv: process.env.NODE_ENV ?? "development",
-      version: process.env.npm_package_version ?? "0.0.0",
+      version: getAppVersion(),
       timestamp: new Date().toISOString(),
       activeEmployees,
       pendingCorrections,

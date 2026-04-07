@@ -104,7 +104,7 @@ export default function EmployeeRegisterPage() {
     }, 250)
 
     return () => window.clearTimeout(timer)
-  }, [form.shopName])
+  }, [form.shopName, t])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

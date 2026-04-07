@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { jsonResponse } from "@/lib/http"
 import { validateServerEnv } from "@/lib/env"
+import { getAppVersion } from "@/lib/app-version"
 import { logServerEvent } from "@/lib/observability"
 
 export async function GET() {
@@ -21,7 +22,7 @@ export async function GET() {
       database: "up",
       app: "up",
       nodeEnv: process.env.NODE_ENV ?? "development",
-      version: process.env.npm_package_version ?? "0.0.0",
+      version: getAppVersion(),
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
@@ -39,7 +40,7 @@ export async function GET() {
         database: "down",
         app: "degraded",
         nodeEnv: process.env.NODE_ENV ?? "development",
-        version: process.env.npm_package_version ?? "0.0.0",
+        version: getAppVersion(),
         timestamp: new Date().toISOString(),
       },
       500,

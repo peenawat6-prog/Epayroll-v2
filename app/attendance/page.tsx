@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -68,7 +69,11 @@ export default function AttendancePage() {
   const [locationLabel, setLocationLabel] = useState('')
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraOpening, setCameraOpening] = useState(false)
-  const [cameraSupported, setCameraSupported] = useState(true)
+  const [cameraSupported, setCameraSupported] = useState(
+    () =>
+      typeof navigator !== 'undefined' &&
+      Boolean(navigator.mediaDevices?.getUserMedia),
+  )
   const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user')
   const [loading, setLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
@@ -97,11 +102,6 @@ export default function AttendancePage() {
   }
 
   useEffect(() => {
-    setCameraSupported(
-      typeof navigator !== 'undefined' &&
-        Boolean(navigator.mediaDevices?.getUserMedia),
-    )
-
     fetch('/api/me')
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 402 ? 'subscription' : 'unauthorized')

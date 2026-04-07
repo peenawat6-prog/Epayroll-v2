@@ -433,6 +433,19 @@ export async function savePayrollPeriod(params: {
       )
     }
 
+    await tx.payroll.deleteMany({
+      where: {
+        month: params.month,
+        year: params.year,
+        employee: {
+          tenantId: params.tenantId,
+        },
+        employeeId: {
+          notIn: preview.items.map((item) => item.employeeId),
+        },
+      },
+    })
+
     for (const item of preview.items) {
       await tx.payroll.upsert({
         where: {

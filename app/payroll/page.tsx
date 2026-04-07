@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import type { PayType } from '@prisma/client'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
@@ -14,7 +15,7 @@ type PayrollSummaryItem = {
   employeeId: string
   employeeCode: string
   employeeName: string
-  payType: string
+  payType: PayType
   presentDays: number
   absentDays: number
   workedHours: number
@@ -65,7 +66,7 @@ export default function PayrollPage() {
   const canUnlock = userRole === 'OWNER'
   const canUnlockCurrentPeriod = canUnlock && Boolean(periodInfo?.locked)
 
-  const loadPayroll = () => {
+  const loadPayroll = useCallback(() => {
     setLoading(true)
     setErrorMessage('')
     fetch(`/api/payroll/run?month=${month}&year=${year}`)
@@ -87,7 +88,7 @@ export default function PayrollPage() {
         setErrorMessage(error.message)
         setLoading(false)
       })
-  }
+  }, [month, t, year])
 
   useEffect(() => {
     fetch('/api/me')
@@ -102,7 +103,7 @@ export default function PayrollPage() {
       .catch((error: Error) => {
         router.push(error.message === 'subscription' ? '/subscription-expired' : '/login')
       })
-  }, [router])
+  }, [loadPayroll, router])
 
   const persistPayroll = async (action: 'save' | 'lock' | 'unlock') => {
     setSaving(true)
@@ -386,7 +387,7 @@ export default function PayrollPage() {
                   <tr key={item.employeeId}>
                     <td>{item.employeeCode}</td>
                     <td>{item.employeeName}</td>
-                    <td>{getPayTypeLabel(item.payType as any, language)}</td>
+                    <td>{getPayTypeLabel(item.payType, language)}</td>
                     <td>
                       <div>{item.presentDays} {t('วัน', 'days')}</div>
                       <div className="table-meta">{item.workedHours.toFixed(2)} {t('ชั่วโมง', 'hrs')}</div>
@@ -498,7 +499,7 @@ export default function PayrollPage() {
                   </div>
                   <div className="record-card-body">
                     <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{item.employeeCode}</strong></div>
-                    <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(item.payType as any, language)}</strong></div>
+                    <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(item.payType, language)}</strong></div>
                     <div className="record-line"><span>{t('มาทำงาน', 'Worked')}</span><strong>{item.presentDays} {t('วัน', 'days')}</strong></div>
                     <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
                     <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
