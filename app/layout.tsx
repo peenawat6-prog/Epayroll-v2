@@ -3,7 +3,7 @@ import "./globals.css"
 import Providers from "./providers"
 
 export const metadata: Metadata = {
-  title: "Cafe SaaS",
+  title: "Epayroll",
   description: "ระบบ attendance และ payroll สำหรับธุรกิจหลายสาขา",
 }
 
