@@ -107,6 +107,8 @@ export default function EmployeePage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const needsCheckoutPhoto =
+    Boolean(todayAttendance?.checkIn) && !todayAttendance?.checkOut
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -265,8 +267,11 @@ export default function EmployeePage() {
       `camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.jpg`,
     )
     setStatusMessage(
-      todayAttendance?.checkIn && !todayAttendance?.checkOut
-        ? t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกออกงานได้เลย", "Photo captured. You can now clock out.")
+      needsCheckoutPhoto
+        ? t(
+            "ถ่ายรูปออกงานเรียบร้อยแล้ว กดบันทึกออกงานได้เลย",
+            "Checkout photo captured. You can now clock out.",
+          )
         : t("ถ่ายรูปเรียบร้อยแล้ว กดบันทึกเข้างานได้เลย", "Photo captured. You can now clock in."),
     )
     stopCamera()
@@ -324,7 +329,12 @@ export default function EmployeePage() {
     clearMessages()
 
     if (!photoDataUrl) {
-      setMessage(t("กรุณาถ่ายรูปก่อนบันทึกออกงาน", "Please take a photo before clocking out"))
+      setMessage(
+        t(
+          "กรุณาถ่ายรูปใหม่สำหรับการออกงานก่อนกดบันทึกออกงาน",
+          "Please take a new checkout photo before clocking out.",
+        ),
+      )
       return
     }
 
@@ -569,8 +579,11 @@ export default function EmployeePage() {
 
         <div className="field" style={{ marginTop: 14 }}>
           <label>
-            {todayAttendance?.checkIn && !todayAttendance?.checkOut
-              ? t("ถ่ายรูปก่อนบันทึกออกงาน", "Take a photo before clock-out")
+            {needsCheckoutPhoto
+              ? t(
+                  "ถ่ายรูปใหม่ก่อนบันทึกออกงาน",
+                  "Take a new photo before clock-out",
+                )
               : t("ถ่ายรูปก่อนบันทึกเข้างาน", "Take a photo before clock-in")}
           </label>
           <div className="camera-box">
@@ -674,9 +687,17 @@ export default function EmployeePage() {
               : t(
                   "ระบบจะอ่านตำแหน่งอัตโนมัติตอนกดบันทึกเข้างานหรือออกงาน",
                   "Location will be checked automatically when you tap clock in or clock out",
-                )}
+                )}  
           </div>
-            {photoName ? <div className="table-meta">{t("มีรูปพร้อมบันทึกแล้ว", "Photo ready")}</div> : null}
+          {needsCheckoutPhoto ? (
+            <div className="table-meta">
+              {t(
+                "หมายเหตุ: การออกงานต้องถ่ายรูปใหม่อีกครั้ง รูปตอนเข้างานใช้แทนกันไม่ได้",
+                "Note: Clock-out requires a new photo. The check-in photo cannot be reused.",
+              )}
+            </div>
+          ) : null}
+          {photoName ? <div className="table-meta">{t("มีรูปพร้อมบันทึกแล้ว", "Photo ready")}</div> : null}
         </div>
 
         <div className="action-row" style={{ marginTop: 18 }}>
@@ -693,6 +714,7 @@ export default function EmployeePage() {
             disabled={
               loading ||
               !todayAttendance?.checkIn ||
+              !photoDataUrl ||
               Boolean(todayAttendance?.checkOut)
             }
           >

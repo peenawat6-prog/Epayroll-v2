@@ -238,8 +238,8 @@ export default function AttendancePage() {
     setPhotoName(`camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jpg`)
     setStatusMessage(
       t(
-        'ถ่ายรูปเรียบร้อยแล้ว เลือกบันทึกเข้างานหรือออกงานได้เลย',
-        'Photo captured. You can now clock in or clock out.',
+        'ถ่ายรูปเรียบร้อยแล้ว เลือกบันทึกเข้างานได้เลย หรือถ้าจะออกงานให้ใช้รูปใหม่อีกครั้ง',
+        'Photo captured. You can now clock in. Take a fresh photo again when clocking out.',
       ),
     )
     stopCamera()
@@ -301,7 +301,12 @@ export default function AttendancePage() {
       return
     }
     if (!photoDataUrl) {
-      setMessage(t('กรุณาถ่ายรูปก่อนบันทึกออกงาน', 'Please take a photo before clocking out'))
+      setMessage(
+        t(
+          'กรุณาถ่ายรูปใหม่สำหรับการออกงานก่อนกดบันทึกออกงาน',
+          'Please take a new checkout photo before clocking out.',
+        ),
+      )
       return
     }
     setLoading(true)
@@ -500,6 +505,12 @@ export default function AttendancePage() {
               {t('รูปล่าสุด', 'Latest photo')}: {photoName}
             </div>
           ) : null}
+          <div className="table-meta">
+            {t(
+              'หมายเหตุ: การออกงานต้องถ่ายรูปใหม่อีกครั้ง รูปตอนเข้างานใช้แทนกันไม่ได้',
+              'Note: Clock-out requires a new photo. The check-in photo cannot be reused.',
+            )}
+          </div>
           {photoDataUrl ? (
             <img
               src={photoDataUrl}
@@ -519,7 +530,7 @@ export default function AttendancePage() {
           <button className="btn btn-primary" onClick={handleCheckIn} disabled={loading || !photoDataUrl}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกเข้างาน', 'Clock in')}
           </button>
-          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading}>
+          <button className="btn btn-secondary" onClick={handleCheckOut} disabled={loading || !photoDataUrl}>
             {loading ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกออกงาน', 'Clock out')}
           </button>
         </div>
