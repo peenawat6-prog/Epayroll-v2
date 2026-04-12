@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
+import { getSystemCheckedOutAttendanceIds } from "@/lib/attendance-auto-checkout"
 import { AppError, handleApiError, jsonResponse } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import { asOptionalBusinessDate } from "@/lib/validators"
@@ -48,7 +49,17 @@ export async function GET(req: Request) {
       take: 90,
     })
 
-    return jsonResponse(attendanceRecords)
+    const systemCheckedOutIds = await getSystemCheckedOutAttendanceIds({
+      tenantId: access.user.tenantId,
+      attendanceIds: attendanceRecords.map((record) => record.id),
+    })
+
+    return jsonResponse(
+      attendanceRecords.map((record) => ({
+        ...record,
+        checkedOutBySystem: systemCheckedOutIds.has(record.id),
+      })),
+    )
   } catch (error) {
     return handleApiError(error)
   }

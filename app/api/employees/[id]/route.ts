@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
+import { autoCloseAttendanceIfDue } from "@/lib/attendance-auto-checkout"
 import { createAuditLog } from "@/lib/audit"
 import { AppError, handleApiError, jsonResponse, readJsonBody } from "@/lib/http"
 import { formatThaiDate } from "@/lib/display-time"
@@ -61,6 +62,24 @@ async function getScopedEmployee(employeeId: string, tenantId: string) {
         },
       },
       bank: true,
+    },
+  })
+}
+
+async function getTenantShiftSettings(tenantId: string) {
+  return prisma.tenant.findUnique({
+    where: {
+      id: tenantId,
+    },
+    select: {
+      workStartMinutes: true,
+      workEndMinutes: true,
+      morningShiftStartMinutes: true,
+      morningShiftEndMinutes: true,
+      afternoonShiftStartMinutes: true,
+      afternoonShiftEndMinutes: true,
+      nightShiftStartMinutes: true,
+      nightShiftEndMinutes: true,
     },
   })
 }
@@ -127,25 +146,40 @@ export async function PATCH(
     }
 
     if (!active) {
-      const openAttendance = await prisma.attendance.findFirst({
-        where: {
-          employeeId: employee.id,
-          checkIn: { not: null },
-          checkOut: null,
-        },
-      })
+      const [openAttendance, tenant] = await Promise.all([
+        prisma.attendance.findFirst({
+          where: {
+            employeeId: employee.id,
+            checkIn: { not: null },
+            checkOut: null,
+          },
+        }),
+        getTenantShiftSettings(access.user.tenantId),
+      ])
 
       if (openAttendance) {
-        throw new AppError(
-          `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
-          409,
-          "EMPLOYEE_HAS_OPEN_ATTENDANCE",
-          {
-            employeeCode: employee.code,
-            openAttendanceId: openAttendance.id,
-            openAttendanceWorkDate: openAttendance.workDate,
-          },
-        )
+        const autoClosedAttendance =
+          tenant
+            ? await autoCloseAttendanceIfDue({
+                tenantId: access.user.tenantId,
+                auditUserId: access.user.id,
+                attendance: openAttendance,
+                tenant,
+              })
+            : null
+
+        if (!autoClosedAttendance) {
+          throw new AppError(
+            `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
+            409,
+            "EMPLOYEE_HAS_OPEN_ATTENDANCE",
+            {
+              employeeCode: employee.code,
+              openAttendanceId: openAttendance.id,
+              openAttendanceWorkDate: openAttendance.workDate,
+            },
+          )
+        }
       }
     }
 
@@ -319,25 +353,40 @@ export async function DELETE(
       throw new AppError("Employee not found", 404, "NOT_FOUND")
     }
 
-    const openAttendance = await prisma.attendance.findFirst({
-      where: {
-        employeeId: employee.id,
-        checkIn: { not: null },
-        checkOut: null,
-      },
-    })
+    const [openAttendance, tenant] = await Promise.all([
+      prisma.attendance.findFirst({
+        where: {
+          employeeId: employee.id,
+          checkIn: { not: null },
+          checkOut: null,
+        },
+      }),
+      getTenantShiftSettings(access.user.tenantId),
+    ])
 
     if (openAttendance) {
-      throw new AppError(
-        `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
-        409,
-        "EMPLOYEE_HAS_OPEN_ATTENDANCE",
-        {
-          employeeCode: employee.code,
-          openAttendanceId: openAttendance.id,
-          openAttendanceWorkDate: openAttendance.workDate,
-        },
-      )
+      const autoClosedAttendance =
+        tenant
+          ? await autoCloseAttendanceIfDue({
+              tenantId: access.user.tenantId,
+              auditUserId: access.user.id,
+              attendance: openAttendance,
+              tenant,
+            })
+          : null
+
+      if (!autoClosedAttendance) {
+        throw new AppError(
+          `ยังไม่สามารถระงับพนักงาน ${employee.code} ได้ เพราะยังมีรายการเข้างานค้างของวันที่ ${formatThaiDate(openAttendance.workDate)} ที่ยังไม่ได้บันทึกออกงาน`,
+          409,
+          "EMPLOYEE_HAS_OPEN_ATTENDANCE",
+          {
+            employeeCode: employee.code,
+            openAttendanceId: openAttendance.id,
+            openAttendanceWorkDate: openAttendance.workDate,
+          },
+        )
+      }
     }
 
     const archived = await prisma.employee.update({

@@ -70,13 +70,13 @@ function CheckInPhotoThumb({
 
 export default function AttendanceCorrectionsPage() {
   const router = useRouter()
+  const [employeeIdFilter, setEmployeeIdFilter] = useState('')
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [corrections, setCorrections] = useState<CorrectionItem[]>([])
   const [selectedAttendanceId, setSelectedAttendanceId] = useState('')
   const [requestedCheckIn, setRequestedCheckIn] = useState('')
   const [requestedCheckOut, setRequestedCheckOut] = useState('')
-  const [requestedWorkDate, setRequestedWorkDate] = useState('')
   const [requestedStatus, setRequestedStatus] = useState('')
   const [reason, setReason] = useState('')
   const [reviewNote, setReviewNote] = useState('')
@@ -97,6 +97,12 @@ export default function AttendanceCorrectionsPage() {
 
   const loadData = useCallback(async () => {
     const correctionParams = new URLSearchParams()
+    const attendanceParams = new URLSearchParams()
+
+    if (employeeIdFilter) {
+      correctionParams.set('employeeId', employeeIdFilter)
+      attendanceParams.set('employeeId', employeeIdFilter)
+    }
     if (search.trim()) {
       correctionParams.set('search', search.trim())
     }
@@ -105,7 +111,7 @@ export default function AttendanceCorrectionsPage() {
     }
 
     const [attendanceRes, correctionsRes] = await Promise.all([
-      fetch('/api/attendance'),
+      fetch(`/api/attendance?${attendanceParams.toString()}`),
       fetch(`/api/attendance/corrections?${correctionParams.toString()}`),
     ])
 
@@ -122,7 +128,12 @@ export default function AttendanceCorrectionsPage() {
 
     setRecords(attendanceData)
     setCorrections(correctionData.items ?? [])
-  }, [search, statusFilter])
+  }, [employeeIdFilter, search, statusFilter])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setEmployeeIdFilter(params.get('employeeId')?.trim() ?? '')
+  }, [])
 
   useEffect(() => {
     fetch('/api/me')
@@ -171,7 +182,6 @@ export default function AttendanceCorrectionsPage() {
           attendanceId: selectedAttendanceId,
           requestedCheckIn: requestedCheckIn || undefined,
           requestedCheckOut: requestedCheckOut || undefined,
-          requestedWorkDate: requestedWorkDate || undefined,
           requestedStatus: requestedStatus || undefined,
           reason,
         }),
@@ -186,7 +196,6 @@ export default function AttendanceCorrectionsPage() {
       setSelectedAttendanceId('')
       setRequestedCheckIn('')
       setRequestedCheckOut('')
-      setRequestedWorkDate('')
       setRequestedStatus('')
       setReason('')
       await loadData()
@@ -246,6 +255,9 @@ export default function AttendanceCorrectionsPage() {
           <div className="badge-row">
             <div className="badge">Correction requests {corrections.length}</div>
             <div className="badge">Approval by OWNER / ADMIN</div>
+            {employeeIdFilter ? (
+              <div className="badge">Filtered employee</div>
+            ) : null}
           </div>
           <h1 className="hero-title">Attendance Corrections</h1>
           <p className="hero-subtitle">
@@ -283,28 +295,24 @@ export default function AttendanceCorrectionsPage() {
               </select>
             </div>
             <div className="field">
-              <label>วันที่ใหม่</label>
-              <input
-                type="date"
-                value={requestedWorkDate}
-                onChange={(event) => setRequestedWorkDate(event.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>เวลาเข้าใหม่</label>
+              <label>วันและเวลาเข้าใหม่</label>
               <input
                 type="datetime-local"
                 value={requestedCheckIn}
+                step={60}
                 onChange={(event) => setRequestedCheckIn(event.target.value)}
               />
+              <div className="table-meta">ใช้เวลาแบบ 24 ชั่วโมง</div>
             </div>
             <div className="field">
-              <label>เวลาออกใหม่</label>
+              <label>วันและเวลาออกใหม่</label>
               <input
                 type="datetime-local"
                 value={requestedCheckOut}
+                step={60}
                 onChange={(event) => setRequestedCheckOut(event.target.value)}
               />
+              <div className="table-meta">ใช้เวลาแบบ 24 ชั่วโมง</div>
             </div>
             <div className="field">
               <label>สถานะใหม่</label>
@@ -329,6 +337,11 @@ export default function AttendanceCorrectionsPage() {
               />
             </div>
           </div>
+          {employeeIdFilter ? (
+            <div className="table-meta" style={{ marginTop: 8 }}>
+              ดูเฉพาะพนักงานที่เลือกจากหน้าข้อมูลพนักงาน
+            </div>
+          ) : null}
           <div className="action-row" style={{ marginTop: 16 }}>
             <button className="btn btn-primary" disabled={saving}>
               {saving ? 'กำลังส่ง...' : 'ส่งคำขอแก้ไข'}
@@ -408,14 +421,16 @@ export default function AttendanceCorrectionsPage() {
                     <td>{item.attendance.status}</td>
                     <td>
                       <div className="table-meta">
-                        วันที่: {formatThaiDate(item.requestedWorkDate)}
-                      </div>
-                      <div className="table-meta">
                         เข้า: {formatThaiDateTime24h(item.requestedCheckIn)}
                       </div>
                       <div className="table-meta">
                         ออก: {formatThaiDateTime24h(item.requestedCheckOut)}
                       </div>
+                      {!item.requestedCheckIn && !item.requestedCheckOut ? (
+                        <div className="table-meta">
+                          วันที่: {formatThaiDate(item.requestedWorkDate)}
+                        </div>
+                      ) : null}
                       <div className="table-meta">สถานะ: {item.requestedStatus ?? '-'}</div>
                     </td>
                     <td>{item.reason}</td>

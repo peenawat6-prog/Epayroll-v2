@@ -2,6 +2,7 @@ import { createAttendanceCorrection, getAttendanceCorrectionList } from "@/lib/a
 import { jsonResponse, readJsonBody, AppError } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import { withAuthorizedRoute } from "@/lib/route-guard"
+import { getBusinessDateStart } from "@/lib/time"
 import {
   asAttendanceStatus,
   asAction,
@@ -25,6 +26,7 @@ export const GET = withAuthorizedRoute(
   },
   async (req, _context, access) => {
     const { searchParams } = new URL(req.url)
+    const employeeId = asOptionalSearchString(searchParams.get("employeeId"))
     const search = asOptionalSearchString(searchParams.get("search"))
     const statusParam = asOptionalSearchString(searchParams.get("status"))
     const status =
@@ -36,6 +38,7 @@ export const GET = withAuthorizedRoute(
             | "REJECTED")
 
     const items = await getAttendanceCorrectionList(access.user.tenantId, {
+      employeeId,
       search,
       status,
     })
@@ -53,7 +56,10 @@ export const POST = withAuthorizedRoute(
     const reason = asTrimmedString(body.reason, "reason")
     const requestedCheckIn = asOptionalBusinessDate(body.requestedCheckIn)
     const requestedCheckOut = asOptionalBusinessDate(body.requestedCheckOut)
-    const requestedWorkDate = asOptionalBusinessDate(body.requestedWorkDate)
+    const requestedWorkDate =
+      asOptionalBusinessDate(body.requestedWorkDate) ??
+      (requestedCheckIn ? getBusinessDateStart(requestedCheckIn) : null) ??
+      (requestedCheckOut ? getBusinessDateStart(requestedCheckOut) : null)
     const requestedStatus =
       body.requestedStatus === undefined || body.requestedStatus === null || body.requestedStatus === ""
         ? undefined

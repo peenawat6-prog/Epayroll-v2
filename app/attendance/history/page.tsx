@@ -15,6 +15,7 @@ type AttendanceRecord = {
   checkOut: string | null
   checkInPhotoUrl: string | null
   checkOutPhotoUrl: string | null
+  checkedOutBySystem: boolean
   status: string
   employee: {
     id: string
@@ -158,7 +159,14 @@ export default function AttendanceHistoryPage() {
                       />
                     </td>
                     <td>{formatThaiTime24h(r.checkIn)}</td>
-                    <td>{formatThaiTime24h(r.checkOut)}</td>
+                    <td>
+                      <div>{formatThaiTime24h(r.checkOut)}</div>
+                      {r.checkedOutBySystem ? (
+                        <div className="table-meta">
+                          {t("ออกงานโดยระบบ", "Checked out by system")}
+                        </div>
+                      ) : null}
+                    </td>
                     <td>
                       <span
                         className={`status-pill ${

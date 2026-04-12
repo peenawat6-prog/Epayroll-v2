@@ -12,6 +12,7 @@ export const DEFAULT_AFTERNOON_START_MINUTES = 13 * 60
 export const DEFAULT_AFTERNOON_END_MINUTES = 22 * 60
 export const DEFAULT_NIGHT_START_MINUTES = 22 * 60
 export const DEFAULT_NIGHT_END_MINUTES = 6 * 60
+export const STANDARD_WORK_MINUTES = 8 * 60
 
 export const WORK_SHIFT_LABELS: Record<WorkShift, string> = {
   MORNING: "กะเช้า",
@@ -107,7 +108,7 @@ export function getShiftStartByWorkShift(
 ) {
   const schedule = getShiftSchedule(settings, workShift)
   const workDate = getShiftWorkDate(date, settings, workShift)
-  return getBusinessDateTimeAtMinutes(workDate, schedule.startMinutes)
+  return getShiftStartForWorkDate(workDate, settings, workShift)
 }
 
 export function getShiftEndByWorkShift(
@@ -115,8 +116,25 @@ export function getShiftEndByWorkShift(
   settings: ShiftScheduleSettings | null | undefined = null,
   workShift: WorkShift = "MORNING",
 ) {
-  const schedule = getShiftSchedule(settings, workShift)
   const workDate = getShiftWorkDate(date, settings, workShift)
+  return getShiftEndForWorkDate(workDate, settings, workShift)
+}
+
+export function getShiftStartForWorkDate(
+  workDate: Date,
+  settings: ShiftScheduleSettings | null | undefined = null,
+  workShift: WorkShift = "MORNING",
+) {
+  const schedule = getShiftSchedule(settings, workShift)
+  return getBusinessDateTimeAtMinutes(workDate, schedule.startMinutes)
+}
+
+export function getShiftEndForWorkDate(
+  workDate: Date,
+  settings: ShiftScheduleSettings | null | undefined = null,
+  workShift: WorkShift = "MORNING",
+) {
+  const schedule = getShiftSchedule(settings, workShift)
   const endDate = schedule.endMinutes <= schedule.startMinutes
     ? addDays(workDate, 1)
     : workDate
@@ -142,6 +160,55 @@ export function ensureCheckoutAfterCheckin(checkIn: Date, checkOut: Date) {
   const workedMinutes = Math.max(1, minutesBetween(checkIn, checkOut))
 
   return workedMinutes
+}
+
+export function getPaidCheckoutAt(params: {
+  checkIn: Date
+  requestedCheckOut: Date
+  shiftEnd: Date
+}) {
+  const shiftEndsAfterCheckIn =
+    params.shiftEnd.getTime() > params.checkIn.getTime()
+
+  if (
+    shiftEndsAfterCheckIn &&
+    params.requestedCheckOut.getTime() > params.shiftEnd.getTime()
+  ) {
+    return params.shiftEnd
+  }
+
+  return params.requestedCheckOut
+}
+
+export function getAutoCheckoutDeadline(params: {
+  checkIn: Date
+  shiftEnd: Date
+  approvedOvertimeMinutes?: number
+}) {
+  const standardDeadline = new Date(
+    params.checkIn.getTime() + STANDARD_WORK_MINUTES * 60000,
+  )
+  const baseDeadline =
+    params.shiftEnd.getTime() > standardDeadline.getTime()
+      ? params.shiftEnd
+      : standardDeadline
+
+  return new Date(
+    baseDeadline.getTime() + (params.approvedOvertimeMinutes ?? 0) * 60000,
+  )
+}
+
+export function getRegularWorkedMinutes(params: {
+  checkIn: Date
+  requestedCheckOut: Date
+  shiftEnd: Date
+}) {
+  const paidCheckoutAt = getPaidCheckoutAt(params)
+
+  return {
+    paidCheckoutAt,
+    workedMinutes: ensureCheckoutAfterCheckin(params.checkIn, paidCheckoutAt),
+  }
 }
 
 export function calculateAttendanceMetrics(input: {

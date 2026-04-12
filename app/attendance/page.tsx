@@ -20,6 +20,21 @@ type BrowserLocation = {
   longitude: number
 }
 
+type OpenAttendanceItem = {
+  id: string
+  workDate: string
+  checkIn: string | null
+  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
+  isStale: boolean
+  employee: {
+    id: string
+    code: string
+    firstName: string
+    lastName: string
+    position: string
+  }
+}
+
 const MAX_CAPTURE_WIDTH = 720
 const MAX_CAPTURE_HEIGHT = 960
 const CAPTURE_IMAGE_QUALITY = 0.72
@@ -61,6 +76,7 @@ function getCurrentPosition() {
 export default function AttendancePage() {
   const { t } = useLanguage()
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
+  const [openAttendances, setOpenAttendances] = useState<OpenAttendanceItem[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [message, setMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
@@ -90,6 +106,21 @@ export default function AttendancePage() {
   const locationStatusLabel =
     locationLabel || t('ยังไม่ได้อ่านตำแหน่ง', 'Location not loaded yet')
 
+  const loadOpenAttendances = async () => {
+    try {
+      const res = await fetch('/api/attendance/open')
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load open attendances')
+      }
+
+      setOpenAttendances(data)
+    } catch {
+      setOpenAttendances([])
+    }
+  }
+
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
@@ -109,10 +140,13 @@ export default function AttendancePage() {
         return res.json()
       })
       .then(() =>
-        fetch('/api/employees')
-          .then((res) => res.json())
-          .then((data) => setEmployees(data))
-          .catch(() => setEmployees([])),
+        Promise.all([
+          fetch('/api/employees')
+            .then((res) => res.json())
+            .then((data) => setEmployees(data))
+            .catch(() => setEmployees([])),
+          loadOpenAttendances(),
+        ]),
       )
       .then(() => setPageLoading(false))
       .catch((error: Error) => {
@@ -305,6 +339,7 @@ export default function AttendancePage() {
         setStatusMessage(t('บันทึกเข้างานเรียบร้อยแล้ว', 'Clock-in saved'))
         setPhotoDataUrl('')
         setPhotoName('')
+        await loadOpenAttendances()
       }
     } catch (error) {
       setMessage(
@@ -359,12 +394,59 @@ export default function AttendancePage() {
         setStatusMessage(t('บันทึกออกงานเรียบร้อยแล้ว', 'Clock-out saved'))
         setPhotoDataUrl('')
         setPhotoName('')
+        await loadOpenAttendances()
       }
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : t('บันทึกออกงานไม่สำเร็จ', 'Clock-out failed'),
+      )
+    }
+
+    setLoading(false)
+  }
+
+  const handleForceCheckOut = async (attendanceId: string, employeeId: string) => {
+    clearMessages()
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/attendance/force-check-out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attendanceId,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            t(
+              'ปิดออกงานย้อนหลังไม่สำเร็จ',
+              'Failed to close the old open attendance.',
+            ),
+        )
+      }
+
+      setSelectedEmployee(employeeId)
+      setStatusMessage(
+        t(
+          'ปิดออกงานย้อนหลังเรียบร้อยแล้ว ตอนนี้พนักงานคนนี้สามารถเช็กอินใหม่ได้',
+          'Old open attendance was closed. This employee can now check in again.',
+        ),
+      )
+      await loadOpenAttendances()
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t(
+              'ปิดออกงานย้อนหลังไม่สำเร็จ',
+              'Failed to close the old open attendance.',
+            ),
       )
     }
 
@@ -552,6 +634,71 @@ export default function AttendancePage() {
 
         {message ? <div className="message message-error">{message}</div> : null}
         {statusMessage ? <div className="message message-success">{statusMessage}</div> : null}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">
+          {t('พนักงานที่ยังไม่ออกงาน', 'Employees still checked in')}
+        </h2>
+        {openAttendances.length === 0 ? (
+          <div className="empty-state">
+            {t('ตอนนี้ไม่มีรายการค้างออกงาน', 'There are no open attendances right now.')}
+          </div>
+        ) : (
+          <div className="mobile-card-list" style={{ marginTop: 16 }}>
+            {openAttendances.map((item) => (
+              <article key={item.id} className="record-card">
+                <div className="record-card-head">
+                  <strong>
+                    {item.employee.code} {item.employee.firstName} {item.employee.lastName}
+                  </strong>
+                  <span className={`status-pill ${item.isStale ? 'warning' : 'success'}`}>
+                    {item.isStale
+                      ? t('ค้างจากวันก่อน', 'Stale open shift')
+                      : t('ยังอยู่ในกะวันนี้', 'Current shift')}
+                  </span>
+                </div>
+                <div className="record-card-body">
+                  <div className="record-line">
+                    <span>{t('ตำแหน่ง', 'Position')}</span>
+                    <strong>{item.employee.position}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t('วันที่ทำงาน', 'Work date')}</span>
+                    <strong>{new Date(item.workDate).toLocaleDateString('th-TH')}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t('เวลาเข้างาน', 'Check-in')}</span>
+                    <strong>
+                      {item.checkIn
+                        ? new Date(item.checkIn).toLocaleTimeString('th-TH', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false,
+                          })
+                        : '-'}
+                    </strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t('กะทำงาน', 'Shift')}</span>
+                    <strong>{workShiftLabels[item.workShift]}</strong>
+                  </div>
+                </div>
+                <div className="action-row" style={{ marginTop: 14 }}>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={loading || !item.isStale}
+                    onClick={() => handleForceCheckOut(item.id, item.employee.id)}
+                  >
+                    {item.isStale
+                      ? t('ปิดออกงานให้เลย', 'Close this open shift')
+                      : t('รอให้ออกงานตามปกติ', 'Wait for normal checkout')}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

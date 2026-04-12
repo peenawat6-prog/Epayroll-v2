@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { AppError } from "@/lib/http"
 import { getBusinessYearMonth, roundCurrency } from "@/lib/time"
 
-const STANDARD_WORK_MINUTES = 8 * 60
 const BUSINESS_OFFSET = "+07:00"
 
 export type PayrollItem = {
@@ -41,6 +40,10 @@ export type PayrollResult = {
   lockedByUserId: string | null
   source: "preview" | "saved" | "locked"
   items: PayrollItem[]
+}
+
+type PaidCoverage = {
+  coveredThroughWorkDate: Date
 }
 
 function pad(value: number) {
@@ -130,14 +133,9 @@ export async function isPayrollPeriodLockedForDate(
   tenantId: string,
   workDate: Date,
 ) {
-  const tenant = await getTenantPayrollSettings(tenantId)
-  const { month, year } = getPayrollPeriodLabelForDate(
-    workDate,
-    tenant.payrollPayday,
-  )
-  const period = await getPayrollPeriod(tenantId, month, year)
-
-  return period?.status === "LOCKED"
+  void tenantId
+  void workDate
+  return false
 }
 
 async function getTenantPayrollSettings(tenantId: string) {
@@ -161,6 +159,93 @@ function deriveHourlyRate(baseSalary: number | null, hourlyRate: number | null) 
   return hourlyRate ?? (baseSalary ? roundCurrency(baseSalary / (30 * 8)) : 0)
 }
 
+function calculateMonthlyLatePenaltyAmount(params: {
+  attendances: Array<{
+    lateMinutes: number
+  }>
+  dailyRate: number
+  latePenaltyPerMinute: number
+}) {
+  return params.attendances.reduce((sum, attendance) => {
+    if (attendance.lateMinutes <= 0) {
+      return sum
+    }
+
+    if (attendance.lateMinutes > 80) {
+      return sum + params.dailyRate / 2
+    }
+
+    return sum + attendance.lateMinutes * params.latePenaltyPerMinute
+  }, 0)
+}
+
+function readMetadataString(
+  metadata: unknown,
+  key: string,
+): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null
+  }
+
+  const value = (metadata as Record<string, unknown>)[key]
+  return typeof value === "string" && value.trim() ? value : null
+}
+
+async function getLatestPaidCoverageMap(params: {
+  tenantId: string
+  month: number
+  year: number
+}) {
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      tenantId: params.tenantId,
+      action: "payroll.payment_status_updated",
+      entityType: "Payroll",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 1000,
+  })
+
+  const coverageMap = new Map<string, PaidCoverage>()
+
+  for (const log of logs) {
+    const employeeId = readMetadataString(log.metadata, "employeeId")
+    const toStatus = readMetadataString(log.metadata, "toStatus")
+    const coveredThroughWorkDate = readMetadataString(
+      log.metadata,
+      "coveredThroughWorkDate",
+    )
+    const monthValue = readMetadataString(log.metadata, "month")
+    const yearValue = readMetadataString(log.metadata, "year")
+
+    if (!employeeId || coverageMap.has(employeeId) || toStatus !== "PAID") {
+      continue
+    }
+
+    if (
+      monthValue !== String(params.month) ||
+      yearValue !== String(params.year) ||
+      !coveredThroughWorkDate
+    ) {
+      continue
+    }
+
+    const parsedDate = new Date(coveredThroughWorkDate)
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      continue
+    }
+
+    coverageMap.set(employeeId, {
+      coveredThroughWorkDate: parsedDate,
+    })
+  }
+
+  return coverageMap
+}
+
 export async function calculatePayrollPreview(
   tenantId: string,
   month: number,
@@ -169,7 +254,7 @@ export async function calculatePayrollPreview(
   const tenant = await getTenantPayrollSettings(tenantId)
   const { start, endExclusive } = getPayrollCycleRange(tenant.payrollPayday, year, month)
 
-  const [employees, existingPayrolls] = await Promise.all([
+  const [employees, existingPayrolls, paidCoverageMap] = await Promise.all([
     prisma.employee.findMany({
       where: {
         tenantId,
@@ -195,6 +280,19 @@ export async function calculatePayrollPreview(
             workDate: "asc",
           },
         },
+        overtimeRequests: {
+          where: {
+            status: "APPROVED",
+            workDate: {
+              gte: start,
+              lt: endExclusive,
+            },
+          },
+          select: {
+            workDate: true,
+            overtimeMinutes: true,
+          },
+        },
       },
       orderBy: {
         code: "asc",
@@ -213,6 +311,11 @@ export async function calculatePayrollPreview(
         paymentStatus: true,
       },
     }),
+    getLatestPaidCoverageMap({
+      tenantId,
+      month,
+      year,
+    }),
   ])
 
   const paymentStatusMap = new Map(
@@ -223,12 +326,35 @@ export async function calculatePayrollPreview(
     payday: tenant.payrollPayday,
     ...getPayrollCycleRange(tenant.payrollPayday, year, month),
     items: employees.map((employee) => {
-      const presentRecords = employee.attendances.filter(
+      const paidCoverage = paidCoverageMap.get(employee.id)
+      const filteredAttendances =
+        (employee.payType === "DAILY" || employee.payType === "HOURLY") &&
+        paidCoverage
+          ? employee.attendances.filter(
+              (attendance) =>
+                attendance.workDate.getTime() >
+                paidCoverage.coveredThroughWorkDate.getTime(),
+            )
+          : employee.attendances
+      const filteredOvertimeRequests =
+        (employee.payType === "DAILY" || employee.payType === "HOURLY") &&
+        paidCoverage
+          ? employee.overtimeRequests.filter(
+              (request) =>
+                request.workDate.getTime() >
+                paidCoverage.coveredThroughWorkDate.getTime(),
+            )
+          : employee.overtimeRequests
+
+      const presentRecords = filteredAttendances.filter(
         (attendance) =>
           attendance.status === "PRESENT" || attendance.status === "LATE",
       )
-      const absentRecords = employee.attendances.filter(
+      const absentRecords = filteredAttendances.filter(
         (attendance) => attendance.status === "ABSENT",
+      )
+      const leaveRecords = filteredAttendances.filter(
+        (attendance) => attendance.status === "LEAVE",
       )
       const totalWorkedMinutes = presentRecords.reduce(
         (sum, attendance) => sum + attendance.workedMinutes,
@@ -238,9 +364,14 @@ export async function calculatePayrollPreview(
         (sum, attendance) => sum + attendance.lateMinutes,
         0,
       )
-      const overtimeMinutes = presentRecords.reduce(
-        (sum, attendance) =>
-          sum + Math.max(0, attendance.workedMinutes - STANDARD_WORK_MINUTES),
+      const presentWorkDateKeys = new Set(
+        presentRecords.map((attendance) => attendance.workDate.toISOString()),
+      )
+      const approvedOvertimeMinutes = filteredOvertimeRequests.reduce(
+        (sum, request) =>
+          presentWorkDateKeys.has(request.workDate.toISOString())
+            ? sum + request.overtimeMinutes
+            : sum,
         0,
       )
 
@@ -249,11 +380,16 @@ export async function calculatePayrollPreview(
 
       let basePay = 0
       let deduction = 0
-      const latePenaltyAmount = totalLateMinutes * tenant.latePenaltyPerMinute
+      let latePenaltyAmount = totalLateMinutes * tenant.latePenaltyPerMinute
 
       if (employee.payType === "MONTHLY") {
         basePay = employee.baseSalary ?? 0
-        deduction = absentRecords.length * dailyRate
+        deduction = (absentRecords.length + leaveRecords.length) * dailyRate
+        latePenaltyAmount = calculateMonthlyLatePenaltyAmount({
+          attendances: presentRecords,
+          dailyRate,
+          latePenaltyPerMinute: tenant.latePenaltyPerMinute,
+        })
       }
 
       if (employee.payType === "DAILY") {
@@ -266,8 +402,16 @@ export async function calculatePayrollPreview(
 
       deduction += latePenaltyAmount
 
-      const overtimePay = (overtimeMinutes / 60) * hourlyRate * 1.5
+      const overtimePay = (approvedOvertimeMinutes / 60) * hourlyRate * 1.5
       const netPay = Math.max(0, basePay + overtimePay - deduction)
+      const hasOutstandingWork =
+        filteredAttendances.length > 0 || filteredOvertimeRequests.length > 0
+      const paymentStatus =
+        (employee.payType === "DAILY" || employee.payType === "HOURLY") &&
+        paidCoverage &&
+        hasOutstandingWork
+          ? "PENDING"
+          : paymentStatusMap.get(employee.id) ?? "PENDING"
 
       return {
         employeeId: employee.id,
@@ -277,7 +421,7 @@ export async function calculatePayrollPreview(
         presentDays: presentRecords.length,
         absentDays: absentRecords.length,
         workedHours: roundCurrency(totalWorkedMinutes / 60),
-        overtimeHours: roundCurrency(overtimeMinutes / 60),
+        overtimeHours: roundCurrency(approvedOvertimeMinutes / 60),
         lateMinutes: totalLateMinutes,
         latePenaltyPerMinute: tenant.latePenaltyPerMinute,
         latePenaltyAmount: roundCurrency(latePenaltyAmount),
@@ -289,7 +433,7 @@ export async function calculatePayrollPreview(
         accountName: employee.bank?.accountName ?? null,
         accountNumber: employee.bank?.accountNumber ?? null,
         promptPayId: employee.bank?.promptPayId ?? null,
-        paymentStatus: paymentStatusMap.get(employee.id) ?? "PENDING",
+        paymentStatus,
       } satisfies PayrollItem
     }),
   }
@@ -354,28 +498,7 @@ export async function getPayrollResult(
   month: number,
   year: number,
 ): Promise<PayrollResult> {
-  const tenant = await getTenantPayrollSettings(tenantId)
-  const range = getPayrollCycleRange(tenant.payrollPayday, year, month)
   const period = await getPayrollPeriod(tenantId, month, year)
-
-  if (period?.status === "LOCKED") {
-    const items = await getStoredPayrollItems(tenantId, month, year)
-
-    return {
-      month,
-      year,
-      payday: tenant.payrollPayday,
-      periodStart: range.start,
-      periodEnd: range.end,
-      status: period.status,
-      locked: true,
-      lockedAt: period.lockedAt,
-      lockedByUserId: period.lockedByUserId,
-      source: "locked",
-      items,
-    }
-  }
-
   const preview = await calculatePayrollPreview(tenantId, month, year)
 
   return {
@@ -384,10 +507,10 @@ export async function getPayrollResult(
     payday: preview.payday,
     periodStart: preview.start,
     periodEnd: preview.end,
-    status: period?.status ?? "OPEN",
+    status: "OPEN",
     locked: false,
-    lockedAt: null,
-    lockedByUserId: null,
+    lockedAt: period?.lockedAt ?? null,
+    lockedByUserId: period?.lockedByUserId ?? null,
     source: period ? "saved" : "preview",
     items: preview.items,
   }
@@ -586,21 +709,71 @@ export async function updatePayrollPaymentStatus(params: {
   year: number
   paymentStatus: PaymentStatus
 }) {
-  const period = await getPayrollPeriod(params.tenantId, params.month, params.year)
+  const preview = await calculatePayrollPreview(
+    params.tenantId,
+    params.month,
+    params.year,
+  )
+  const previewItem = preview.items.find(
+    (item) => item.employeeId === params.employeeId,
+  )
 
-  if (!period) {
-    throw new AppError("กรุณาบันทึกและปิดงวดเงินเดือนก่อนอัปเดตสถานะการโอน", 404, "NOT_FOUND")
+  if (!previewItem) {
+    throw new AppError("ไม่พบข้อมูลเงินเดือนของพนักงานนี้", 404, "NOT_FOUND")
   }
 
-  if (period.status !== "LOCKED") {
-    throw new AppError(
-      "กรุณายืนยันสรุปเงินเดือนก่อนอัปเดตสถานะการโอน",
-      409,
-      "PAYROLL_PERIOD_NOT_LOCKED",
-    )
+  const tenant = await getTenantPayrollSettings(params.tenantId)
+  const { start, endExclusive } = getPayrollCycleRange(
+    tenant.payrollPayday,
+    params.year,
+    params.month,
+  )
+  const paidCoverageMap = await getLatestPaidCoverageMap({
+    tenantId: params.tenantId,
+    month: params.month,
+    year: params.year,
+  })
+  const paidCoverage = paidCoverageMap.get(params.employeeId)
+  const attendanceWhere =
+    (previewItem.payType === "DAILY" || previewItem.payType === "HOURLY") &&
+    paidCoverage
+      ? {
+          gt: paidCoverage.coveredThroughWorkDate,
+          lt: endExclusive,
+        }
+      : {
+          gte: start,
+          lt: endExclusive,
+        }
+  const outstandingAttendances = await prisma.attendance.findMany({
+    where: {
+      employeeId: params.employeeId,
+      workDate: attendanceWhere,
+      status: {
+        in: ["PRESENT", "LATE", "ABSENT", "LEAVE"],
+      },
+    },
+    orderBy: {
+      workDate: "asc",
+    },
+    select: {
+      workDate: true,
+    },
+  })
+  const coveredThroughWorkDate =
+    params.paymentStatus === "PAID" && outstandingAttendances.length > 0
+      ? outstandingAttendances[outstandingAttendances.length - 1].workDate
+      : null
+
+  if (
+    params.paymentStatus === "PAID" &&
+    (previewItem.payType === "DAILY" || previewItem.payType === "HOURLY") &&
+    !coveredThroughWorkDate
+  ) {
+    throw new AppError("ไม่มีรายการค้างจ่ายในรอบนี้แล้ว", 409, "NOTHING_TO_PAY")
   }
 
-  const payroll = await prisma.payroll.findFirst({
+  const existingPayroll = await prisma.payroll.findFirst({
     where: {
       employeeId: params.employeeId,
       month: params.month,
@@ -616,16 +789,42 @@ export async function updatePayrollPaymentStatus(params: {
     },
   })
 
-  if (!payroll) {
-    throw new AppError("ไม่พบข้อมูลเงินเดือนของพนักงานนี้", 404, "NOT_FOUND")
-  }
-
   const updated = await prisma.$transaction(async (tx) => {
-    const updatedPayroll = await tx.payroll.update({
+    const upsertedPayroll = await tx.payroll.upsert({
       where: {
-        id: payroll.id,
+        employeeId_month_year: {
+          employeeId: params.employeeId,
+          month: params.month,
+          year: params.year,
+        },
       },
-      data: {
+      update: {
+        payTypeSnapshot: previewItem.payType,
+        presentDays: previewItem.presentDays,
+        absentDays: previewItem.absentDays,
+        workedHours: previewItem.workedHours,
+        lateMinutes: previewItem.lateMinutes,
+        latePenaltyAmount: previewItem.latePenaltyAmount,
+        basePay: previewItem.basePay,
+        overtimePay: previewItem.overtimePay,
+        deduction: previewItem.deduction,
+        netPay: previewItem.netPay,
+        paymentStatus: params.paymentStatus,
+      },
+      create: {
+        employeeId: params.employeeId,
+        month: params.month,
+        year: params.year,
+        payTypeSnapshot: previewItem.payType,
+        presentDays: previewItem.presentDays,
+        absentDays: previewItem.absentDays,
+        workedHours: previewItem.workedHours,
+        lateMinutes: previewItem.lateMinutes,
+        latePenaltyAmount: previewItem.latePenaltyAmount,
+        basePay: previewItem.basePay,
+        overtimePay: previewItem.overtimePay,
+        deduction: previewItem.deduction,
+        netPay: previewItem.netPay,
         paymentStatus: params.paymentStatus,
       },
       select: {
@@ -641,18 +840,21 @@ export async function updatePayrollPaymentStatus(params: {
         userId: params.userId,
         action: "payroll.payment_status_updated",
         entityType: "Payroll",
-        entityId: updatedPayroll.id,
+        entityId: upsertedPayroll.id,
         metadata: {
-          employeeId: updatedPayroll.employeeId,
-          month: params.month,
-          year: params.year,
-          fromStatus: payroll.paymentStatus,
-          toStatus: updatedPayroll.paymentStatus,
+          employeeId: upsertedPayroll.employeeId,
+          month: String(params.month),
+          year: String(params.year),
+          fromStatus: existingPayroll?.paymentStatus ?? "PENDING",
+          toStatus: upsertedPayroll.paymentStatus,
+          coveredThroughWorkDate: coveredThroughWorkDate?.toISOString() ?? null,
+          presentDays: previewItem.presentDays,
+          netPay: previewItem.netPay,
         },
       },
     })
 
-    return updatedPayroll
+    return upsertedPayroll
   })
 
   return updated
@@ -662,15 +864,6 @@ export async function assertPayrollPeriodOpenForDate(
   tenantId: string,
   workDate: Date,
 ) {
-  const tenant = await getTenantPayrollSettings(tenantId)
-  const { month, year } = getPayrollPeriodLabelForDate(workDate, tenant.payrollPayday)
-  const period = await getPayrollPeriod(tenantId, month, year)
-
-  if (period?.status === "LOCKED") {
-    throw new AppError(
-      "Payroll period is locked for this work date",
-      409,
-      "PAYROLL_PERIOD_LOCKED",
-    )
-  }
+  void tenantId
+  void workDate
 }

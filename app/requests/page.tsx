@@ -5,7 +5,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
-import { getRequestStatusLabel, getRoleLabel } from '@/lib/ui-format'
+import {
+  getEmployeeTypeLabel,
+  getPayTypeLabel,
+  getRequestStatusLabel,
+  getRoleLabel,
+} from '@/lib/ui-format'
 import {
   formatThaiDate,
   formatThaiDateTime24h,
@@ -21,6 +26,32 @@ type EmployeeOption = {
   firstName: string
   lastName: string
   active: boolean
+}
+
+type RegistrationRequest = {
+  id: string
+  code: string
+  branch: {
+    id: string
+    name: string
+  } | null
+  firstName: string
+  lastName: string
+  phone: string | null
+  position: string
+  email: string
+  employeeType: 'FULL_TIME' | 'PART_TIME'
+  payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
+  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
+  dayOffWeekdays: string[]
+  bankName: string | null
+  accountName: string | null
+  accountNumber: string | null
+  promptPayId: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  reviewNote: string | null
+  reviewedAt: string | null
+  createdAt: string
 }
 
 type StaffRequestItem = {
@@ -70,12 +101,14 @@ export default function StaffRequestsPage() {
   const { t, language } = useLanguage()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
+  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
   const [requests, setRequests] = useState<StaffRequestItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
+  const [registrationReviewNote, setRegistrationReviewNote] = useState('')
   const [leaveForm, setLeaveForm] = useState({
     employeeId: '',
     startDate: '',
@@ -100,7 +133,7 @@ export default function StaffRequestsPage() {
   })
 
   const canReview =
-    user?.role === 'OWNER' || user?.role === 'ADMIN' || user?.role === 'HR'
+    user?.role === 'DEV' || user?.role === 'OWNER' || user?.role === 'ADMIN' || user?.role === 'HR'
   const canSubmitRequests = user?.role === 'EMPLOYEE'
   const kindLabels = {
     LEAVE: t('ขอลางาน', 'Leave request'),
@@ -124,6 +157,25 @@ export default function StaffRequestsPage() {
     }
 
     setRequests(data)
+  }
+
+  const loadRegistrationRequests = async () => {
+    if (!canReview) {
+      setRegistrationRequests([])
+      return
+    }
+
+    const res = await fetch('/api/employee-registrations')
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          t('โหลดคำขอลงทะเบียนพนักงานไม่สำเร็จ', 'Failed to load registration requests'),
+      )
+    }
+
+    setRegistrationRequests(data.items ?? [])
   }
 
   useEffect(() => {
@@ -151,11 +203,23 @@ export default function StaffRequestsPage() {
         return data
       }),
     ])
-      .then(([currentUser, employeeRows, requestRows]) => {
+      .then(async ([currentUser, employeeRows, requestRows]) => {
         if (!mounted) return
         setUser(currentUser)
         setEmployees(employeeRows)
         setRequests(requestRows)
+        if (
+          currentUser.role === 'DEV' ||
+          currentUser.role === 'OWNER' ||
+          currentUser.role === 'ADMIN' ||
+          currentUser.role === 'HR'
+        ) {
+          const registrationRes = await fetch('/api/employee-registrations')
+          const registrationData = await registrationRes.json()
+          if (registrationRes.ok) {
+            setRegistrationRequests(registrationData.items ?? [])
+          }
+        }
         setLoading(false)
       })
       .catch((error: Error) => {
@@ -248,6 +312,74 @@ export default function StaffRequestsPage() {
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : t('ตรวจคำขอไม่สำเร็จ', 'Failed to review request'),
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const reviewRegistration = async (
+    requestId: string,
+    decision: 'APPROVED' | 'REJECTED',
+  ) => {
+    setSaving(true)
+    setMessage('')
+    setErrorMessage('')
+
+    try {
+      if (decision === 'REJECTED' && !registrationReviewNote.trim()) {
+        throw new Error(
+          t(
+            'กรุณากรอกหมายเหตุเมื่อไม่อนุมัติคำขอลงทะเบียน',
+            'Please add a note when rejecting a registration request',
+          ),
+        )
+      }
+
+      const res = await fetch(`/api/employee-registrations/${requestId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          decision,
+          reviewNote: registrationReviewNote || undefined,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            t(
+              'ตรวจสอบคำขอลงทะเบียนพนักงานไม่สำเร็จ',
+              'Failed to review employee registration request',
+            ),
+        )
+      }
+
+      setRegistrationReviewNote('')
+      await loadRegistrationRequests()
+      await loadRequests()
+      setMessage(
+        decision === 'APPROVED'
+          ? t(
+              'อนุมัติคำขอลงทะเบียนพนักงานเรียบร้อยแล้ว',
+              'Employee registration request approved',
+            )
+          : t(
+              'ปฏิเสธคำขอลงทะเบียนพนักงานเรียบร้อยแล้ว',
+              'Employee registration request rejected',
+            ),
+      )
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : t(
+              'ตรวจสอบคำขอลงทะเบียนพนักงานไม่สำเร็จ',
+              'Failed to review employee registration request',
+            ),
       )
     } finally {
       setSaving(false)
@@ -599,6 +731,128 @@ export default function StaffRequestsPage() {
               </button>
             </div>
           </article>
+        </section>
+      ) : null}
+
+      {canReview ? (
+        <section className="panel">
+          <h2 className="panel-title">
+            {t('คำขอลงทะเบียนพนักงาน', 'Employee registration requests')}
+          </h2>
+          <p className="panel-subtitle">
+            {t(
+              'อนุมัติแล้วคำขอจะหายจากหน้านี้ทันที และระบบจะสร้างบัญชีพนักงานให้พร้อมล็อกอิน',
+              'Approved requests disappear from this page immediately and the employee account is created for login.',
+            )}
+          </p>
+
+          <div className="field" style={{ marginTop: 16, maxWidth: 420 }}>
+            <label>{t('หมายเหตุสำหรับการอนุมัติ/ไม่อนุมัติ', 'Approval / rejection note')}</label>
+            <input
+              value={registrationReviewNote}
+              onChange={(event) => setRegistrationReviewNote(event.target.value)}
+              placeholder={t(
+                'ถ้าไม่อนุมัติ ควรกรอกเหตุผลให้พนักงาน',
+                'If rejecting, explain the reason for the employee.',
+              )}
+            />
+          </div>
+
+          {registrationRequests.length === 0 ? (
+            <div className="empty-state">
+              {t('ยังไม่มีคำขอลงทะเบียนพนักงาน', 'No employee registration requests')}
+            </div>
+          ) : (
+            <div className="mobile-card-list" style={{ marginTop: 16 }}>
+              {registrationRequests.map((request) => (
+                <article key={request.id} className="record-card">
+                  <div className="record-card-head">
+                    <strong>
+                      {request.code} {request.firstName} {request.lastName}
+                    </strong>
+                    <span
+                      className={`status-pill ${
+                        request.status === 'APPROVED'
+                          ? 'success'
+                          : request.status === 'REJECTED'
+                            ? 'danger'
+                            : 'warning'
+                      }`}
+                    >
+                      {getRequestStatusLabel(request.status, language)}
+                    </span>
+                  </div>
+
+                  <div className="record-card-body">
+                    <div className="record-line">
+                      <span>{t('อีเมล', 'Email')}</span>
+                      <strong>{request.email}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('สาขา', 'Branch')}</span>
+                      <strong>{request.branch?.name ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('ตำแหน่ง', 'Position')}</span>
+                      <strong>{request.position}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('เบอร์โทร', 'Phone')}</span>
+                      <strong>{request.phone ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('ประเภท', 'Type')}</span>
+                      <strong>
+                        {getEmployeeTypeLabel(request.employeeType, language)} /{' '}
+                        {getPayTypeLabel(request.payType, language)}
+                      </strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('กะทำงาน', 'Shift')}</span>
+                      <strong>{request.workShift}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('ธนาคาร', 'Bank')}</span>
+                      <strong>{request.bankName ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('ชื่อบัญชี', 'Account name')}</span>
+                      <strong>{request.accountName ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('เลขบัญชี', 'Account number')}</span>
+                      <strong>{request.accountNumber ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('พร้อมเพย์', 'PromptPay')}</span>
+                      <strong>{request.promptPayId ?? '-'}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t('ส่งคำขอเมื่อ', 'Submitted at')}</span>
+                      <strong>{formatThaiDateTime24h(request.createdAt)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="action-row" style={{ marginTop: 14 }}>
+                    <button
+                      className="btn btn-primary"
+                      disabled={saving}
+                      onClick={() => reviewRegistration(request.id, 'APPROVED')}
+                    >
+                      {t('อนุมัติ', 'Approve')}
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      disabled={saving}
+                      onClick={() => reviewRegistration(request.id, 'REJECTED')}
+                    >
+                      {t('ปฏิเสธ', 'Reject')}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       ) : null}
 

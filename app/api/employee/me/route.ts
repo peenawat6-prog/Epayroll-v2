@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/audit"
+import { getSystemCheckedOutAttendanceIds } from "@/lib/attendance-auto-checkout"
 import { AppError, jsonResponse, readJsonBody } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import { withAuthorizedRoute } from "@/lib/route-guard"
@@ -96,10 +97,20 @@ export const GET = withAuthorizedRoute(
       },
     })
 
+    const systemCheckedOutIds = await getSystemCheckedOutAttendanceIds({
+      tenantId: access.user.tenantId,
+      attendanceIds: todayAttendance ? [todayAttendance.id] : [],
+    })
+
     return jsonResponse({
       user: access.user,
       employee,
-      todayAttendance,
+      todayAttendance: todayAttendance
+        ? {
+            ...todayAttendance,
+            checkedOutBySystem: systemCheckedOutIds.has(todayAttendance.id),
+          }
+        : null,
       subscription: access.subscription,
     })
   },

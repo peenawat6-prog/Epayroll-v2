@@ -31,6 +31,7 @@ type TodayAttendance = {
   checkOut: string | null
   checkInPhotoUrl: string | null
   checkOutPhotoUrl: string | null
+  checkedOutBySystem?: boolean
   workedMinutes: number
   lateMinutes: number
   status: string
@@ -509,6 +510,11 @@ export default function EmployeePage() {
               ? formatThaiTime24h(todayAttendance.checkOut)
               : "-"}
           </p>
+          {todayAttendance?.checkedOutBySystem ? (
+            <div className="table-meta">
+              {t("ออกงานโดยระบบ", "Checked out by system")}
+            </div>
+          ) : null}
         </article>
       </section>
 

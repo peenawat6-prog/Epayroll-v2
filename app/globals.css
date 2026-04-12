@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5efe7;
-  --foreground: #1d160f;
-  --muted: #6b5b4d;
-  --surface: rgba(255, 250, 244, 0.88);
-  --surface-strong: #fff7ef;
-  --border: rgba(103, 74, 45, 0.14);
-  --brand: #8b4513;
-  --brand-strong: #6f3410;
-  --brand-soft: #f3d6bf;
-  --success: #166534;
+  --background: #eff8f1;
+  --foreground: #143126;
+  --muted: #5d7d6d;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-strong: #f8fffa;
+  --border: rgba(86, 195, 136, 0.2);
+  --brand: #56c388;
+  --brand-strong: #39a96c;
+  --brand-soft: #dff7e8;
+  --success: #1f8f57;
   --danger: #b91c1c;
   --warning: #b45309;
 }
@@ -37,9 +37,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   background-image:
-    radial-gradient(circle at top left, rgba(255, 215, 181, 0.8), transparent 32%),
-    radial-gradient(circle at top right, rgba(196, 139, 89, 0.18), transparent 26%),
-    linear-gradient(180deg, #fff8f2 0%, #f5efe7 100%);
+    radial-gradient(circle at top left, rgba(167, 241, 202, 0.7), transparent 34%),
+    radial-gradient(circle at top right, rgba(111, 225, 174, 0.18), transparent 28%),
+    linear-gradient(180deg, #fbfffc 0%, #eff8f1 100%);
 }
 
 a {
@@ -139,7 +139,7 @@ textarea {
   padding: 20px;
   border-radius: 22px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 248, 240, 0.88));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(237, 252, 243, 0.9));
 }
 
 .stat-label {
@@ -173,7 +173,7 @@ textarea {
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #dc2626;
+  background: #16a34a;
   color: #fff;
   font-size: 0.8rem;
   font-weight: 700;
@@ -181,7 +181,7 @@ textarea {
   align-items: center;
   justify-content: center;
   border: 2px solid #fff;
-  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.25);
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.25);
 }
 
 .btn:hover {
@@ -210,7 +210,7 @@ textarea {
 }
 
 .btn-danger {
-  background: #fff1f2;
+  background: #fff5f5;
   color: var(--danger);
   border: 1px solid rgba(185, 28, 28, 0.14);
 }
@@ -400,7 +400,7 @@ textarea {
   min-height: 220px;
   border-radius: 18px;
   background:
-    radial-gradient(circle at top, rgba(243, 214, 191, 0.95), rgba(255, 255, 255, 0.7));
+    radial-gradient(circle at top, rgba(207, 248, 223, 0.95), rgba(255, 255, 255, 0.78));
   color: var(--muted);
   text-align: center;
   padding: 24px;

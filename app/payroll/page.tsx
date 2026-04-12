@@ -63,8 +63,6 @@ export default function PayrollPage() {
   const today = new Date()
   const [month, setMonth] = useState(String(today.getMonth() + 1))
   const [year, setYear] = useState(String(today.getFullYear()))
-  const canUnlock = userRole === 'OWNER'
-  const canUnlockCurrentPeriod = canUnlock && Boolean(periodInfo?.locked)
 
   const loadPayroll = useCallback(() => {
     setLoading(true)
@@ -259,9 +257,7 @@ export default function PayrollPage() {
           <div className="badge-row">
             <div className="badge">
               {t('งวดเงินเดือน', 'Payroll period')}:{' '}
-              {periodInfo?.locked
-                ? t('ยืนยันแล้ว', 'Confirmed')
-                : t('ยังแก้ไขได้', 'Editable')}
+              {t('กดโอนเงินเพื่อปิดยอดของพนักงานคนนั้น', 'Payment closes that employee balance')}
             </div>
           </div>
           <h1 className="hero-title">{t('สรุปเงินเดือน', 'Payroll summary')}</h1>
@@ -291,14 +287,12 @@ export default function PayrollPage() {
               {formatThaiDate(periodInfo.periodEnd)}
             </div>
             <div className="badge">{t('วันจ่ายเงินเดือน', 'Payday')}: {periodInfo.payday}</div>
-            {periodInfo.locked ? (
-              <div className="badge">
-                {t(
-                  'ถ้ากดยืนยันผิด สามารถเปิดงวดกลับมาแก้ได้ทุกเมื่อ',
-                  'If this period was confirmed by mistake, it can be reopened anytime.',
-                )}
-              </div>
-            ) : null}
+            <div className="badge">
+              {t(
+                'พนักงานรายวัน/รายชั่วโมงจะตัดยอดที่จ่ายแล้วออกจากรอบถัดไปอัตโนมัติ',
+                'Daily and hourly employees automatically exclude already-paid work from the next balance.',
+              )}
+            </div>
           </div>
         ) : null}
         <div className="form-grid">
@@ -324,33 +318,11 @@ export default function PayrollPage() {
           <button
             className="btn btn-primary"
             onClick={() => persistPayroll('save')}
-            disabled={saving || Boolean(periodInfo?.locked)}
+            disabled={saving}
           >
-            {saving ? t('กำลังบันทึก...', 'Saving...') : t('บันทึกยอด', 'Save')}
+            {saving ? t('กำลังรีเฟรชยอด...', 'Refreshing...') : t('คำนวณยอดล่าสุด', 'Refresh totals')}
           </button>
-          <button
-            className="btn btn-danger"
-            onClick={() => persistPayroll('lock')}
-            disabled={saving || Boolean(periodInfo?.locked)}
-          >
-            {saving ? t('กำลังยืนยัน...', 'Confirming...') : t('ยืนยันสรุปเงินเดือน', 'Confirm payroll')}
-          </button>
-          {canUnlockCurrentPeriod ? (
-            <button
-              className="btn btn-secondary"
-              onClick={() => persistPayroll('unlock')}
-              disabled={saving}
-            >
-              {saving ? t('กำลังเปิดงวด...', 'Reopening...') : t('เปิดงวดกลับมาแก้', 'Reopen period')}
-            </button>
-          ) : null}
         </div>
-        {periodInfo?.lockedAt ? (
-          <div className="message message-success">
-            {t('งวดนี้ยืนยันสรุปเงินเดือนเมื่อ', 'Payroll confirmed at')}{' '}
-            {formatThaiDateTime24h(periodInfo.lockedAt)}
-          </div>
-        ) : null}
         {csvReady ? (
           <div className="message message-success">
             {t('ดาวน์โหลดรายการโอนเรียบร้อยแล้ว', 'Transfer list downloaded')}
@@ -432,10 +404,7 @@ export default function PayrollPage() {
                         <button
                           type="button"
                           className="btn btn-secondary"
-                          disabled={
-                            !periodInfo?.locked ||
-                            paymentSavingId === item.employeeId
-                          }
+                          disabled={paymentSavingId === item.employeeId}
                           onClick={() =>
                             updatePaymentStatus(item.employeeId, 'PAID')
                           }
@@ -445,10 +414,7 @@ export default function PayrollPage() {
                         <button
                           type="button"
                           className="btn btn-danger"
-                          disabled={
-                            !periodInfo?.locked ||
-                            paymentSavingId === item.employeeId
-                          }
+                          disabled={paymentSavingId === item.employeeId}
                           onClick={() =>
                             updatePaymentStatus(item.employeeId, 'FAILED')
                           }
@@ -458,10 +424,7 @@ export default function PayrollPage() {
                         <button
                           type="button"
                           className="btn btn-ghost"
-                          disabled={
-                            !periodInfo?.locked ||
-                            paymentSavingId === item.employeeId
-                          }
+                          disabled={paymentSavingId === item.employeeId}
                           onClick={() =>
                             updatePaymentStatus(item.employeeId, 'PENDING')
                           }
@@ -514,9 +477,7 @@ export default function PayrollPage() {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      disabled={
-                        !periodInfo?.locked || paymentSavingId === item.employeeId
-                      }
+                      disabled={paymentSavingId === item.employeeId}
                       onClick={() => updatePaymentStatus(item.employeeId, 'PAID')}
                     >
                       {t('โอนแล้ว', 'Paid')}
@@ -524,9 +485,7 @@ export default function PayrollPage() {
                     <button
                       type="button"
                       className="btn btn-danger"
-                      disabled={
-                        !periodInfo?.locked || paymentSavingId === item.employeeId
-                      }
+                      disabled={paymentSavingId === item.employeeId}
                       onClick={() => updatePaymentStatus(item.employeeId, 'FAILED')}
                     >
                       {t('โอนไม่สำเร็จ', 'Mark failed')}
@@ -534,9 +493,7 @@ export default function PayrollPage() {
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      disabled={
-                        !periodInfo?.locked || paymentSavingId === item.employeeId
-                      }
+                      disabled={paymentSavingId === item.employeeId}
                       onClick={() => updatePaymentStatus(item.employeeId, 'PENDING')}
                     >
                       {t('กลับไปรอโอน', 'Back to pending')}

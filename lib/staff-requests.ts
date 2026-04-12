@@ -540,27 +540,6 @@ async function approveOvertime(
 
   await assertPayrollPeriodOpenForDate(tenantId, overtime.workDate)
 
-  await prisma.attendance.upsert({
-    where: {
-      employeeId_workDate: {
-        employeeId: overtime.employeeId,
-        workDate: overtime.workDate,
-      },
-    },
-    update: {
-      workedMinutes: {
-        increment: overtime.overtimeMinutes,
-      },
-      status: "PRESENT",
-    },
-    create: {
-      employeeId: overtime.employeeId,
-      workDate: overtime.workDate,
-      workedMinutes: overtime.overtimeMinutes,
-      status: "PRESENT",
-    },
-  })
-
   const updated = await prisma.overtimeRequest.update({
     where: { id: overtime.id },
     data: {

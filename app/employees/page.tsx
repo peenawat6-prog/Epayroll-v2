@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatThaiDateTime24h } from '@/lib/display-time'
+import { formatThaiDate } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
 import { useLanguage } from '@/lib/language'
 import {
@@ -50,32 +50,6 @@ type CurrentUser = {
   role: string
 }
 
-type RegistrationRequest = {
-  id: string
-  code: string
-  branch: {
-    id: string
-    name: string
-  } | null
-  firstName: string
-  lastName: string
-  phone: string | null
-  position: string
-  email: string
-  employeeType: 'FULL_TIME' | 'PART_TIME'
-  payType: 'MONTHLY' | 'DAILY' | 'HOURLY'
-  workShift: 'MORNING' | 'AFTERNOON' | 'NIGHT'
-  dayOffWeekdays: string[]
-  bankName: string | null
-  accountName: string | null
-  accountNumber: string | null
-  promptPayId: string | null
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  reviewNote: string | null
-  reviewedAt: string | null
-  createdAt: string
-}
-
 type BranchOption = {
   id: string
   name: string
@@ -115,15 +89,13 @@ export default function EmployeesPage() {
   })
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [branches, setBranches] = useState<BranchOption[]>([])
-  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
+  const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState(createInitialForm)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [reviewNote, setReviewNote] = useState('')
-  const [reviewingId, setReviewingId] = useState<string | null>(null)
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const employeeFormPanelRef = useRef<HTMLElement | null>(null)
@@ -147,24 +119,42 @@ export default function EmployeesPage() {
     FRIDAY: t('ศุกร์', 'Friday'),
     SATURDAY: t('เสาร์', 'Saturday'),
   } as const
+  const expandedEmployee =
+    employees.find((employee) => employee.id === expandedEmployeeId) ?? null
+
+  const getDayOffLabels = useCallback(
+    (dayOffWeekdays: string[]) =>
+      dayOffWeekdays.length
+        ? dayOffWeekdays
+            .map(
+              (weekday) =>
+                dayOffLabelMap[weekday as keyof typeof dayOffLabelMap] ?? weekday,
+            )
+            .join(', ')
+        : '-',
+    [dayOffLabelMap],
+  )
+
+  const getPayRateLabel = useCallback(
+    (employee: EmployeeRow) => {
+      if (employee.payType === 'MONTHLY') {
+        return `${employee.baseSalary ?? 0} ${t('บาท/เดือน', 'THB/month')}`
+      }
+
+      if (employee.payType === 'DAILY') {
+        return `${employee.dailyRate ?? 0} ${t('บาท/วัน', 'THB/day')}`
+      }
+
+      return `${employee.hourlyRate ?? 0} ${t('บาท/ชั่วโมง', 'THB/hour')}`
+    },
+    [t],
+  )
 
   const fetchEmployees = () => {
     fetch('/api/employees?includeInactive=true')
       .then((res) => res.json())
       .then((data) => setEmployees(data))
   }
-
-  const fetchRegistrationRequests = useCallback(() => {
-    if (!canManage) {
-      setRegistrationRequests([])
-      return
-    }
-
-    fetch('/api/employee-registrations')
-      .then((res) => res.json())
-      .then((data) => setRegistrationRequests(data.items ?? []))
-      .catch(() => setRegistrationRequests([]))
-  }, [canManage])
 
   const fetchBranches = () => {
     fetch('/api/branches')
@@ -199,9 +189,13 @@ export default function EmployeesPage() {
   }, [router])
 
   useEffect(() => {
-    if (!user) return
-    fetchRegistrationRequests()
-  }, [fetchRegistrationRequests, user])
+    if (
+      expandedEmployeeId &&
+      !employees.some((employee) => employee.id === expandedEmployeeId)
+    ) {
+      setExpandedEmployeeId(null)
+    }
+  }, [employees, expandedEmployeeId])
 
   const resetForm = (options?: { clearMessage?: boolean }) => {
     setEditId(null)
@@ -228,6 +222,7 @@ export default function EmployeesPage() {
   }
 
   const handleEditClick = (emp: EmployeeRow) => {
+    setExpandedEmployeeId(emp.id)
     setIsFormOpen(true)
     setEditId(emp.id)
     setForm({
@@ -263,6 +258,16 @@ export default function EmployeesPage() {
         block: 'start',
       })
     })
+  }
+
+  const openEmployeeDetails = (employeeId: string) => {
+    setExpandedEmployeeId((currentId) =>
+      currentId === employeeId ? null : employeeId,
+    )
+  }
+
+  const openEmployeeTimeCorrection = (employeeId: string) => {
+    router.push(`/attendance/corrections?employeeId=${employeeId}`)
   }
 
   const toggleDayOff = (weekday: string) => {
@@ -361,62 +366,7 @@ export default function EmployeesPage() {
     }
 
     fetchEmployees()
-    fetchRegistrationRequests()
     resetForm({ clearMessage: false })
-  }
-
-  const handleReviewRegistration = async (
-    requestId: string,
-    decision: 'APPROVED' | 'REJECTED',
-  ) => {
-    setMessage('')
-    setError('')
-    setReviewingId(requestId)
-
-    try {
-      if (decision === 'REJECTED' && !reviewNote.trim()) {
-        throw new Error(t('กรุณากรอกหมายเหตุเมื่อไม่อนุมัติ', 'Please add a note when rejecting'))
-      }
-
-      const res = await fetch(`/api/employee-registrations/${requestId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          decision,
-          reviewNote: reviewNote || undefined,
-        }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || t('ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ', 'Failed to review registration request'))
-      }
-
-      setReviewNote('')
-      setMessage(
-        decision === 'APPROVED'
-          ? t(
-              'อนุมัติคำขอลงทะเบียนแล้ว พนักงานสามารถล็อกอินได้',
-              'Registration approved. Employee can now log in.',
-            )
-          : t(
-              'ไม่อนุมัติคำขอลงทะเบียนเรียบร้อยแล้ว',
-              'Registration request rejected.',
-            ),
-      )
-      fetchEmployees()
-      fetchRegistrationRequests()
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : t('ตรวจสอบคำขอลงทะเบียนไม่สำเร็จ', 'Failed to review registration request'),
-      )
-    } finally {
-      setReviewingId(null)
-    }
   }
 
   if (loading) return <div className="page">Loading...</div>
@@ -430,13 +380,6 @@ export default function EmployeesPage() {
               {t('พนักงานทั้งหมด', 'Total employees')} {employees.length}{' '}
               {t('รายการ', 'records')}
             </div>
-            {registrationRequests.filter((item) => item.status === 'PENDING').length ? (
-              <div className="badge">
-                {t('รออนุมัติ', 'Pending approval')}{' '}
-                {registrationRequests.filter((item) => item.status === 'PENDING').length}{' '}
-                {t('คำขอ', 'requests')}
-              </div>
-            ) : null}
           </div>
           <h1 className="hero-title">{t('จัดการพนักงาน', 'Manage employees')}</h1>
           <p className="hero-subtitle">
@@ -701,147 +644,6 @@ export default function EmployeesPage() {
         </section>
       )}
 
-      {canManage ? (
-        <section className="panel">
-          <h2 className="panel-title">{t('คำขอลงทะเบียนพนักงาน', 'Employee registration requests')}</h2>
-          <p className="panel-subtitle">
-            {t(
-              'อนุมัติแล้วระบบจะสร้างบัญชีพนักงานและเปิดให้ล็อกอินได้ทันที',
-              'Once approved, the employee account is created and login is enabled.',
-            )}
-          </p>
-
-          <div className="field" style={{ marginTop: 16, maxWidth: 420 }}>
-            <label>{t('หมายเหตุสำหรับการอนุมัติ/ไม่อนุมัติ', 'Approval / rejection note')}</label>
-            <input
-              value={reviewNote}
-              onChange={(event) => setReviewNote(event.target.value)}
-              placeholder={t(
-                'ถ้าไม่อนุมัติ ควรกรอกเหตุผลให้พนักงาน',
-                'If rejecting, explain the reason for the employee.',
-              )}
-            />
-          </div>
-
-          {registrationRequests.length === 0 ? (
-            <div className="empty-state">{t('ยังไม่มีคำขอลงทะเบียน', 'No registration requests')}</div>
-          ) : (
-            <div className="mobile-card-list" style={{ marginTop: 16 }}>
-              {registrationRequests.map((request) => (
-                <article key={request.id} className="record-card">
-                  <div className="record-card-head">
-                    <strong>
-                      {request.code} {request.firstName} {request.lastName}
-                    </strong>
-                    <span
-                      className={`status-pill ${
-                        request.status === 'APPROVED'
-                          ? 'success'
-                          : request.status === 'REJECTED'
-                            ? 'danger'
-                            : 'warning'
-                      }`}
-                    >
-                      {getRequestStatusLabel(request.status, language)}
-                    </span>
-                  </div>
-
-                  <div className="record-card-body">
-                    <div className="record-line">
-                      <span>{t('อีเมล', 'Email')}</span>
-                      <strong>{request.email}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('สาขา', 'Branch')}</span>
-                      <strong>{request.branch?.name ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('ตำแหน่ง', 'Position')}</span>
-                      <strong>{request.position}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('เบอร์โทร', 'Phone')}</span>
-                      <strong>{request.phone ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('ประเภท', 'Type')}</span>
-                      <strong>
-                        {getEmployeeTypeLabel(request.employeeType, language)} /{' '}
-                        {getPayTypeLabel(request.payType, language)}
-                      </strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('กะทำงาน', 'Shift')}</span>
-                      <strong>{workShiftLabels[request.workShift]}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('วันหยุดประจำ', 'Days off')}</span>
-                      <strong>
-                        {request.dayOffWeekdays.length
-                          ? request.dayOffWeekdays
-                              .map(
-                                (weekday) =>
-                                  dayOffLabelMap[
-                                    weekday as keyof typeof dayOffLabelMap
-                                  ] ?? weekday,
-                              )
-                              .join(', ')
-                          : '-'}
-                      </strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('ธนาคาร', 'Bank')}</span>
-                      <strong>{request.bankName ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('ชื่อบัญชี', 'Account name')}</span>
-                      <strong>{request.accountName ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('เลขบัญชี', 'Account number')}</span>
-                      <strong>{request.accountNumber ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('พร้อมเพย์', 'PromptPay')}</span>
-                      <strong>{request.promptPayId ?? '-'}</strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('ส่งคำขอเมื่อ', 'Submitted at')}</span>
-                      <strong>
-                        {formatThaiDateTime24h(request.createdAt)}
-                      </strong>
-                    </div>
-                    <div className="record-line">
-                      <span>{t('หมายเหตุ', 'Note')}</span>
-                      <strong>{request.reviewNote ?? '-'}</strong>
-                    </div>
-                  </div>
-
-                  {request.status === 'PENDING' ? (
-                    <div className="action-row" style={{ marginTop: 14 }}>
-                      <button
-                        className="btn btn-primary"
-                        disabled={reviewingId === request.id}
-                        onClick={() => handleReviewRegistration(request.id, 'APPROVED')}
-                      >
-                        {t('อนุมัติให้ใช้งาน', 'Approve')}
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        disabled={reviewingId === request.id}
-                        onClick={() => handleReviewRegistration(request.id, 'REJECTED')}
-                      >
-                        {t('ไม่อนุมัติ', 'Reject')}
-                      </button>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
-
       <section className="panel">
         <h2 className="panel-title">{t('รายชื่อพนักงาน', 'Employee list')}</h2>
         <div className="table-wrap desktop-only">
@@ -851,14 +653,6 @@ export default function EmployeesPage() {
                 <th>{t('รหัส', 'Code')}</th>
                 <th>{t('ชื่อ', 'Name')}</th>
                 <th>{t('ตำแหน่ง', 'Position')}</th>
-                <th>{t('สาขา', 'Branch')}</th>
-                <th>{t('รูปแบบจ่าย', 'Pay type')}</th>
-                <th>{t('กะทำงาน', 'Shift')}</th>
-                <th>{t('วันหยุดประจำ', 'Days off')}</th>
-                <th>{t('อัตราค่าจ้าง', 'Pay rate')}</th>
-                <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
-                <th>{t('สถานะ', 'Status')}</th>
-                <th>{t('สิทธิ์ระบบ', 'System role')}</th>
                 <th>{t('จัดการ', 'Actions')}</th>
               </tr>
             </thead>
@@ -868,63 +662,16 @@ export default function EmployeesPage() {
                   <td>{emp.code}</td>
                   <td>{emp.firstName} {emp.lastName}</td>
                   <td>{emp.position}</td>
-                  <td>{emp.branch?.name ?? '-'}</td>
-                  <td>{getPayTypeLabel(emp.payType, language)}</td>
-                  <td>{workShiftLabels[emp.workShift]}</td>
-                  <td>
-                    {emp.dayOffWeekdays.length
-                      ? emp.dayOffWeekdays
-                          .map(
-                            (weekday) =>
-                              dayOffLabelMap[
-                                weekday as keyof typeof dayOffLabelMap
-                              ] ?? weekday,
-                          )
-                          .join(', ')
-                      : '-'}
-                  </td>
-                  <td>
-                    {emp.payType === 'MONTHLY'
-                      ? `${emp.baseSalary ?? 0} ${t('บาท/เดือน', 'THB/month')}`
-                      : null}
-                    {emp.payType === 'DAILY'
-                      ? `${emp.dailyRate ?? 0} ${t('บาท/วัน', 'THB/day')}`
-                      : null}
-                    {emp.payType === 'HOURLY'
-                      ? `${emp.hourlyRate ?? 0} ${t('บาท/ชั่วโมง', 'THB/hour')}`
-                      : null}
-                  </td>
-                  <td>
-                    <div>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</div>
-                    <div className="table-meta">{emp.bank?.accountNumber ?? '-'}</div>
-                    <div className="table-meta">{t('พร้อมเพย์', 'PromptPay')}: {emp.bank?.promptPayId ?? '-'}</div>
-                  </td>
-                  <td>
-                    <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
-                      {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
-                    </span>
-                  </td>
-                  <td>
-                    {emp.user?.role
-                      ? getRoleLabel(emp.user.role, language)
-                      : t('ยังไม่มีบัญชี', 'No login account')}
-                  </td>
                   <td>
                     <div className="action-row">
-                      {canManage ? (
-                        <>
-                          <button className="btn btn-secondary" onClick={() => handleEditClick(emp)}>
-                            {t('แก้ไข', 'Edit')}
-                          </button>
-                          {emp.active ? (
-                            <button className="btn btn-danger" onClick={() => handleDelete(emp.id)}>
-                              {t('ระงับ', 'Disable')}
-                            </button>
-                          ) : null}
-                        </>
-                      ) : (
-                        <span className="badge">{t('ดูข้อมูลเท่านั้น', 'View only')}</span>
-                      )}
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => openEmployeeDetails(emp.id)}
+                      >
+                        {expandedEmployeeId === emp.id
+                          ? t('ซ่อนข้อมูล', 'Hide details')
+                          : t('ดูข้อมูลเพิ่มเติม', 'View details')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -937,69 +684,90 @@ export default function EmployeesPage() {
           {employees.map((emp) => (
             <article key={emp.id} className="record-card">
               <div className="record-card-head">
-                <strong>{emp.firstName} {emp.lastName}</strong>
+                <strong>{emp.code} {emp.firstName} {emp.lastName}</strong>
                 <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
                   {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
                 </span>
               </div>
               <div className="record-card-body">
-                <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{emp.code}</strong></div>
                 <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{emp.position}</strong></div>
-                <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{emp.branch?.name ?? '-'}</strong></div>
-                <div className="record-line">
-                  <span>{t('รูปแบบจ่าย', 'Pay type')}</span>
-                  <strong>{getPayTypeLabel(emp.payType, language)}</strong>
-                </div>
-                <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[emp.workShift]}</strong></div>
-                <div className="record-line">
-                  <span>{t('วันหยุดประจำ', 'Days off')}</span>
-                  <strong>
-                    {emp.dayOffWeekdays.length
-                      ? emp.dayOffWeekdays
-                          .map(
-                            (weekday) =>
-                              dayOffLabelMap[
-                                weekday as keyof typeof dayOffLabelMap
-                              ] ?? weekday,
-                          )
-                          .join(', ')
-                      : '-'}
-                  </strong>
-                </div>
-                <div className="record-line">
-                  <span>{t('บัญชีรับเงิน', 'Payment account')}</span>
-                  <strong>{emp.bank?.bankName ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong>
-                </div>
-                <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{emp.bank?.accountNumber ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
-                <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{emp.bank?.promptPayId ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
-                <div className="record-line">
-                  <span>{t('สิทธิ์ระบบ', 'System role')}</span>
-                  <strong>
-                    {emp.user?.role
-                      ? getRoleLabel(emp.user.role, language)
-                      : t('ยังไม่มีบัญชี', 'No login account')}
-                  </strong>
-                </div>
               </div>
               <div className="action-row" style={{ marginTop: 12 }}>
-                {canManage ? (
-                  <>
-                    <button className="btn btn-secondary" onClick={() => handleEditClick(emp)}>
-                      {t('แก้ข้อมูล', 'Edit')}
-                    </button>
-                    {emp.active ? (
-                      <button className="btn btn-danger" onClick={() => handleDelete(emp.id)}>
-                        {t('ระงับใช้งาน', 'Disable')}
-                      </button>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="badge">{t('ดูข้อมูลเท่านั้น', 'View only')}</span>
-                )}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => openEmployeeDetails(emp.id)}
+                >
+                  {expandedEmployeeId === emp.id
+                    ? t('ซ่อนข้อมูล', 'Hide details')
+                    : t('ดูข้อมูลเพิ่มเติม', 'View details')}
+                </button>
               </div>
             </article>
           ))}
         </div>
+
+        {expandedEmployee ? (
+          <section className="panel" style={{ marginTop: 18 }}>
+            <h3 className="panel-title">
+              {t('ข้อมูลพนักงาน', 'Employee details')} {expandedEmployee.code}{' '}
+              {expandedEmployee.firstName} {expandedEmployee.lastName}
+            </h3>
+            <div className="mobile-card-list" style={{ marginTop: 16 }}>
+              <article className="record-card">
+                <div className="record-card-body">
+                  <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{expandedEmployee.code}</strong></div>
+                  <div className="record-line"><span>{t('ชื่อ', 'Name')}</span><strong>{expandedEmployee.firstName} {expandedEmployee.lastName}</strong></div>
+                  <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{expandedEmployee.position}</strong></div>
+                  <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{expandedEmployee.branch?.name ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('เบอร์โทร', 'Phone')}</span><strong>{expandedEmployee.phone ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('ประเภทพนักงาน', 'Employee type')}</span><strong>{getEmployeeTypeLabel(expandedEmployee.employeeType, language)}</strong></div>
+                  <div className="record-line"><span>{t('รูปแบบจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(expandedEmployee.payType, language)}</strong></div>
+                  <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[expandedEmployee.workShift]}</strong></div>
+                  <div className="record-line"><span>{t('วันหยุดประจำ', 'Days off')}</span><strong>{getDayOffLabels(expandedEmployee.dayOffWeekdays)}</strong></div>
+                  <div className="record-line"><span>{t('อัตราค่าจ้าง', 'Pay rate')}</span><strong>{getPayRateLabel(expandedEmployee)}</strong></div>
+                  <div className="record-line"><span>{t('วันเริ่มงาน', 'Start date')}</span><strong>{formatThaiDate(expandedEmployee.startDate)}</strong></div>
+                  <div className="record-line"><span>{t('สถานะ', 'Status')}</span><strong>{expandedEmployee.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}</strong></div>
+                  <div className="record-line"><span>{t('สิทธิ์ระบบ', 'System role')}</span><strong>{expandedEmployee.user?.role ? getRoleLabel(expandedEmployee.user.role, language) : t('ยังไม่มีบัญชี', 'No login account')}</strong></div>
+                  <div className="record-line"><span>{t('อีเมลระบบ', 'Login email')}</span><strong>{expandedEmployee.user?.email ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{expandedEmployee.bank?.bankName ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('ชื่อบัญชี', 'Account name')}</span><strong>{expandedEmployee.bank?.accountName ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{expandedEmployee.bank?.accountNumber ?? '-'}</strong></div>
+                  <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{expandedEmployee.bank?.promptPayId ?? '-'}</strong></div>
+                </div>
+                <div className="action-row" style={{ marginTop: 14 }}>
+                  {canManage ? (
+                    <>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleEditClick(expandedEmployee)}
+                      >
+                        {t('แก้ไขข้อมูลพนักงาน', 'Edit employee')}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => openEmployeeTimeCorrection(expandedEmployee.id)}
+                      >
+                        {t('แก้ไขเวลางาน', 'Edit attendance')}
+                      </button>
+                      {expandedEmployee.active ? (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(expandedEmployee.id)}
+                        >
+                          {t('ระงับใช้งาน', 'Disable')}
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="badge">
+                      {t('สิทธิ์แก้ไขมีเฉพาะฝั่งผู้จัดการ', 'Only managers can edit')}
+                    </span>
+                  )}
+                </div>
+              </article>
+            </div>
+          </section>
+        ) : null}
       </section>
     </div>
   )

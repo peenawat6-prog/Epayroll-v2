@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
+import { autoCloseAttendanceIfDue } from "@/lib/attendance-auto-checkout"
 import {
-  ensureCheckoutAfterCheckin,
+  getRegularWorkedMinutes,
   getShiftEndByWorkShift,
   getShiftWorkDate,
 } from "@/lib/attendance"
@@ -105,6 +106,18 @@ export async function POST(req: Request) {
     }
 
     if (attendance.workDate.getTime() !== workDate.getTime()) {
+      const autoClosedAttendance = await autoCloseAttendanceIfDue({
+        tenantId: access.user.tenantId,
+        auditUserId: access.user.id,
+        attendance,
+        tenant,
+        now,
+      })
+
+      if (autoClosedAttendance) {
+        return jsonResponse(autoClosedAttendance)
+      }
+
       throw new AppError(
         "พบรายการลงเวลาเดิมที่ยังไม่ปิดงาน กรุณาตรวจสอบก่อน",
         409,
@@ -112,8 +125,12 @@ export async function POST(req: Request) {
       )
     }
 
-    const workedMinutes = ensureCheckoutAfterCheckin(attendance.checkIn, now)
     const shiftEnd = getShiftEndByWorkShift(now, tenant, employee.workShift)
+    const { paidCheckoutAt, workedMinutes } = getRegularWorkedMinutes({
+      checkIn: attendance.checkIn,
+      requestedCheckOut: now,
+      shiftEnd,
+    })
     const locationConfig = getEffectiveLocationConfig({
       tenant,
       branch: employee.branch,
@@ -180,6 +197,7 @@ export async function POST(req: Request) {
               workDate,
               workedMinutes,
               workShift: employee.workShift,
+              paidCheckoutAt,
               isEarlyCheckout: now.getTime() < shiftEnd.getTime(),
               latitude,
               longitude,

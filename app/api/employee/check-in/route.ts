@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { authorizeRequest } from "@/lib/access"
+import { autoCloseAttendanceIfDue } from "@/lib/attendance-auto-checkout"
 import {
   getShiftStartByWorkShift,
   getShiftWorkDate,
@@ -122,11 +123,21 @@ export async function POST(req: Request) {
         throw new AppError("ลงเวลาเข้าแล้ววันนี้", 409, "ALREADY_CHECKED_IN")
       }
 
-      throw new AppError(
-        "มีรายการลงเวลาเดิมที่ยังไม่ได้บันทึกออกงาน",
-        409,
-        "OPEN_ATTENDANCE_EXISTS",
-      )
+      const autoClosedAttendance = await autoCloseAttendanceIfDue({
+        tenantId: access.user.tenantId,
+        auditUserId: access.user.id,
+        attendance: openAttendance,
+        tenant,
+        now,
+      })
+
+      if (!autoClosedAttendance) {
+        throw new AppError(
+          "มีรายการลงเวลาเดิมที่ยังไม่ได้บันทึกออกงาน",
+          409,
+          "OPEN_ATTENDANCE_EXISTS",
+        )
+      }
     }
 
     const shiftStart = getShiftStartByWorkShift(now, tenant, employee.workShift)

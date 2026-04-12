@@ -7,6 +7,11 @@ import { useLanguage } from '@/lib/language'
 import { getRoleLabel, getSubscriptionStatusLabel } from '@/lib/ui-format'
 import type { UserRole } from '@prisma/client'
 
+type NavigatorWithBadge = Navigator & {
+  setAppBadge?: (contents?: number) => Promise<void>
+  clearAppBadge?: () => Promise<void>
+}
+
 type CurrentUser = {
   id: string
   email: string
@@ -96,6 +101,25 @@ export default function DashboardPage() {
       mounted = false
     }
   }, [router])
+
+  useEffect(() => {
+    if (!user || !summary || !canOpenStaffRequests(user.role)) {
+      document.title = 'Epayroll'
+      return
+    }
+
+    const pendingCount = summary.pendingTotalRequests
+    document.title = pendingCount > 0 ? `(${pendingCount}) Epayroll` : 'Epayroll'
+
+    const badgeNavigator = navigator as NavigatorWithBadge
+
+    if (pendingCount > 0) {
+      void badgeNavigator.setAppBadge?.(pendingCount)
+      return
+    }
+
+    void badgeNavigator.clearAppBadge?.()
+  }, [summary, user])
 
   if (loading) {
     return <div className="page">Loading...</div>

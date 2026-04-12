@@ -7,6 +7,7 @@ import { assertPayrollPeriodOpenForDate } from "@/lib/payroll"
 export async function getAttendanceCorrectionList(
   tenantId: string,
   filters?: {
+    employeeId?: string
     status?: AttendanceCorrectionStatus
     search?: string
   },
@@ -14,6 +15,13 @@ export async function getAttendanceCorrectionList(
   return prisma.attendanceCorrection.findMany({
     where: {
       tenantId,
+      ...(filters?.employeeId
+        ? {
+            attendance: {
+              employeeId: filters.employeeId,
+            },
+          }
+        : {}),
       ...(filters?.status ? { status: filters.status } : {}),
       ...(filters?.search
         ? {
