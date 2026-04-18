@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/display-time'
 import LogoutButton from '@/app/components/logout-button'
@@ -119,8 +119,6 @@ export default function EmployeesPage() {
     FRIDAY: t('ศุกร์', 'Friday'),
     SATURDAY: t('เสาร์', 'Saturday'),
   } as const
-  const expandedEmployee =
-    employees.find((employee) => employee.id === expandedEmployeeId) ?? null
 
   const getDayOffLabels = useCallback(
     (dayOffWeekdays: string[]) =>
@@ -269,6 +267,61 @@ export default function EmployeesPage() {
   const openEmployeeTimeCorrection = (employeeId: string) => {
     router.push(`/attendance/corrections?employeeId=${employeeId}`)
   }
+
+  const renderEmployeeDetailCard = (employee: EmployeeRow) => (
+    <article className="record-card">
+      <div className="record-card-body">
+        <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{employee.code}</strong></div>
+        <div className="record-line"><span>{t('ชื่อ', 'Name')}</span><strong>{employee.firstName} {employee.lastName}</strong></div>
+        <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{employee.position}</strong></div>
+        <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{employee.branch?.name ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('เบอร์โทร', 'Phone')}</span><strong>{employee.phone ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('ประเภทพนักงาน', 'Employee type')}</span><strong>{getEmployeeTypeLabel(employee.employeeType, language)}</strong></div>
+        <div className="record-line"><span>{t('รูปแบบจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(employee.payType, language)}</strong></div>
+        <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[employee.workShift]}</strong></div>
+        <div className="record-line"><span>{t('วันหยุดประจำ', 'Days off')}</span><strong>{getDayOffLabels(employee.dayOffWeekdays)}</strong></div>
+        <div className="record-line"><span>{t('อัตราค่าจ้าง', 'Pay rate')}</span><strong>{getPayRateLabel(employee)}</strong></div>
+        <div className="record-line"><span>{t('วันเริ่มงาน', 'Start date')}</span><strong>{formatThaiDate(employee.startDate)}</strong></div>
+        <div className="record-line"><span>{t('สถานะ', 'Status')}</span><strong>{employee.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}</strong></div>
+        <div className="record-line"><span>{t('สิทธิ์ระบบ', 'System role')}</span><strong>{employee.user?.role ? getRoleLabel(employee.user.role, language) : t('ยังไม่มีบัญชี', 'No login account')}</strong></div>
+        <div className="record-line"><span>{t('อีเมลระบบ', 'Login email')}</span><strong>{employee.user?.email ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{employee.bank?.bankName ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('ชื่อบัญชี', 'Account name')}</span><strong>{employee.bank?.accountName ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{employee.bank?.accountNumber ?? '-'}</strong></div>
+        <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{employee.bank?.promptPayId ?? '-'}</strong></div>
+      </div>
+      <div className="action-row" style={{ marginTop: 14 }}>
+        {canManage ? (
+          <>
+            <button
+              className="btn btn-primary"
+              onClick={() => handleEditClick(employee)}
+            >
+              {t('แก้ไขข้อมูลพนักงาน', 'Edit employee')}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => openEmployeeTimeCorrection(employee.id)}
+            >
+              {t('แก้ไขเวลางาน', 'Edit attendance')}
+            </button>
+            {employee.active ? (
+              <button
+                className="btn btn-danger"
+                onClick={() => handleDelete(employee.id)}
+              >
+                {t('ระงับใช้งาน', 'Disable')}
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <span className="badge">
+            {t('สิทธิ์แก้ไขมีเฉพาะฝั่งผู้จัดการ', 'Only managers can edit')}
+          </span>
+        )}
+      </div>
+    </article>
+  )
 
   const toggleDayOff = (weekday: string) => {
     setForm((current) => ({
@@ -658,23 +711,34 @@ export default function EmployeesPage() {
             </thead>
             <tbody>
               {employees.map((emp) => (
-                <tr key={emp.id}>
-                  <td>{emp.code}</td>
-                  <td>{emp.firstName} {emp.lastName}</td>
-                  <td>{emp.position}</td>
-                  <td>
-                    <div className="action-row">
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => openEmployeeDetails(emp.id)}
-                      >
-                        {expandedEmployeeId === emp.id
-                          ? t('ซ่อนข้อมูล', 'Hide details')
-                          : t('ดูข้อมูลเพิ่มเติม', 'View details')}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <Fragment key={emp.id}>
+                  <tr key={emp.id}>
+                    <td>{emp.code}</td>
+                    <td>{emp.firstName} {emp.lastName}</td>
+                    <td>{emp.position}</td>
+                    <td>
+                      <div className="action-row">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => openEmployeeDetails(emp.id)}
+                        >
+                          {expandedEmployeeId === emp.id
+                            ? t('ซ่อนข้อมูล', 'Hide details')
+                            : t('ดูข้อมูลเพิ่มเติม', 'View details')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedEmployeeId === emp.id ? (
+                    <tr>
+                      <td colSpan={4} style={{ paddingTop: 0 }}>
+                        <div style={{ paddingTop: 12 }}>
+                          {renderEmployeeDetailCard(emp)}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -682,92 +746,36 @@ export default function EmployeesPage() {
 
         <div className="mobile-card-list mobile-only">
           {employees.map((emp) => (
-            <article key={emp.id} className="record-card">
-              <div className="record-card-head">
-                <strong>{emp.code} {emp.firstName} {emp.lastName}</strong>
-                <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
-                  {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
-                </span>
-              </div>
-              <div className="record-card-body">
-                <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{emp.position}</strong></div>
-              </div>
-              <div className="action-row" style={{ marginTop: 12 }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => openEmployeeDetails(emp.id)}
-                >
-                  {expandedEmployeeId === emp.id
-                    ? t('ซ่อนข้อมูล', 'Hide details')
-                    : t('ดูข้อมูลเพิ่มเติม', 'View details')}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {expandedEmployee ? (
-          <section className="panel" style={{ marginTop: 18 }}>
-            <h3 className="panel-title">
-              {t('ข้อมูลพนักงาน', 'Employee details')} {expandedEmployee.code}{' '}
-              {expandedEmployee.firstName} {expandedEmployee.lastName}
-            </h3>
-            <div className="mobile-card-list" style={{ marginTop: 16 }}>
+            <div key={emp.id}>
               <article className="record-card">
-                <div className="record-card-body">
-                  <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{expandedEmployee.code}</strong></div>
-                  <div className="record-line"><span>{t('ชื่อ', 'Name')}</span><strong>{expandedEmployee.firstName} {expandedEmployee.lastName}</strong></div>
-                  <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{expandedEmployee.position}</strong></div>
-                  <div className="record-line"><span>{t('สาขา', 'Branch')}</span><strong>{expandedEmployee.branch?.name ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('เบอร์โทร', 'Phone')}</span><strong>{expandedEmployee.phone ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('ประเภทพนักงาน', 'Employee type')}</span><strong>{getEmployeeTypeLabel(expandedEmployee.employeeType, language)}</strong></div>
-                  <div className="record-line"><span>{t('รูปแบบจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(expandedEmployee.payType, language)}</strong></div>
-                  <div className="record-line"><span>{t('กะทำงาน', 'Shift')}</span><strong>{workShiftLabels[expandedEmployee.workShift]}</strong></div>
-                  <div className="record-line"><span>{t('วันหยุดประจำ', 'Days off')}</span><strong>{getDayOffLabels(expandedEmployee.dayOffWeekdays)}</strong></div>
-                  <div className="record-line"><span>{t('อัตราค่าจ้าง', 'Pay rate')}</span><strong>{getPayRateLabel(expandedEmployee)}</strong></div>
-                  <div className="record-line"><span>{t('วันเริ่มงาน', 'Start date')}</span><strong>{formatThaiDate(expandedEmployee.startDate)}</strong></div>
-                  <div className="record-line"><span>{t('สถานะ', 'Status')}</span><strong>{expandedEmployee.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}</strong></div>
-                  <div className="record-line"><span>{t('สิทธิ์ระบบ', 'System role')}</span><strong>{expandedEmployee.user?.role ? getRoleLabel(expandedEmployee.user.role, language) : t('ยังไม่มีบัญชี', 'No login account')}</strong></div>
-                  <div className="record-line"><span>{t('อีเมลระบบ', 'Login email')}</span><strong>{expandedEmployee.user?.email ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('ธนาคาร', 'Bank')}</span><strong>{expandedEmployee.bank?.bankName ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('ชื่อบัญชี', 'Account name')}</span><strong>{expandedEmployee.bank?.accountName ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{expandedEmployee.bank?.accountNumber ?? '-'}</strong></div>
-                  <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{expandedEmployee.bank?.promptPayId ?? '-'}</strong></div>
+                <div className="record-card-head">
+                  <strong>{emp.code} {emp.firstName} {emp.lastName}</strong>
+                  <span className={`status-pill ${emp.active ? 'success' : 'danger'}`}>
+                    {emp.active ? t('ใช้งานอยู่', 'Active') : t('ระงับใช้งาน', 'Disabled')}
+                  </span>
                 </div>
-                <div className="action-row" style={{ marginTop: 14 }}>
-                  {canManage ? (
-                    <>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => handleEditClick(expandedEmployee)}
-                      >
-                        {t('แก้ไขข้อมูลพนักงาน', 'Edit employee')}
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => openEmployeeTimeCorrection(expandedEmployee.id)}
-                      >
-                        {t('แก้ไขเวลางาน', 'Edit attendance')}
-                      </button>
-                      {expandedEmployee.active ? (
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(expandedEmployee.id)}
-                        >
-                          {t('ระงับใช้งาน', 'Disable')}
-                        </button>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="badge">
-                      {t('สิทธิ์แก้ไขมีเฉพาะฝั่งผู้จัดการ', 'Only managers can edit')}
-                    </span>
-                  )}
+                <div className="record-card-body">
+                  <div className="record-line"><span>{t('ตำแหน่ง', 'Position')}</span><strong>{emp.position}</strong></div>
+                </div>
+                <div className="action-row" style={{ marginTop: 12 }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => openEmployeeDetails(emp.id)}
+                  >
+                    {expandedEmployeeId === emp.id
+                      ? t('ซ่อนข้อมูล', 'Hide details')
+                      : t('ดูข้อมูลเพิ่มเติม', 'View details')}
+                  </button>
                 </div>
               </article>
+              {expandedEmployeeId === emp.id ? (
+                <div style={{ marginTop: 12 }}>
+                  {renderEmployeeDetailCard(emp)}
+                </div>
+              ) : null}
             </div>
-          </section>
-        ) : null}
+          ))}
+        </div>
       </section>
     </div>
   )
