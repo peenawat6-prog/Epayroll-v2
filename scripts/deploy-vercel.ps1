@@ -8,7 +8,9 @@ $required = @(
   "VERCEL_PROJECT_ID"
 )
 
-$missing = $required | Where-Object { -not $env:$_ }
+$missing = $required | Where-Object {
+  -not [System.Environment]::GetEnvironmentVariable($_)
+}
 
 if ($missing.Count -gt 0) {
   Write-Error ("Missing required environment variables: " + ($missing -join ", "))
