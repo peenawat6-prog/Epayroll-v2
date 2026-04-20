@@ -298,8 +298,23 @@ model User {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
   employee Employee?
+  passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
+}
+
+model PasswordResetToken {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt, usedAt])
 }
 
 model Branch {

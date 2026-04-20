@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import PasswordInput from "@/app/components/password-input"
@@ -111,6 +112,11 @@ export default function LoginPage() {
             onChange={setPassword}
             autoComplete="current-password"
           />
+          <div style={{ marginTop: 8 }}>
+            <Link href="/forgot-password" className="table-meta">
+              {t("ลืมรหัสผ่าน", "Forgot password")}
+            </Link>
+          </div>
         </div>
 
         {error ? <div className="message message-error">{error}</div> : null}

@@ -134,7 +134,7 @@ export default function AuditPage() {
           </div>
           <h1 className="hero-title">Audit Log</h1>
           <p className="hero-subtitle">
-            ใช้ตรวจย้อนหลัง action สำคัญ เช่น attendance, employee และ payroll
+            ใช้ตรวจย้อนหลัง action สำคัญ เช่น attendance, employee, payroll และ password reset
           </p>
         </div>
         <div className="action-row">
@@ -178,7 +178,7 @@ export default function AuditPage() {
             <input
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              placeholder="payroll.locked"
+              placeholder="auth.password_reset_requested"
             />
           </div>
           <div className="field">

@@ -179,6 +179,44 @@ function calculateMonthlyLatePenaltyAmount(params: {
   }, 0)
 }
 
+function getDateKey(date: Date) {
+  return date.toISOString()
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + days)
+  return nextDate
+}
+
+function getApprovedLeaveDateKeys(params: {
+  leaves: Array<{
+    startDate: Date
+    endDate: Date
+  }>
+  rangeStart: Date
+  rangeEndExclusive: Date
+}) {
+  const keys = new Set<string>()
+
+  for (const leave of params.leaves) {
+    let cursor =
+      leave.startDate.getTime() < params.rangeStart.getTime()
+        ? params.rangeStart
+        : leave.startDate
+
+    while (
+      cursor.getTime() <= leave.endDate.getTime() &&
+      cursor.getTime() < params.rangeEndExclusive.getTime()
+    ) {
+      keys.add(getDateKey(cursor))
+      cursor = addDays(cursor, 1)
+    }
+  }
+
+  return keys
+}
+
 function readMetadataString(
   metadata: unknown,
   key: string,
@@ -293,6 +331,21 @@ export async function calculatePayrollPreview(
             overtimeMinutes: true,
           },
         },
+        leaves: {
+          where: {
+            status: "APPROVED",
+            endDate: {
+              gte: start,
+            },
+            startDate: {
+              lt: endExclusive,
+            },
+          },
+          select: {
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
       orderBy: {
         code: "asc",
@@ -356,6 +409,14 @@ export async function calculatePayrollPreview(
       const leaveRecords = filteredAttendances.filter(
         (attendance) => attendance.status === "LEAVE",
       )
+      const approvedLeaveDateKeys = getApprovedLeaveDateKeys({
+        leaves: employee.leaves,
+        rangeStart: start,
+        rangeEndExclusive: endExclusive,
+      })
+      for (const leaveRecord of leaveRecords) {
+        approvedLeaveDateKeys.add(getDateKey(leaveRecord.workDate))
+      }
       const totalWorkedMinutes = presentRecords.reduce(
         (sum, attendance) => sum + attendance.workedMinutes,
         0,
@@ -384,7 +445,7 @@ export async function calculatePayrollPreview(
 
       if (employee.payType === "MONTHLY") {
         basePay = employee.baseSalary ?? 0
-        deduction = (absentRecords.length + leaveRecords.length) * dailyRate
+        deduction = (absentRecords.length + approvedLeaveDateKeys.size) * dailyRate
         latePenaltyAmount = calculateMonthlyLatePenaltyAmount({
           attendances: presentRecords,
           dailyRate,

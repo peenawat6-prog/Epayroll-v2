@@ -47,3 +47,12 @@ next-env.d.ts
 /storage/
 /start.out.log
 /start.err.log
+
+# capacitor / native mobile
+android/.gradle/
+android/local.properties
+android/app/build/
+ios/App/build/
+ios/App/DerivedData/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
