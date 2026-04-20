@@ -19,6 +19,8 @@ export type PayrollItem = {
   latePenaltyAmount: number
   basePay: number
   overtimePay: number
+  specialBonus: number
+  advanceDeduction: number
   deduction: number
   netPay: number
   bankName: string | null
@@ -44,6 +46,11 @@ export type PayrollResult = {
 
 type PaidCoverage = {
   coveredThroughWorkDate: Date
+}
+
+type PayrollAdjustment = {
+  specialBonus: number
+  advanceDeduction: number
 }
 
 function pad(value: number) {
@@ -284,6 +291,14 @@ async function getLatestPaidCoverageMap(params: {
   return coverageMap
 }
 
+function sanitizePayrollAdjustment(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0
+  }
+
+  return roundCurrency(Math.max(0, value))
+}
+
 export async function calculatePayrollPreview(
   tenantId: string,
   month: number,
@@ -362,6 +377,8 @@ export async function calculatePayrollPreview(
       select: {
         employeeId: true,
         paymentStatus: true,
+        specialBonus: true,
+        advanceDeduction: true,
       },
     }),
     getLatestPaidCoverageMap({
@@ -373,6 +390,15 @@ export async function calculatePayrollPreview(
 
   const paymentStatusMap = new Map(
     existingPayrolls.map((record) => [record.employeeId, record.paymentStatus]),
+  )
+  const payrollAdjustmentMap = new Map<string, PayrollAdjustment>(
+    existingPayrolls.map((record) => [
+      record.employeeId,
+      {
+        specialBonus: sanitizePayrollAdjustment(record.specialBonus),
+        advanceDeduction: sanitizePayrollAdjustment(record.advanceDeduction),
+      },
+    ]),
   )
 
   return {
@@ -438,6 +464,10 @@ export async function calculatePayrollPreview(
 
       const dailyRate = deriveDailyRate(employee.baseSalary, employee.dailyRate)
       const hourlyRate = deriveHourlyRate(employee.baseSalary, employee.hourlyRate)
+      const adjustment = payrollAdjustmentMap.get(employee.id) ?? {
+        specialBonus: 0,
+        advanceDeduction: 0,
+      }
 
       let basePay = 0
       let deduction = 0
@@ -464,7 +494,14 @@ export async function calculatePayrollPreview(
       deduction += latePenaltyAmount
 
       const overtimePay = (approvedOvertimeMinutes / 60) * hourlyRate * 1.5
-      const netPay = Math.max(0, basePay + overtimePay - deduction)
+      const netPay = Math.max(
+        0,
+        basePay +
+          overtimePay +
+          adjustment.specialBonus -
+          deduction -
+          adjustment.advanceDeduction,
+      )
       const hasOutstandingWork =
         filteredAttendances.length > 0 || filteredOvertimeRequests.length > 0
       const paymentStatus =
@@ -488,6 +525,8 @@ export async function calculatePayrollPreview(
         latePenaltyAmount: roundCurrency(latePenaltyAmount),
         basePay: roundCurrency(basePay),
         overtimePay: roundCurrency(overtimePay),
+        specialBonus: adjustment.specialBonus,
+        advanceDeduction: adjustment.advanceDeduction,
         deduction: roundCurrency(deduction),
         netPay: roundCurrency(netPay),
         bankName: employee.bank?.bankName ?? null,
@@ -513,9 +552,28 @@ export async function getStoredPayrollItems(
         tenantId,
       },
     },
-    include: {
+    select: {
+      employeeId: true,
+      payTypeSnapshot: true,
+      presentDays: true,
+      absentDays: true,
+      workedHours: true,
+      lateMinutes: true,
+      latePenaltyAmount: true,
+      basePay: true,
+      overtimePay: true,
+      specialBonus: true,
+      advanceDeduction: true,
+      deduction: true,
+      netPay: true,
+      paymentStatus: true,
       employee: {
-        include: {
+        select: {
+          code: true,
+          firstName: true,
+          lastName: true,
+          hourlyRate: true,
+          baseSalary: true,
           bank: true,
         },
       },
@@ -544,6 +602,8 @@ export async function getStoredPayrollItems(
     latePenaltyAmount: roundCurrency(record.latePenaltyAmount),
     basePay: roundCurrency(record.basePay),
     overtimePay: roundCurrency(record.overtimePay),
+    specialBonus: roundCurrency(record.specialBonus),
+    advanceDeduction: roundCurrency(record.advanceDeduction),
     deduction: roundCurrency(record.deduction),
     netPay: roundCurrency(record.netPay),
     bankName: record.employee.bank?.bankName ?? null,
@@ -648,6 +708,8 @@ export async function savePayrollPeriod(params: {
           latePenaltyAmount: item.latePenaltyAmount,
           basePay: item.basePay,
           overtimePay: item.overtimePay,
+          specialBonus: item.specialBonus,
+          advanceDeduction: item.advanceDeduction,
           deduction: item.deduction,
           netPay: item.netPay,
         },
@@ -663,6 +725,8 @@ export async function savePayrollPeriod(params: {
           latePenaltyAmount: item.latePenaltyAmount,
           basePay: item.basePay,
           overtimePay: item.overtimePay,
+          specialBonus: item.specialBonus,
+          advanceDeduction: item.advanceDeduction,
           deduction: item.deduction,
           netPay: item.netPay,
         },
@@ -868,6 +932,8 @@ export async function updatePayrollPaymentStatus(params: {
         latePenaltyAmount: previewItem.latePenaltyAmount,
         basePay: previewItem.basePay,
         overtimePay: previewItem.overtimePay,
+        specialBonus: previewItem.specialBonus,
+        advanceDeduction: previewItem.advanceDeduction,
         deduction: previewItem.deduction,
         netPay: previewItem.netPay,
         paymentStatus: params.paymentStatus,
@@ -884,6 +950,8 @@ export async function updatePayrollPaymentStatus(params: {
         latePenaltyAmount: previewItem.latePenaltyAmount,
         basePay: previewItem.basePay,
         overtimePay: previewItem.overtimePay,
+        specialBonus: previewItem.specialBonus,
+        advanceDeduction: previewItem.advanceDeduction,
         deduction: previewItem.deduction,
         netPay: previewItem.netPay,
         paymentStatus: params.paymentStatus,
@@ -927,4 +995,130 @@ export async function assertPayrollPeriodOpenForDate(
 ) {
   void tenantId
   void workDate
+}
+
+export async function updatePayrollAdjustments(params: {
+  tenantId: string
+  userId: string
+  employeeId: string
+  month: number
+  year: number
+  specialBonus: number
+  advanceDeduction: number
+}) {
+  const preview = await calculatePayrollPreview(
+    params.tenantId,
+    params.month,
+    params.year,
+  )
+  const previewItem = preview.items.find(
+    (item) => item.employeeId === params.employeeId,
+  )
+
+  if (!previewItem) {
+    throw new AppError("ไม่พบข้อมูลเงินเดือนของพนักงานนี้", 404, "NOT_FOUND")
+  }
+
+  const specialBonus = sanitizePayrollAdjustment(params.specialBonus)
+  const advanceDeduction = sanitizePayrollAdjustment(params.advanceDeduction)
+  const netPay = Math.max(
+    0,
+    previewItem.basePay +
+      previewItem.overtimePay +
+      specialBonus -
+      previewItem.deduction -
+      advanceDeduction,
+  )
+
+  const existingPayroll = await prisma.payroll.findFirst({
+    where: {
+      employeeId: params.employeeId,
+      month: params.month,
+      year: params.year,
+      employee: {
+        tenantId: params.tenantId,
+      },
+    },
+    select: {
+      id: true,
+      specialBonus: true,
+      advanceDeduction: true,
+      paymentStatus: true,
+    },
+  })
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const payroll = await tx.payroll.upsert({
+      where: {
+        employeeId_month_year: {
+          employeeId: params.employeeId,
+          month: params.month,
+          year: params.year,
+        },
+      },
+      update: {
+        payTypeSnapshot: previewItem.payType,
+        presentDays: previewItem.presentDays,
+        absentDays: previewItem.absentDays,
+        workedHours: previewItem.workedHours,
+        lateMinutes: previewItem.lateMinutes,
+        latePenaltyAmount: previewItem.latePenaltyAmount,
+        basePay: previewItem.basePay,
+        overtimePay: previewItem.overtimePay,
+        specialBonus,
+        advanceDeduction,
+        deduction: previewItem.deduction,
+        netPay,
+      },
+      create: {
+        employeeId: params.employeeId,
+        month: params.month,
+        year: params.year,
+        payTypeSnapshot: previewItem.payType,
+        presentDays: previewItem.presentDays,
+        absentDays: previewItem.absentDays,
+        workedHours: previewItem.workedHours,
+        lateMinutes: previewItem.lateMinutes,
+        latePenaltyAmount: previewItem.latePenaltyAmount,
+        basePay: previewItem.basePay,
+        overtimePay: previewItem.overtimePay,
+        specialBonus,
+        advanceDeduction,
+        deduction: previewItem.deduction,
+        netPay,
+        paymentStatus: existingPayroll?.paymentStatus ?? "PENDING",
+      },
+      select: {
+        id: true,
+        employeeId: true,
+        specialBonus: true,
+        advanceDeduction: true,
+        netPay: true,
+      },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: params.tenantId,
+        userId: params.userId,
+        action: "payroll.adjustments_updated",
+        entityType: "Payroll",
+        entityId: payroll.id,
+        metadata: {
+          employeeId: payroll.employeeId,
+          month: params.month,
+          year: params.year,
+          fromSpecialBonus: existingPayroll?.specialBonus ?? 0,
+          toSpecialBonus: payroll.specialBonus,
+          fromAdvanceDeduction: existingPayroll?.advanceDeduction ?? 0,
+          toAdvanceDeduction: payroll.advanceDeduction,
+          netPay: payroll.netPay,
+        },
+      },
+    })
+
+    return payroll
+  })
+
+  return updated
 }

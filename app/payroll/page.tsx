@@ -25,6 +25,8 @@ type PayrollSummaryItem = {
   latePenaltyAmount: number
   basePay: number
   overtimePay: number
+  specialBonus: number
+  advanceDeduction: number
   deduction: number
   netPay: number
   bankName: string | null
@@ -56,6 +58,10 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [paymentSavingId, setPaymentSavingId] = useState('')
+  const [adjustmentSavingId, setAdjustmentSavingId] = useState('')
+  const [adjustments, setAdjustments] = useState<
+    Record<string, { specialBonus: string; advanceDeduction: string }>
+  >({})
   const [statusMessage, setStatusMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [csvReady, setCsvReady] = useState(false)
@@ -78,6 +84,17 @@ export default function PayrollPage() {
       .then((data: PayrollResponse) => {
         setPeriodInfo(data)
         setSummary(data.items ?? [])
+        setAdjustments(
+          Object.fromEntries(
+            (data.items ?? []).map((item) => [
+              item.employeeId,
+              {
+                specialBonus: item.specialBonus.toString(),
+                advanceDeduction: item.advanceDeduction.toString(),
+              },
+            ]),
+          ),
+        )
         setLoading(false)
       })
       .catch((error: Error) => {
@@ -144,7 +161,7 @@ export default function PayrollPage() {
 
   const updatePaymentStatus = async (
     employeeId: string,
-    paymentStatus: 'PAID' | 'FAILED' | 'PENDING',
+    paymentStatus: 'PAID' | 'FAILED',
   ) => {
     setPaymentSavingId(employeeId)
     setStatusMessage('')
@@ -173,9 +190,7 @@ export default function PayrollPage() {
       setStatusMessage(
         paymentStatus === 'PAID'
           ? t('อัปเดตสถานะเป็นโอนแล้วเรียบร้อย', 'Marked as paid')
-          : paymentStatus === 'FAILED'
-            ? t('บันทึกสถานะโอนไม่สำเร็จเรียบร้อย', 'Marked as failed')
-            : t('เปลี่ยนสถานะกลับเป็นรอโอนเรียบร้อย', 'Moved back to pending'),
+          : t('บันทึกสถานะโอนไม่สำเร็จเรียบร้อย', 'Marked as failed'),
       )
     } catch (error) {
       setErrorMessage(
@@ -185,6 +200,70 @@ export default function PayrollPage() {
       )
     } finally {
       setPaymentSavingId('')
+    }
+  }
+
+  const handleAdjustmentChange = (
+    employeeId: string,
+    field: 'specialBonus' | 'advanceDeduction',
+    value: string,
+  ) => {
+    setAdjustments((current) => ({
+      ...current,
+      [employeeId]: {
+        specialBonus: current[employeeId]?.specialBonus ?? '0',
+        advanceDeduction: current[employeeId]?.advanceDeduction ?? '0',
+        [field]: value,
+      },
+    }))
+  }
+
+  const saveAdjustments = async (employeeId: string) => {
+    setAdjustmentSavingId(employeeId)
+    setStatusMessage('')
+    setErrorMessage('')
+
+    try {
+      const adjustment = adjustments[employeeId] ?? {
+        specialBonus: '0',
+        advanceDeduction: '0',
+      }
+      const res = await fetch('/api/payroll/adjustments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          employeeId,
+          month: Number(month),
+          year: Number(year),
+          specialBonus: adjustment.specialBonus || 0,
+          advanceDeduction: adjustment.advanceDeduction || 0,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(
+          data.error || t('บันทึกค่าปรับยอดไม่สำเร็จ', 'Failed to save payroll adjustments'),
+        )
+      }
+
+      await loadPayroll()
+      setStatusMessage(
+        t(
+          'บันทึกเงินเพิ่มพิเศษและหักเบิกล่วงหน้าเรียบร้อยแล้ว',
+          'Payroll adjustments saved.',
+        ),
+      )
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : t('บันทึกค่าปรับยอดไม่สำเร็จ', 'Failed to save payroll adjustments'),
+      )
+    } finally {
+      setAdjustmentSavingId('')
     }
   }
 
@@ -203,6 +282,8 @@ export default function PayrollPage() {
       'latePenaltyAmount',
       'basePay',
       'overtimePay',
+      'specialBonus',
+      'advanceDeduction',
       'deduction',
       'netPay',
       'bankName',
@@ -222,6 +303,8 @@ export default function PayrollPage() {
       item.latePenaltyAmount.toFixed(2),
       item.basePay.toFixed(2),
       item.overtimePay.toFixed(2),
+      item.specialBonus.toFixed(2),
+      item.advanceDeduction.toFixed(2),
       item.deduction.toFixed(2),
       item.netPay.toFixed(2),
       item.bankName ?? '',
@@ -349,6 +432,7 @@ export default function PayrollPage() {
                   <th>{t('ขาดงาน', 'Absent')}</th>
                   <th>{t('เข้าสาย (นาที)', 'Late (min)')}</th>
                   <th>{t('หักสาย', 'Late deduction')}</th>
+                  <th>{t('ปรับยอด', 'Adjustments')}</th>
                   <th>{t('ค่าจ้าง', 'Pay')}</th>
                   <th>{t('ข้อมูลรับเงิน', 'Payment info')}</th>
                   <th>{t('สถานะโอน', 'Payment status')}</th>
@@ -379,7 +463,56 @@ export default function PayrollPage() {
                       </div>
                     </td>
                     <td>
+                      <div className="field" style={{ minWidth: 160 }}>
+                        <label>{t('เงินเพิ่มพิเศษ', 'Special bonus')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={adjustments[item.employeeId]?.specialBonus ?? '0'}
+                          onChange={(event) =>
+                            handleAdjustmentChange(
+                              item.employeeId,
+                              'specialBonus',
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="field" style={{ minWidth: 160, marginTop: 8 }}>
+                        <label>{t('หักเบิกล่วงหน้า', 'Advance deduction')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={adjustments[item.employeeId]?.advanceDeduction ?? '0'}
+                          onChange={(event) =>
+                            handleAdjustmentChange(
+                              item.employeeId,
+                              'advanceDeduction',
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ marginTop: 10 }}
+                        disabled={adjustmentSavingId === item.employeeId}
+                        onClick={() => saveAdjustments(item.employeeId)}
+                      >
+                        {adjustmentSavingId === item.employeeId
+                          ? t('กำลังบันทึก...', 'Saving...')
+                          : t('บันทึกยอดเพิ่ม/หัก', 'Save adjustments')}
+                      </button>
+                    </td>
+                    <td>
                       <div>{t('ฐาน', 'Base')} {item.basePay.toFixed(2)}</div>
+                      <div className="table-meta">
+                        {t('เพิ่มพิเศษ', 'Special bonus')} {item.specialBonus.toFixed(2)}
+                      </div>
+                      <div className="table-meta">
+                        {t('หักเบิกล่วงหน้า', 'Advance deduction')} {item.advanceDeduction.toFixed(2)}
+                      </div>
                       <div className="table-meta">{t('หัก', 'Deduct')} {item.deduction.toFixed(2)}</div>
                       <div className="table-meta"><strong>{t('สุทธิ', 'Net')} {item.netPay.toFixed(2)}</strong></div>
                     </td>
@@ -411,26 +544,16 @@ export default function PayrollPage() {
                         >
                           {t('โอนแล้ว', 'Paid')}
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger"
-                          disabled={paymentSavingId === item.employeeId}
-                          onClick={() =>
-                            updatePaymentStatus(item.employeeId, 'FAILED')
-                          }
-                        >
-                          {t('โอนไม่สำเร็จ', 'Mark failed')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          disabled={paymentSavingId === item.employeeId}
-                          onClick={() =>
-                            updatePaymentStatus(item.employeeId, 'PENDING')
-                          }
-                        >
-                          {t('กลับไปรอโอน', 'Back to pending')}
-                        </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      disabled={paymentSavingId === item.employeeId}
+                      onClick={() =>
+                        updatePaymentStatus(item.employeeId, 'FAILED')
+                      }
+                    >
+                      {t('โอนไม่สำเร็จ', 'Mark failed')}
+                    </button>
                       </div>
                     </td>
                   </tr>
@@ -466,6 +589,8 @@ export default function PayrollPage() {
                     <div className="record-line"><span>{t('มาทำงาน', 'Worked')}</span><strong>{item.presentDays} {t('วัน', 'days')}</strong></div>
                     <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
                     <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
+                    <div className="record-line"><span>{t('เงินเพิ่มพิเศษ', 'Special bonus')}</span><strong>{item.specialBonus.toFixed(2)} {t('บาท', 'THB')}</strong></div>
+                    <div className="record-line"><span>{t('หักเบิกล่วงหน้า', 'Advance deduction')}</span><strong>{item.advanceDeduction.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('หักเงิน', 'Deduction')}</span><strong>{item.deduction.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('หักจากการมาสาย', 'Late deduction')}</span><strong>{item.latePenaltyAmount.toFixed(2)} {t('บาท', 'THB')}</strong></div>
                     <div className="record-line"><span>{t('ยอดสุทธิ', 'Net pay')}</span><strong>{item.netPay.toFixed(2)} {t('บาท', 'THB')}</strong></div>
@@ -473,7 +598,47 @@ export default function PayrollPage() {
                     <div className="record-line"><span>{t('เลขบัญชี', 'Account number')}</span><strong>{item.accountNumber ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
                     <div className="record-line"><span>{t('พร้อมเพย์', 'PromptPay')}</span><strong>{item.promptPayId ?? t('ยังไม่ได้กรอก', 'Not provided')}</strong></div>
                   </div>
+                  <div className="field" style={{ marginTop: 14 }}>
+                    <label>{t('เงินเพิ่มพิเศษ', 'Special bonus')}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adjustments[item.employeeId]?.specialBonus ?? '0'}
+                      onChange={(event) =>
+                        handleAdjustmentChange(
+                          item.employeeId,
+                          'specialBonus',
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="field" style={{ marginTop: 10 }}>
+                    <label>{t('หักเบิกล่วงหน้า', 'Advance deduction')}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={adjustments[item.employeeId]?.advanceDeduction ?? '0'}
+                      onChange={(event) =>
+                        handleAdjustmentChange(
+                          item.employeeId,
+                          'advanceDeduction',
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </div>
                   <div className="action-row" style={{ marginTop: 14 }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={adjustmentSavingId === item.employeeId}
+                      onClick={() => saveAdjustments(item.employeeId)}
+                    >
+                      {adjustmentSavingId === item.employeeId
+                        ? t('กำลังบันทึก...', 'Saving...')
+                        : t('บันทึกยอดเพิ่ม/หัก', 'Save adjustments')}
+                    </button>
                     <button
                       type="button"
                       className="btn btn-secondary"
@@ -489,14 +654,6 @@ export default function PayrollPage() {
                       onClick={() => updatePaymentStatus(item.employeeId, 'FAILED')}
                     >
                       {t('โอนไม่สำเร็จ', 'Mark failed')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={paymentSavingId === item.employeeId}
-                      onClick={() => updatePaymentStatus(item.employeeId, 'PENDING')}
-                    >
-                      {t('กลับไปรอโอน', 'Back to pending')}
                     </button>
                   </div>
                 </article>
