@@ -5,6 +5,7 @@ import { AppError, jsonResponse, readJsonBody } from "@/lib/http"
 import { ROLE_GROUPS } from "@/lib/role"
 import { withAuthorizedRoute } from "@/lib/route-guard"
 import { getShiftWorkDate } from "@/lib/attendance"
+import { getPayrollPeriodLabelForDate, getPayrollResult } from "@/lib/payroll"
 import { asOptionalTrimmedString, asTrimmedString } from "@/lib/validators"
 
 type EmployeeBankUpdateBody = {
@@ -35,6 +36,7 @@ export const GET = withAuthorizedRoute(
         select: {
           workStartMinutes: true,
           workEndMinutes: true,
+          payrollPayday: true,
           morningShiftStartMinutes: true,
           morningShiftEndMinutes: true,
           afternoonShiftStartMinutes: true,
@@ -97,6 +99,39 @@ export const GET = withAuthorizedRoute(
       },
     })
 
+    const payrollPeriodLabel = getPayrollPeriodLabelForDate(
+      new Date(),
+      tenant.payrollPayday,
+    )
+    const payrollResult = await getPayrollResult(
+      access.user.tenantId,
+      payrollPeriodLabel.month,
+      payrollPeriodLabel.year,
+    )
+    const payrollItem =
+      payrollResult.items.find((item) => item.employeeId === employee.id) ?? null
+    const approvedOvertimeRequests = await prisma.overtimeRequest.findMany({
+      where: {
+        tenantId: access.user.tenantId,
+        employeeId: employee.id,
+        status: "APPROVED",
+        workDate: {
+          gte: payrollResult.periodStart,
+          lte: payrollResult.periodEnd,
+        },
+      },
+      select: {
+        id: true,
+        workDate: true,
+        overtimeMinutes: true,
+        reason: true,
+        reviewedAt: true,
+      },
+      orderBy: {
+        workDate: "desc",
+      },
+    })
+
     const systemCheckedOutIds = await getSystemCheckedOutAttendanceIds({
       tenantId: access.user.tenantId,
       attendanceIds: todayAttendance ? [todayAttendance.id] : [],
@@ -111,6 +146,23 @@ export const GET = withAuthorizedRoute(
             checkedOutBySystem: systemCheckedOutIds.has(todayAttendance.id),
           }
         : null,
+      payrollSummary: payrollItem
+        ? {
+            month: payrollResult.month,
+            year: payrollResult.year,
+            periodStart: payrollResult.periodStart,
+            periodEnd: payrollResult.periodEnd,
+            payType: payrollItem.payType,
+            basePay: payrollItem.basePay,
+            overtimePay: payrollItem.overtimePay,
+            specialBonus: payrollItem.specialBonus,
+            advanceDeduction: payrollItem.advanceDeduction,
+            deduction: payrollItem.deduction,
+            netPay: payrollItem.netPay,
+            paymentStatus: payrollItem.paymentStatus,
+          }
+        : null,
+      approvedOvertimeRequests,
       subscription: access.subscription,
     })
   },

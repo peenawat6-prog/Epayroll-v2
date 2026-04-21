@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
-import { formatThaiTime24h } from "@/lib/display-time"
+import { formatThaiDate, formatThaiTime24h } from "@/lib/display-time"
 import { useLanguage } from "@/lib/language"
-import { getAttendanceStatusLabel, getWorkShiftLabel, maskAccountValue } from "@/lib/ui-format"
+import { getAttendanceStatusLabel, getPaymentStatusLabel, getPayTypeLabel, getWorkShiftLabel, maskAccountValue } from "@/lib/ui-format"
 
 type EmployeeProfile = {
   id: string
@@ -36,6 +36,29 @@ type TodayAttendance = {
   lateMinutes: number
   status: string
   workShift: "MORNING" | "AFTERNOON" | "NIGHT"
+}
+
+type PayrollSummary = {
+  month: number
+  year: number
+  periodStart: string
+  periodEnd: string
+  payType: "MONTHLY" | "DAILY" | "HOURLY"
+  basePay: number
+  overtimePay: number
+  specialBonus: number
+  advanceDeduction: number
+  deduction: number
+  netPay: number
+  paymentStatus: string
+}
+
+type ApprovedOvertimeRequest = {
+  id: string
+  workDate: string
+  overtimeMinutes: number
+  reason: string | null
+  reviewedAt: string | null
 }
 
 const MAX_CAPTURE_WIDTH = 720
@@ -83,6 +106,10 @@ export default function EmployeePage() {
   const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(
     null,
   )
+  const [payrollSummary, setPayrollSummary] = useState<PayrollSummary | null>(null)
+  const [approvedOvertimeRequests, setApprovedOvertimeRequests] = useState<
+    ApprovedOvertimeRequest[]
+  >([])
   const [photoDataUrl, setPhotoDataUrl] = useState("")
   const [photoName, setPhotoName] = useState("")
   const [locationLabel, setLocationLabel] = useState("")
@@ -139,6 +166,8 @@ export default function EmployeePage() {
 
     setEmployee(data.employee)
     setTodayAttendance(data.todayAttendance)
+    setPayrollSummary(data.payrollSummary ?? null)
+    setApprovedOvertimeRequests(data.approvedOvertimeRequests ?? [])
     setBankForm({
       bankName: data.employee?.bank?.bankName ?? "",
       accountName: data.employee?.bank?.accountName ?? "",
@@ -478,6 +507,18 @@ export default function EmployeePage() {
 
       <section className="grid stats">
         <article className="stat-card">
+          <p className="stat-label">{t("รหัสพนักงาน", "Employee code")}</p>
+          <p className="stat-value">{employee?.code ?? "-"}</p>
+        </article>
+        <article className="stat-card">
+          <p className="stat-label">{t("ชื่อพนักงาน", "Employee name")}</p>
+          <p className="stat-value">
+            {employee
+              ? `${employee.firstName} ${employee.lastName}`
+              : "-"}
+          </p>
+        </article>
+        <article className="stat-card">
           <p className="stat-label">{t("ตำแหน่ง", "Position")}</p>
           <p className="stat-value">{employee?.position ?? "-"}</p>
         </article>
@@ -515,6 +556,94 @@ export default function EmployeePage() {
               {t("ออกงานโดยระบบ", "Checked out by system")}
             </div>
           ) : null}
+        </article>
+      </section>
+
+      <section className="grid stats">
+        <article className="panel">
+          <h2 className="panel-title">{t("รายการเงินเดือน", "Payroll summary")}</h2>
+          {payrollSummary ? (
+            <div className="record-card-body" style={{ marginTop: 14 }}>
+              <div className="record-line">
+                <span>{t("รอบเงินเดือน", "Payroll period")}</span>
+                <strong>
+                  {formatThaiDate(payrollSummary.periodStart)} -{' '}
+                  {formatThaiDate(payrollSummary.periodEnd)}
+                </strong>
+              </div>
+              <div className="record-line">
+                <span>{t("รูปแบบจ่าย", "Pay type")}</span>
+                <strong>{getPayTypeLabel(payrollSummary.payType, language)}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("ค่าจ้างฐาน", "Base pay")}</span>
+                <strong>{payrollSummary.basePay.toFixed(2)} {t("บาท", "THB")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("เงินเพิ่มพิเศษ", "Special bonus")}</span>
+                <strong>{payrollSummary.specialBonus.toFixed(2)} {t("บาท", "THB")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("หักเงิน", "Deduction")}</span>
+                <strong>{payrollSummary.deduction.toFixed(2)} {t("บาท", "THB")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("หักเบิกล่วงหน้า", "Advance deduction")}</span>
+                <strong>{payrollSummary.advanceDeduction.toFixed(2)} {t("บาท", "THB")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("ยอดสุทธิ", "Net pay")}</span>
+                <strong>{payrollSummary.netPay.toFixed(2)} {t("บาท", "THB")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("สถานะโอน", "Payment status")}</span>
+                <strong>{getPaymentStatusLabel(payrollSummary.paymentStatus, language)}</strong>
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">
+              {t("ยังไม่มีข้อมูลเงินเดือนในรอบนี้", "No payroll summary for this period yet.")}
+            </div>
+          )}
+        </article>
+
+        <article className="panel">
+          <h2 className="panel-title">{t("รายการ OT ที่อนุมัติแล้ว", "Approved OT")}</h2>
+          {payrollSummary ? (
+            <div className="badge-row" style={{ marginTop: 12 }}>
+              <div className="badge">
+                {t("ยอด OT", "OT pay")}: {payrollSummary.overtimePay.toFixed(2)} {t("บาท", "THB")}
+              </div>
+            </div>
+          ) : null}
+          {approvedOvertimeRequests.length === 0 ? (
+            <div className="empty-state">
+              {t("ยังไม่มี OT ที่อนุมัติในรอบนี้", "No approved OT in this period.")}
+            </div>
+          ) : (
+            <div className="mobile-card-list" style={{ marginTop: 14 }}>
+              {approvedOvertimeRequests.map((request) => (
+                <article key={request.id} className="record-card">
+                  <div className="record-card-head">
+                    <strong>{formatThaiDate(request.workDate)}</strong>
+                    <span className="status-pill success">
+                      {(request.overtimeMinutes / 60).toFixed(2)} {t("ชม.", "hrs")}
+                    </span>
+                  </div>
+                  <div className="record-card-body">
+                    <div className="record-line">
+                      <span>{t("เหตุผล", "Reason")}</span>
+                      <strong>{request.reason || "-"}</strong>
+                    </div>
+                    <div className="record-line">
+                      <span>{t("อนุมัติเมื่อ", "Approved at")}</span>
+                      <strong>{formatThaiDate(request.reviewedAt)}</strong>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </article>
       </section>
 

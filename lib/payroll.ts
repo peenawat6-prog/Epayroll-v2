@@ -451,14 +451,8 @@ export async function calculatePayrollPreview(
         (sum, attendance) => sum + attendance.lateMinutes,
         0,
       )
-      const presentWorkDateKeys = new Set(
-        presentRecords.map((attendance) => attendance.workDate.toISOString()),
-      )
       const approvedOvertimeMinutes = filteredOvertimeRequests.reduce(
-        (sum, request) =>
-          presentWorkDateKeys.has(request.workDate.toISOString())
-            ? sum + request.overtimeMinutes
-            : sum,
+        (sum, request) => sum + request.overtimeMinutes,
         0,
       )
 
