@@ -44,6 +44,11 @@ type PayrollSummary = {
   periodStart: string
   periodEnd: string
   payType: "MONTHLY" | "DAILY" | "HOURLY"
+  presentDays: number
+  absentDays: number
+  leaveDays: number
+  workedHours: number
+  overtimeHours: number
   basePay: number
   overtimePay: number
   specialBonus: number
@@ -59,6 +64,31 @@ type ApprovedOvertimeRequest = {
   overtimeMinutes: number
   reason: string | null
   reviewedAt: string | null
+}
+
+type ApprovedRequests = {
+  leaves: Array<{
+    id: string
+    startDate: string
+    endDate: string
+    reason: string | null
+    reviewedAt: string | null
+  }>
+  earlyCheckouts: Array<{
+    id: string
+    workDate: string
+    reason: string | null
+    reviewedAt: string | null
+  }>
+  corrections: Array<{
+    id: string
+    requestedCheckIn: string | null
+    requestedCheckOut: string | null
+    requestedStatus: string | null
+    requestedWorkDate: string | null
+    reason: string
+    reviewedAt: string | null
+  }>
 }
 
 const MAX_CAPTURE_WIDTH = 720
@@ -110,6 +140,11 @@ export default function EmployeePage() {
   const [approvedOvertimeRequests, setApprovedOvertimeRequests] = useState<
     ApprovedOvertimeRequest[]
   >([])
+  const [approvedRequests, setApprovedRequests] = useState<ApprovedRequests>({
+    leaves: [],
+    earlyCheckouts: [],
+    corrections: [],
+  })
   const [photoDataUrl, setPhotoDataUrl] = useState("")
   const [photoName, setPhotoName] = useState("")
   const [locationLabel, setLocationLabel] = useState("")
@@ -168,6 +203,13 @@ export default function EmployeePage() {
     setTodayAttendance(data.todayAttendance)
     setPayrollSummary(data.payrollSummary ?? null)
     setApprovedOvertimeRequests(data.approvedOvertimeRequests ?? [])
+    setApprovedRequests(
+      data.approvedRequests ?? {
+        leaves: [],
+        earlyCheckouts: [],
+        corrections: [],
+      },
+    )
     setBankForm({
       bankName: data.employee?.bank?.bankName ?? "",
       accountName: data.employee?.bank?.accountName ?? "",
@@ -580,6 +622,18 @@ export default function EmployeePage() {
                 <strong>{payrollSummary.basePay.toFixed(2)} {t("บาท", "THB")}</strong>
               </div>
               <div className="record-line">
+                <span>{t("วันทำงาน", "Worked days")}</span>
+                <strong>{payrollSummary.presentDays} {t("วัน", "days")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("วันลาอนุมัติ", "Approved leave")}</span>
+                <strong>{payrollSummary.leaveDays} {t("วัน", "days")}</strong>
+              </div>
+              <div className="record-line">
+                <span>{t("ชั่วโมงทำงาน", "Worked hours")}</span>
+                <strong>{payrollSummary.workedHours.toFixed(2)} {t("ชม.", "hrs")}</strong>
+              </div>
+              <div className="record-line">
                 <span>{t("เงินเพิ่มพิเศษ", "Special bonus")}</span>
                 <strong>{payrollSummary.specialBonus.toFixed(2)} {t("บาท", "THB")}</strong>
               </div>
@@ -614,6 +668,9 @@ export default function EmployeePage() {
               <div className="badge">
                 {t("ยอด OT", "OT pay")}: {payrollSummary.overtimePay.toFixed(2)} {t("บาท", "THB")}
               </div>
+              <div className="badge">
+                {t("ชั่วโมง OT", "OT hours")}: {payrollSummary.overtimeHours.toFixed(2)} {t("ชม.", "hrs")}
+              </div>
             </div>
           ) : null}
           {approvedOvertimeRequests.length === 0 ? (
@@ -645,6 +702,82 @@ export default function EmployeePage() {
             </div>
           )}
         </article>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">{t("คำขอที่อนุมัติแล้วในรอบเงินเดือน", "Approved requests in this payroll period")}</h2>
+        {approvedRequests.leaves.length === 0 &&
+        approvedRequests.earlyCheckouts.length === 0 &&
+        approvedRequests.corrections.length === 0 ? (
+          <div className="empty-state">
+            {t("ยังไม่มีคำขอที่อนุมัติในรอบนี้", "No approved requests in this period.")}
+          </div>
+        ) : (
+          <div className="mobile-card-list" style={{ marginTop: 14 }}>
+            {approvedRequests.leaves.map((request) => (
+              <article key={`leave-${request.id}`} className="record-card">
+                <div className="record-card-head">
+                  <strong>{t("ลางาน", "Leave")}</strong>
+                  <span className="status-pill success">{t("อนุมัติแล้ว", "Approved")}</span>
+                </div>
+                <div className="record-card-body">
+                  <div className="record-line">
+                    <span>{t("วันที่", "Date")}</span>
+                    <strong>{formatThaiDate(request.startDate)} - {formatThaiDate(request.endDate)}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t("เหตุผล", "Reason")}</span>
+                    <strong>{request.reason || "-"}</strong>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {approvedRequests.earlyCheckouts.map((request) => (
+              <article key={`early-${request.id}`} className="record-card">
+                <div className="record-card-head">
+                  <strong>{t("ขอกลับก่อนเวลา", "Early checkout")}</strong>
+                  <span className="status-pill success">{t("อนุมัติแล้ว", "Approved")}</span>
+                </div>
+                <div className="record-card-body">
+                  <div className="record-line">
+                    <span>{t("วันที่", "Date")}</span>
+                    <strong>{formatThaiDate(request.workDate)}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t("เหตุผล", "Reason")}</span>
+                    <strong>{request.reason || "-"}</strong>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {approvedRequests.corrections.map((request) => (
+              <article key={`correction-${request.id}`} className="record-card">
+                <div className="record-card-head">
+                  <strong>{t("แก้ไขเวลา", "Time correction")}</strong>
+                  <span className="status-pill success">{t("อนุมัติแล้ว", "Approved")}</span>
+                </div>
+                <div className="record-card-body">
+                  <div className="record-line">
+                    <span>{t("วันที่", "Date")}</span>
+                    <strong>{formatThaiDate(request.requestedWorkDate)}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t("เวลาเข้าใหม่", "New check-in")}</span>
+                    <strong>{request.requestedCheckIn ? formatThaiTime24h(request.requestedCheckIn) : "-"}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t("เวลาออกใหม่", "New check-out")}</span>
+                    <strong>{request.requestedCheckOut ? formatThaiTime24h(request.requestedCheckOut) : "-"}</strong>
+                  </div>
+                  <div className="record-line">
+                    <span>{t("เหตุผล", "Reason")}</span>
+                    <strong>{request.reason || "-"}</strong>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">

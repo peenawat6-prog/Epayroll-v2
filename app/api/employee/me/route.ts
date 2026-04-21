@@ -131,6 +131,77 @@ export const GET = withAuthorizedRoute(
         workDate: "desc",
       },
     })
+    const [approvedLeaves, approvedEarlyCheckoutRequests, approvedCorrections] =
+      await Promise.all([
+        prisma.leave.findMany({
+          where: {
+            tenantId: access.user.tenantId,
+            employeeId: employee.id,
+            status: "APPROVED",
+            endDate: {
+              gte: payrollResult.periodStart,
+            },
+            startDate: {
+              lte: payrollResult.periodEnd,
+            },
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+            reviewedAt: true,
+          },
+          orderBy: {
+            startDate: "desc",
+          },
+        }),
+        prisma.earlyCheckoutRequest.findMany({
+          where: {
+            tenantId: access.user.tenantId,
+            employeeId: employee.id,
+            status: "APPROVED",
+            workDate: {
+              gte: payrollResult.periodStart,
+              lte: payrollResult.periodEnd,
+            },
+          },
+          select: {
+            id: true,
+            workDate: true,
+            reason: true,
+            reviewedAt: true,
+          },
+          orderBy: {
+            workDate: "desc",
+          },
+        }),
+        prisma.attendanceCorrection.findMany({
+          where: {
+            tenantId: access.user.tenantId,
+            status: "APPROVED",
+            attendance: {
+              employeeId: employee.id,
+            },
+            reviewedAt: {
+              gte: payrollResult.periodStart,
+              lte: payrollResult.periodEnd,
+            },
+          },
+          select: {
+            id: true,
+            requestedCheckIn: true,
+            requestedCheckOut: true,
+            requestedStatus: true,
+            requestedWorkDate: true,
+            reason: true,
+            reviewedAt: true,
+          },
+          orderBy: {
+            reviewedAt: "desc",
+          },
+        }),
+      ])
 
     const systemCheckedOutIds = await getSystemCheckedOutAttendanceIds({
       tenantId: access.user.tenantId,
@@ -153,6 +224,11 @@ export const GET = withAuthorizedRoute(
             periodStart: payrollResult.periodStart,
             periodEnd: payrollResult.periodEnd,
             payType: payrollItem.payType,
+            presentDays: payrollItem.presentDays,
+            absentDays: payrollItem.absentDays,
+            leaveDays: payrollItem.leaveDays,
+            workedHours: payrollItem.workedHours,
+            overtimeHours: payrollItem.overtimeHours,
             basePay: payrollItem.basePay,
             overtimePay: payrollItem.overtimePay,
             specialBonus: payrollItem.specialBonus,
@@ -163,6 +239,11 @@ export const GET = withAuthorizedRoute(
           }
         : null,
       approvedOvertimeRequests,
+      approvedRequests: {
+        leaves: approvedLeaves,
+        earlyCheckouts: approvedEarlyCheckoutRequests,
+        corrections: approvedCorrections,
+      },
       subscription: access.subscription,
     })
   },

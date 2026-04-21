@@ -18,6 +18,7 @@ type PayrollSummaryItem = {
   payType: PayType
   presentDays: number
   absentDays: number
+  leaveDays: number
   workedHours: number
   overtimeHours: number
   lateMinutes: number
@@ -276,6 +277,7 @@ export default function PayrollPage() {
       'payType',
       'presentDays',
       'absentDays',
+      'leaveDays',
       'workedHours',
       'overtimeHours',
       'lateMinutes',
@@ -297,6 +299,7 @@ export default function PayrollPage() {
       item.payType,
       item.presentDays.toString(),
       item.absentDays.toString(),
+      item.leaveDays.toString(),
       item.workedHours.toFixed(2),
       item.overtimeHours.toFixed(2),
       item.lateMinutes.toString(),
@@ -430,6 +433,7 @@ export default function PayrollPage() {
                   <th>{t('วัน/ชั่วโมงทำงาน', 'Days / hours')}</th>
                   <th>{t('ล่วงเวลา', 'OT')}</th>
                   <th>{t('ขาดงาน', 'Absent')}</th>
+                  <th>{t('ลางาน', 'Leave')}</th>
                   <th>{t('เข้าสาย (นาที)', 'Late (min)')}</th>
                   <th>{t('หักสาย', 'Late deduction')}</th>
                   <th>{t('ปรับยอด', 'Adjustments')}</th>
@@ -453,6 +457,7 @@ export default function PayrollPage() {
                       <div className="table-meta">{item.overtimePay.toFixed(2)} {t('บาท', 'THB')}</div>
                     </td>
                     <td>{item.absentDays}</td>
+                    <td>{item.leaveDays}</td>
                     <td>{item.lateMinutes}</td>
                     <td>
                       <div>{item.latePenaltyAmount.toFixed(2)} {t('บาท', 'THB')}</div>
@@ -587,6 +592,7 @@ export default function PayrollPage() {
                     <div className="record-line"><span>{t('รหัส', 'Code')}</span><strong>{item.employeeCode}</strong></div>
                     <div className="record-line"><span>{t('ประเภทจ่าย', 'Pay type')}</span><strong>{getPayTypeLabel(item.payType, language)}</strong></div>
                     <div className="record-line"><span>{t('มาทำงาน', 'Worked')}</span><strong>{item.presentDays} {t('วัน', 'days')}</strong></div>
+                    <div className="record-line"><span>{t('ลางาน', 'Leave')}</span><strong>{item.leaveDays} {t('วัน', 'days')}</strong></div>
                     <div className="record-line"><span>{t('ชั่วโมงรวม', 'Total hours')}</span><strong>{item.workedHours.toFixed(2)}</strong></div>
                     <div className="record-line"><span>{t('ล่วงเวลา', 'OT')}</span><strong>{item.overtimeHours.toFixed(2)} {t('ชม.', 'hrs')}</strong></div>
                     <div className="record-line"><span>{t('เงินเพิ่มพิเศษ', 'Special bonus')}</span><strong>{item.specialBonus.toFixed(2)} {t('บาท', 'THB')}</strong></div>

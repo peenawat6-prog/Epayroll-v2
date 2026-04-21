@@ -12,6 +12,7 @@ export type PayrollItem = {
   payType: PayType
   presentDays: number
   absentDays: number
+  leaveDays: number
   workedHours: number
   overtimeHours: number
   lateMinutes: number
@@ -512,6 +513,7 @@ export async function calculatePayrollPreview(
         payType: employee.payType,
         presentDays: presentRecords.length,
         absentDays: absentRecords.length,
+        leaveDays: approvedLeaveDateKeys.size,
         workedHours: roundCurrency(totalWorkedMinutes / 60),
         overtimeHours: roundCurrency(approvedOvertimeMinutes / 60),
         lateMinutes: totalLateMinutes,
@@ -586,6 +588,7 @@ export async function getStoredPayrollItems(
     payType: record.payTypeSnapshot,
     presentDays: record.presentDays,
     absentDays: record.absentDays,
+    leaveDays: 0,
     workedHours: roundCurrency(record.workedHours),
     overtimeHours: roundCurrency(Math.max(0, record.overtimePay) / Math.max(1, (record.employee.hourlyRate ?? (record.employee.baseSalary ? roundCurrency(record.employee.baseSalary / (30 * 8)) : 1)) * 1.5)),
     lateMinutes: record.lateMinutes,

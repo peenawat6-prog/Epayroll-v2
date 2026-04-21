@@ -96,6 +96,37 @@ function getDetailText(item: StaffRequestItem, t: (th: string, en: string) => st
   return `${t('ทำงานวันสุดท้าย', 'Last work date')} ${formatDate(item.lastWorkDate)}`
 }
 
+function getRequestEndDate(item: StaffRequestItem) {
+  if (item.kind === 'LEAVE') {
+    return item.endDate
+  }
+
+  if (item.kind === 'OVERTIME' || item.kind === 'EARLY_CHECKOUT') {
+    return item.workDate
+  }
+
+  return item.lastWorkDate
+}
+
+function getBusinessTodayStart() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+function isActiveRequest(item: StaffRequestItem) {
+  if (item.status !== 'PENDING') {
+    return false
+  }
+
+  const endDate = getRequestEndDate(item)
+
+  if (!endDate) {
+    return true
+  }
+
+  return new Date(endDate).getTime() >= getBusinessTodayStart().getTime()
+}
+
 export default function StaffRequestsPage() {
   const router = useRouter()
   const { t, language } = useLanguage()
@@ -147,6 +178,7 @@ export default function StaffRequestsPage() {
     APPROVED: getRequestStatusLabel('APPROVED', language),
     REJECTED: getRequestStatusLabel('REJECTED', language),
   } as const
+  const activeRequests = requests.filter(isActiveRequest)
 
   const loadRequests = async () => {
     const res = await fetch('/api/staff-requests')
@@ -399,10 +431,10 @@ export default function StaffRequestsPage() {
             {user?.role ? (
               <div className="badge">{getRoleLabel(user.role, language)}</div>
             ) : null}
-            {requests.filter((item) => item.status === 'PENDING').length ? (
+            {activeRequests.length ? (
               <div className="badge">
                 {t('รอตรวจ', 'Pending')}{' '}
-                {requests.filter((item) => item.status === 'PENDING').length}{' '}
+                {activeRequests.length}{' '}
                 {t('คำขอ', 'requests')}
               </div>
             ) : null}
@@ -857,12 +889,18 @@ export default function StaffRequestsPage() {
       ) : null}
 
       <section className="panel">
-        <h2 className="panel-title">{t('รายการคำขอล่าสุด', 'Latest requests')}</h2>
-        {requests.length === 0 ? (
-          <div className="empty-state">{t('ยังไม่มีคำขอพนักงาน', 'No requests yet')}</div>
+        <h2 className="panel-title">{t('คำขอที่ต้องจัดการ', 'Active requests')}</h2>
+        <p className="panel-subtitle">
+          {t(
+            'แสดงเฉพาะคำขอที่ยังรอตรวจและยังไม่เลยวันที่เกี่ยวข้อง คำขอที่สำเร็จแล้วหรือเลยวันจะอยู่ในรายงานคำขอทั้งหมด',
+            'Only pending requests that are still relevant are shown here. Completed or past requests are available in the full request report.',
+          )}
+        </p>
+        {activeRequests.length === 0 ? (
+          <div className="empty-state">{t('ไม่มีคำขอที่ต้องจัดการตอนนี้', 'No active requests right now')}</div>
         ) : (
           <div style={{ marginTop: 16 }}>
-            {requests.map((item) => (
+            {activeRequests.map((item) => (
               <article key={`${item.kind}-${item.id}`} className="record-card">
                 <div className="record-card-head">
                   <div>
@@ -944,6 +982,15 @@ export default function StaffRequestsPage() {
             ))}
           </div>
         )}
+        <div className="action-row" style={{ marginTop: 16 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => router.push('/requests/report')}
+          >
+            {t('รายงานคำขอทั้งหมด', 'All request report')}
+          </button>
+        </div>
       </section>
     </div>
   )
