@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import LogoutButton from "@/app/components/logout-button"
 import { formatThaiDate, formatThaiTime24h } from "@/lib/display-time"
 import { useLanguage } from "@/lib/language"
-import { getAttendanceStatusLabel, getPaymentStatusLabel, getPayTypeLabel, getWorkShiftLabel, maskAccountValue } from "@/lib/ui-format"
+import { getAttendanceStatusLabel, getPaymentStatusLabel, getPayTypeLabel, getWorkShiftLabel } from "@/lib/ui-format"
 
 type EmployeeProfile = {
   id: string
@@ -701,7 +701,7 @@ export default function EmployeePage() {
               />
               {bankForm.accountNumber ? (
                 <div className="table-meta">
-                  {t("แสดงในหน้ารวมเป็น", "Shown in list as")} {maskAccountValue(bankForm.accountNumber)}
+                  {t("เลขบัญชี", "Account number")}: {bankForm.accountNumber}
                 </div>
               ) : null}
             </div>
@@ -720,7 +720,7 @@ export default function EmployeePage() {
               />
               {bankForm.promptPayId ? (
                 <div className="table-meta">
-                  {t("แสดงในหน้ารวมเป็น", "Shown in list as")} {maskAccountValue(bankForm.promptPayId)}
+                  {t("พร้อมเพย์", "PromptPay")}: {bankForm.promptPayId}
                 </div>
               ) : null}
             </div>
