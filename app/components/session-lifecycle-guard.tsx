@@ -12,6 +12,11 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/employee/login",
   "/employee/register",
+  "/management/register",
+  "/shop/register",
+  "/sales/register",
+  "/forgot-password",
+  "/reset-password",
   "/subscription-expired",
 ])
 

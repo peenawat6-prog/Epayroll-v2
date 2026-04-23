@@ -9,7 +9,10 @@ const PUBLIC_PATHS = [
   "/management/register",
   "/shop/register",
   "/sales/register",
+  "/forgot-password",
+  "/reset-password",
 ]
+const AUTH_LANDING_PATHS = ["/login", "/employee/login"]
 const PROTECTED_PATHS = [
   "/dev/dashboard",
   "/dashboard",
@@ -75,7 +78,12 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
-  if (token && isPublicPath(pathname)) {
+  if (
+    token &&
+    AUTH_LANDING_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    )
+  ) {
     return NextResponse.redirect(
       new URL(
         token.role === "EMPLOYEE"
@@ -137,6 +145,8 @@ export const config = {
     "/management/register",
     "/shop/register",
     "/sales/register",
+    "/forgot-password",
+    "/reset-password",
     "/dev/dashboard/:path*",
     "/dashboard/:path*",
     "/employees/:path*",
