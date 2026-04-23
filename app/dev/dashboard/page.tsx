@@ -487,6 +487,9 @@ export default function DevDashboardPage() {
   const pendingShopCount = requests.filter(
     (request) => request.status === "PENDING",
   ).length
+  const visibleShopRequests = requests.filter(
+    (request) => request.status !== "REJECTED",
+  )
   const pendingSalesCount = salesRequests.filter(
     (request) => request.status === "PENDING",
   ).length
@@ -888,11 +891,11 @@ export default function DevDashboardPage() {
           ทีมซัพพอร์ตเท่านั้นที่อนุมัติร้านใหม่ได้ เจ้าของร้านจะล็อกอินได้หลังอนุมัติแล้ว
         </p>
 
-        {requests.length === 0 ? (
+        {visibleShopRequests.length === 0 ? (
           <div className="empty-state">ยังไม่มีคำขอเปิดร้าน</div>
         ) : (
           <div className="mobile-card-list" style={{ marginTop: 16 }}>
-            {requests.map((request) => (
+            {visibleShopRequests.map((request) => (
               <article key={request.id} className="record-card">
                 <div className="record-card-head">
                   <strong>{request.shopName}</strong>
